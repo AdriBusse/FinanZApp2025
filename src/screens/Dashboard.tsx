@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, Button, FlatList, TextInput } from 'react-native';
-import BottomSheetModal from '../components/BottomSheetModal';
+import { View, Text, StyleSheet, Button, FlatList } from 'react-native';
+import Input from '../components/atoms/Input';
 import { useAuthStore } from '../store/auth';
 import { useFinanceStore } from '../store/finance';
 import { useNavigation } from '@react-navigation/native';
@@ -104,7 +104,7 @@ export default function Dashboard() {
   );
 }
 
-function ExpenseModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+function ExpenseModal({ visible: _visible, onClose }: { visible: boolean; onClose: () => void }) {
   const { expenses, createExpenseTx } = useFinanceStore();
   const [expenseId, setExpenseId] = useState<string | null>(expenses[0]?.id ?? null);
   const [amount, setAmount] = useState('');
@@ -114,11 +114,11 @@ function ExpenseModal({ visible, onClose }: { visible: boolean; onClose: () => v
     <View style={styles.modalContainer}>
       <Text style={styles.modalTitle}>Create Expense</Text>
       <Text>Expense ID</Text>
-      <TextInput style={styles.input} value={expenseId ?? ''} onChangeText={setExpenseId} placeholder="Expense ID" />
+      <Input value={expenseId ?? ''} onChangeText={setExpenseId} placeholder="Expense ID" />
       <Text>Amount</Text>
-      <TextInput style={styles.input} value={amount} onChangeText={setAmount} keyboardType="numeric" />
+      <Input value={amount} onChangeText={setAmount} keyboardType="numeric" />
       <Text>Description</Text>
-      <TextInput style={styles.input} value={description} onChangeText={setDescription} />
+      <Input value={description} onChangeText={setDescription} />
       <View style={styles.row}>
         <Button title="Cancel" onPress={onClose} />
         <View style={{ width: 12 }} />
@@ -145,11 +145,11 @@ function SavingModal({ onClose }: { onClose: () => void }) {
     <View style={styles.modalContainer}>
       <Text style={styles.modalTitle}>Savings Transaction</Text>
       <Text>Depot ID</Text>
-      <TextInput style={styles.input} value={depotId ?? ''} onChangeText={setDepotId} placeholder="Depot ID" />
+      <Input value={depotId ?? ''} onChangeText={setDepotId} placeholder="Depot ID" />
       <Text>Amount (+ deposit / - withdrawal)</Text>
-      <TextInput style={styles.input} value={amount} onChangeText={setAmount} keyboardType="numeric" />
+      <Input value={amount} onChangeText={setAmount} keyboardType="numeric" />
       <Text>Note</Text>
-      <TextInput style={styles.input} value={note} onChangeText={setNote} />
+      <Input value={note} onChangeText={setNote} />
       <View style={styles.row}>
         <Button title="Cancel" onPress={onClose} />
         <View style={{ width: 12 }} />

@@ -5,9 +5,15 @@
   "scripts": {
     "android": "react-native run-android",
     "ios": "react-native run-ios",
-    "lint": "eslint .",
     "start": "react-native start",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "type-check": "tsc -p tsconfig.json --noEmit",
     "test": "jest",
+    "test:ci": "jest --ci --coverage",
+    "audit": "npm audit --audit-level=high",
     "codegen": "cross-env GRAPHQL_ENDPOINT=https://api.example.com/graphql graphql-codegen --require dotenv/config"
   },
   "dependencies": {
@@ -19,11 +25,13 @@
     "@react-navigation/native-stack": "^7.1.9",
     "formik": "^2.4.6",
     "graphql": "^16.9.0",
+    "lucide-react-native": "^0.539.0",
     "node-fetch": "^3.3.2",
     "react": "19.1.0",
     "react-native": "0.80.2",
     "react-native-safe-area-context": "^5.1.0",
     "react-native-screens": "^4.8.0",
+    "react-native-svg": "^15.12.1",
     "yup": "^1.4.0",
     "zustand": "^4.5.5"
   },

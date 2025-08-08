@@ -1,10 +1,12 @@
 import React, { useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, TextInput, Alert } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import Input from '../components/atoms/Input';
 import { useFinanceStore } from '../store/finance';
 import { useNavigation } from '@react-navigation/native';
 import { useSavingsUIStore } from '../store/savingsUI';
 import FABSpeedDial from '../components/FABSpeedDial';
 import FormBottomSheet from '../components/FormBottomSheet';
+import { Trash2 } from 'lucide-react-native';
 
 export default function SavingsList() {
   const { depots, isLoading, loadAll, deleteSavingDepot } = useFinanceStore();
@@ -49,7 +51,7 @@ export default function SavingsList() {
                   }}
                   style={{ marginLeft: 12, padding: 6 }}
                 >
-                  <Text style={{ color: '#ef4444', fontWeight: '700' }}>Del</Text>
+                  <Trash2 color="#ef4444" size={20} />
                 </TouchableOpacity>
               </View>
             </TouchableOpacity>
@@ -99,9 +101,9 @@ function CreateDepotModal({ visible, onClose }: { visible: boolean; onClose: () 
       }}
     >
       <Text style={styles.modalLabel}>Name</Text>
-      <TextInput style={styles.modalInput} value={name} onChangeText={setName} placeholder="e.g. Vacation" placeholderTextColor="#94a3b8" />
+      <Input value={name} onChangeText={setName} placeholder="e.g. Vacation" />
       <Text style={styles.modalLabel}>Short</Text>
-      <TextInput style={styles.modalInput} value={short} onChangeText={setShort} placeholder="e.g. VAC" placeholderTextColor="#94a3b8" maxLength={6} />
+      <Input value={short} onChangeText={setShort} placeholder="e.g. VAC" maxLength={6} />
     </FormBottomSheet>
   );
 }

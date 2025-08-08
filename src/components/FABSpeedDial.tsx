@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, TouchableOpacity, Text, StyleSheet, ViewStyle } from 'react-native';
+import { View, Text, StyleSheet, ViewStyle, TouchableOpacity } from 'react-native';
+import FloatingActionButton from './atoms/FloatingActionButton';
 
 export type SpeedDialAction = {
   label: string;
@@ -34,9 +35,9 @@ export default function FABSpeedDial({ isOpen, onToggle, actions = [], position 
           ))}
         </View>
       )}
-      <TouchableOpacity style={styles.fab} onPress={onToggle} accessibilityLabel="Floating action button">
+      <FloatingActionButton onPress={onToggle} accessibilityLabel="Floating action button">
         <Text style={styles.fabText}>{isOpen ? '×' : '+'}</Text>
-      </TouchableOpacity>
+      </FloatingActionButton>
     </View>
   );
 }

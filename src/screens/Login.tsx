@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, Button, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, Text, Button, StyleSheet, ActivityIndicator } from 'react-native';
+import Input from '../components/atoms/Input';
 import { Formik } from 'formik';
 import * as Yup from 'yup';
 import { useAuthStore } from '../store/auth';
@@ -44,8 +45,7 @@ export default function LoginScreen() {
       >
         {({ handleChange, handleBlur, handleSubmit, values, errors, touched, isSubmitting }) => (
           <>
-            <TextInput
-              style={styles.input}
+            <Input
               placeholder="Username"
               autoCapitalize="none"
               onChangeText={handleChange('username')}
@@ -54,8 +54,7 @@ export default function LoginScreen() {
             />
             {touched.username && errors.username ? <Text style={styles.error}>{errors.username}</Text> : null}
 
-            <TextInput
-              style={styles.input}
+            <Input
               placeholder="Password"
               secureTextEntry
               onChangeText={handleChange('password')}

@@ -1,0 +1,157 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master, develop ]
+
+permissions:
+  contents: read
+  checks: write
+  pull-requests: write
+
+jobs:
+  quality:
+    name: Quality (lint, type-check, tests, audit)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Verify formatting
+        run: npm run format:check
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Type check
+        run: npm run type-check
+
+      - name: Run unit tests
+        run: npm run test:ci
+
+      - name: Upload coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: |
+            coverage
+            coverage/**
+          if-no-files-found: ignore
+
+      - name: Security audit (high severity and above)
+        run: npm run audit
+
+  android-build:
+    name: Android build (assembleDebug)
+    runs-on: ubuntu-latest
+    needs: quality
+    timeout-minutes: 40
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Gradle cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+            android/.gradle
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      - name: Build Debug APK
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew --no-daemon clean assembleDebug
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-debug-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: warn
+
+  ios-build:
+    name: iOS build (best-effort)
+    runs-on: macos-latest
+    needs: quality
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Set up Ruby and CocoaPods
+        run: |
+          sudo gem install cocoapods --no-document
+
+      - name: Pod install
+        run: |
+          cd ios
+          pod install --repo-update
+
+      - name: Best-effort Xcode build (skip if workspace not present)
+        shell: bash
+        run: |
+          set -e
+          if compgen -G "ios/*.xcworkspace" > /dev/null; then
+            WS=$(ls ios/*.xcworkspace | head -n1)
+            SCHEME=${SCHEME:-FinanZ}
+            echo "Using workspace: $WS, scheme: $SCHEME"
+            xcodebuild -workspace "$WS" -scheme "$SCHEME" -configuration Debug -sdk iphonesimulator -destination 'platform=iOS Simulator,name=iPhone 15' build | xcpretty || true
+          else
+            echo "No .xcworkspace found in ios/, skipping Xcode build"
+          fi
+
+      - name: Archive artifacts (derived data logs)
+        if: always()
+        run: |
+          mkdir -p ios-build-logs
+          cp -R ~/Library/Logs/DiagnosticReports ios-build-logs || true
+        
+      - name: Upload iOS logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-build-logs
+          path: ios-build-logs
+          if-no-files-found: ignore

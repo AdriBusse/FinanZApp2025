@@ -1,9 +1,10 @@
 import React, { useMemo, useState } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, Alert } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert } from 'react-native';
 import { useFinanceStore } from '../store/finance';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import FABSpeedDial from '../components/FABSpeedDial';
-import FormBottomSheet, { formStyles as commonFormStyles } from '../components/FormBottomSheet';
+import TransactionListItem from '../components/molecules/TransactionListItem';
+import CreateTransactionSheet from '../components/organisms/savings/CreateTransactionSheet';
 
 function formatDate(dateStr?: string) {
   if (!dateStr) return '';
@@ -55,25 +56,19 @@ export default function SavingTransactions() {
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>{formatDate(day)}</Text>
             {list.map((t) => (
-              <View key={t.id} style={styles.row}>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.rowTitle}>{t.describtion || 'Transaction'}</Text>
-                  <Text style={styles.rowSub}>{formatDate(t.createdAt)}</Text>
-                </View>
-                <Text style={styles.rowAmount}>{Math.round(t.amount).toLocaleString()} d</Text>
-                <TouchableOpacity
-                  accessibilityLabel="Delete transaction"
-                  onPress={() => {
-                    Alert.alert('Delete Transaction', 'Are you sure you want to delete this transaction?', [
-                      { text: 'Cancel', style: 'cancel' },
-                      { text: 'Delete', style: 'destructive', onPress: async () => { try { await deleteSavingTransaction(t.id); } catch {} } },
-                    ]);
-                  }}
-                  style={{ marginLeft: 12, padding: 6 }}
-                >
-                  <Text style={{ color: '#ef4444', fontWeight: '700' }}>Del</Text>
-                </TouchableOpacity>
-              </View>
+              <TransactionListItem
+                key={t.id}
+                id={t.id}
+                title={t.describtion || 'Transaction'}
+                subtitle={formatDate(t.createdAt)}
+                amount={t.amount}
+                onDelete={(id) => {
+                  Alert.alert('Delete Transaction', 'Are you sure you want to delete this transaction?', [
+                    { text: 'Cancel', style: 'cancel' },
+                    { text: 'Delete', style: 'destructive', onPress: async () => { try { await deleteSavingTransaction(id); } catch {} } },
+                  ]);
+                }}
+              />
             ))}
           </View>
         )}
@@ -84,7 +79,7 @@ export default function SavingTransactions() {
         isOpen={isSpeedDialOpen}
         onToggle={() => setIsSpeedDialOpen((v) => !v)}
         position="left"
-        actions={[{ label: 'New Transaction', onPress: () => { setIsSpeedDialOpen(false); setCreateOpen(true); }, color: '#16a34a' }]}
+        actions={[{ label: 'New Transaction', onPress: () => { setIsSpeedDialOpen(false); setCreateOpen(true); } }]}
       />
 
       {/* Create Transaction Bottom Sheet */}
@@ -100,31 +95,6 @@ export default function SavingTransactions() {
   );
 }
 
-function CreateTransactionSheet({ open, onClose, onCreate }: { open: boolean; onClose: () => void; onCreate: (amount: number, describtion: string) => Promise<void> }) {
-  const [amount, setAmount] = useState('');
-  const [describtion, setDescribtion] = useState('');
-  const isValid = amount.trim().length > 0 && describtion.trim().length > 0 && !isNaN(Number(amount));
-  return (
-    <FormBottomSheet
-      visible={open}
-      onClose={onClose}
-      title="New Transaction"
-      submitLabel="Save"
-      submitDisabled={!isValid}
-      onSubmit={async () => {
-        if (!isValid) return;
-        await onCreate(Number(amount), describtion);
-        setAmount('');
-        setDescribtion('');
-      }}
-    >
-      <Text style={commonFormStyles.modalLabel}>Amount (+ deposit / - withdrawal)</Text>
-      <TextInput style={commonFormStyles.modalInput} value={amount} onChangeText={setAmount} keyboardType="numeric" placeholder="e.g. 50" placeholderTextColor="#94a3b8" />
-      <Text style={commonFormStyles.modalLabel}>Description</Text>
-      <TextInput style={commonFormStyles.modalInput} value={describtion} onChangeText={setDescribtion} placeholder="What is this?" placeholderTextColor="#94a3b8" />
-    </FormBottomSheet>
-  );
-}
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 16, paddingTop: 20, backgroundColor: '#0e0f14' },
