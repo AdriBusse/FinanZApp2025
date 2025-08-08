@@ -1,14 +1,17 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
+import ScreenWrapper from '../components/layout/ScreenWrapper';
 
 export default function Report() {
   return (
-    <View style={styles.container}>
+    <ScreenWrapper>
+      <View style={styles.container}>
       <Text style={styles.title}>Report</Text>
       <Text style={styles.subtitle}>
         Insights and analytics will appear here.
       </Text>
     </View>
+    </ScreenWrapper>
   );
 }
 

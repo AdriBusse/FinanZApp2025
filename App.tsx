@@ -13,6 +13,7 @@ import Login from './src/screens/Login';
 import SavingsList from './src/screens/SavingsList';
 import SavingTransactions from './src/screens/SavingTransactions';
 import Expenses from './src/screens/Expenses';
+import ExpenseTransactions from './src/screens/ExpenseTransactions';
 import Profile from './src/screens/Profile';
 import Report from './src/screens/Report';
 import { useAuthStore } from './src/store/auth';
@@ -36,11 +37,12 @@ import {
 
 const AuthStack = createNativeStackNavigator();
 const SavingsStack = createNativeStackNavigator();
+const ExpensesStack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
 function SavingsStackScreen() {
   return (
-    <SavingsStack.Navigator>
+    <SavingsStack.Navigator screenOptions={{ headerShown: false }}>
       <SavingsStack.Screen
         name="SavingsList"
         component={SavingsList}
@@ -52,6 +54,15 @@ function SavingsStackScreen() {
         options={{ title: 'Transactions' }}
       />
     </SavingsStack.Navigator>
+  );
+}
+
+function ExpensesStackScreen() {
+  return (
+    <ExpensesStack.Navigator screenOptions={{ headerShown: false }}>
+      <ExpensesStack.Screen name="ExpensesList" component={Expenses} options={{ title: 'Expenses' }} />
+      <ExpensesStack.Screen name="ExpenseTransactions" component={ExpenseTransactions} options={{ title: 'Transactions' }} />
+    </ExpensesStack.Navigator>
   );
 }
 

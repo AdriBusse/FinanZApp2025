@@ -1,16 +1,19 @@
 import React from 'react';
 import { View, Text, StyleSheet, Button } from 'react-native';
 import { useAuthStore } from '../store/auth';
+import ScreenWrapper from '../components/layout/ScreenWrapper';
 
 export default function Profile() {
   const { user, logout } = useAuthStore();
   return (
-    <View style={styles.container}>
+    <ScreenWrapper>
+      <View style={styles.container}>
       <Text style={styles.title}>Profile</Text>
       <Text style={styles.subtitle}>User: {user?.username ?? 'Unknown'}</Text>
       <View style={{ height: 12 }} />
       <Button title="Logout" onPress={() => logout()} />
     </View>
+    </ScreenWrapper>
   );
 }
 

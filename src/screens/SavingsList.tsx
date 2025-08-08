@@ -15,6 +15,7 @@ import { useSavingsUIStore } from '../store/savingsUI';
 import FABSpeedDial from '../components/FABSpeedDial';
 import FormBottomSheet from '../components/FormBottomSheet';
 import { Trash2 } from 'lucide-react-native';
+import ScreenWrapper from '../components/layout/ScreenWrapper';
 
 export default function SavingsList() {
   const { depots, isLoading, loadAll, deleteSavingDepot } = useFinanceStore();
@@ -33,7 +34,8 @@ export default function SavingsList() {
   } = useSavingsUIStore();
 
   return (
-    <View style={styles.container}>
+    <ScreenWrapper scrollable={false}>
+      <View style={styles.container}>
       <Text style={styles.title}>Savings</Text>
       {isLoading && depots.length === 0 ? (
         <View style={styles.center}>
@@ -118,6 +120,7 @@ export default function SavingsList() {
         onClose={closeCreateDepotModal}
       />
     </View>
+    </ScreenWrapper>
   );
 }
 

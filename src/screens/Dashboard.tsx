@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, Button, FlatList } from 'react-native';
+import { View, Text, StyleSheet, FlatList } from 'react-native';
 import Input from '../components/atoms/Input';
 import { useAuthStore } from '../store/auth';
 import { useFinanceStore } from '../store/finance';
 import { useNavigation } from '@react-navigation/native';
+import RoundedButton from '../components/atoms/RoundedButton';
+import ScreenWrapper from '../components/layout/ScreenWrapper';
 
 export default function Dashboard() {
   const { user, logout } = useAuthStore();
@@ -24,37 +26,50 @@ export default function Dashboard() {
   );
 
   return (
-    <View style={styles.container}>
+    <ScreenWrapper scrollable={false}>
+      <View style={styles.container}>
       <View style={styles.headerRow}>
         <Text style={styles.title}>Dashboard</Text>
-        <Button title="Logout" onPress={() => logout()} />
+        <RoundedButton title="Logout" variant="outline" size="sm" onPress={() => logout()} />
       </View>
       <Text style={styles.subtitle}>Welcome {user?.username ?? ''}</Text>
 
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>Overview</Text>
-        <Text>
-          User: {user?.username ?? '—'} {user?.email ? `(${user.email})` : ''}
-        </Text>
-        <Text>Total Savings: {summary?.savingValue ?? 0}</Text>
-        <Text>ETF Worth: {summary?.etfWorth ?? 0}</Text>
-        <Text>ETF Movement: {summary?.etfMovement ?? 0}</Text>
-        <Text>
-          Today Spent: {todaySpentSum} ({todaySpentCount} tx)
-        </Text>
-        <Text>
-          Latest Expense: {summary?.latestExpense?.title ?? '—'} (sum:{' '}
-          {summary?.latestExpense?.sum ?? 0})
-        </Text>
+      <View style={styles.tilesGrid}>
+        <View style={styles.tile}>
+          <Text style={styles.tileTitle}>Total Savings</Text>
+          <Text style={styles.tileValue}>{(summary?.savingValue ?? 0).toLocaleString()}</Text>
+        </View>
+        <View style={styles.tile}>
+          <Text style={styles.tileTitle}>ETF Worth</Text>
+          <Text style={styles.tileValue}>{(summary?.etfWorth ?? 0).toLocaleString()}</Text>
+        </View>
+        <View style={styles.tile}>
+          <Text style={styles.tileTitle}>ETF Movement</Text>
+          <Text style={[styles.tileValue, { color: (summary?.etfMovement ?? 0) >= 0 ? '#16a34a' : '#ef4444' }]}>
+            {(summary?.etfMovement ?? 0).toLocaleString()}
+          </Text>
+        </View>
+        <View style={styles.tile}>
+          <Text style={styles.tileTitle}>Today Spent</Text>
+          <Text style={styles.tileValue}>{todaySpentSum.toLocaleString()}</Text>
+          <Text style={styles.tileSub}>{todaySpentCount} tx</Text>
+        </View>
+        <View style={styles.tile}>
+          <Text style={styles.tileTitle}>Latest Expense</Text>
+          <Text style={styles.tileValue}>{summary?.latestExpense?.sum?.toLocaleString?.() ?? (summary?.latestExpense?.sum ?? 0)}</Text>
+          <Text style={styles.tileSub}>{summary?.latestExpense?.title ?? '—'}</Text>
+        </View>
+        <View style={styles.tile}>
+          <Text style={styles.tileTitle}>User</Text>
+          <Text style={styles.tileValue}>{user?.username ?? '—'}</Text>
+          {!!user?.email && <Text style={styles.tileSub}>{user.email}</Text>}
+        </View>
       </View>
 
       <View style={styles.row}>
-        <Button title="Add Expense" onPress={() => setShowExpenseModal(true)} />
+        <RoundedButton title="Add Expense" onPress={() => setShowExpenseModal(true)} />
         <View style={{ width: 12 }} />
-        <Button
-          title="Savings Transaction"
-          onPress={() => setShowSavingModal(true)}
-        />
+        <RoundedButton title="Savings Transaction" variant="secondary" onPress={() => setShowSavingModal(true)} />
       </View>
 
       <View style={styles.section}>
@@ -66,10 +81,7 @@ export default function Dashboard() {
           }}
         >
           <Text style={styles.sectionTitle}>Saving Depots</Text>
-          <Button
-            title="Open Savings"
-            onPress={() => navigation.navigate('SavingsTab')}
-          />
+          <RoundedButton title="Open Savings" size="sm" variant="secondary" onPress={() => navigation.navigate('SavingsTab')} />
         </View>
         <FlatList
           data={depots}
@@ -87,7 +99,9 @@ export default function Dashboard() {
               >
                 {item.name} ({item.short})
               </Text>
-              <Text>Balance: {item.sum ?? 0}</Text>
+              <Text style={{ color: '#cbd5e1', marginTop: 4 }}>
+                Balance: {(item.sum ?? 0).toLocaleString()}
+              </Text>
             </View>
           )}
         />
@@ -101,7 +115,9 @@ export default function Dashboard() {
           renderItem={({ item }) => (
             <View style={styles.listItem}>
               <Text style={styles.bold}>{item.title}</Text>
-              <Text>{item.transactions?.length ?? 0} entries</Text>
+              <Text style={{ color: '#cbd5e1', marginTop: 4 }}>
+                {(item.transactions?.length ?? 0).toLocaleString()} entries
+              </Text>
             </View>
           )}
         />
@@ -110,7 +126,7 @@ export default function Dashboard() {
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Today Spent</Text>
         {(summary?.todaySpent ?? []).length === 0 ? (
-          <Text style={{ color: '#666' }}>No expenses today.</Text>
+          <Text style={{ color: '#94a3b8' }}>No expenses today.</Text>
         ) : (
           <FlatList
             data={summary?.todaySpent ?? []}
@@ -118,7 +134,9 @@ export default function Dashboard() {
             renderItem={({ item }) => (
               <View style={styles.listItem}>
                 <Text style={styles.bold}>{item.describtion}</Text>
-                <Text>{item.amount}</Text>
+                <Text style={{ color: '#f1f5f9', marginTop: 4 }}>
+                  {item.amount?.toLocaleString?.() ?? item.amount}
+                </Text>
               </View>
             )}
           />
@@ -134,6 +152,7 @@ export default function Dashboard() {
         onClose={() => setShowSavingModal(false)}
       />
     </View>
+    </ScreenWrapper>
   );
 }
 
@@ -154,20 +173,20 @@ function ExpenseModal({
   return (
     <View style={styles.modalContainer}>
       <Text style={styles.modalTitle}>Create Expense</Text>
-      <Text>Expense ID</Text>
+      <Text style={styles.modalLabel}>Expense ID</Text>
       <Input
         value={expenseId ?? ''}
         onChangeText={setExpenseId}
         placeholder="Expense ID"
       />
-      <Text>Amount</Text>
+      <Text style={styles.modalLabel}>Amount</Text>
       <Input value={amount} onChangeText={setAmount} keyboardType="numeric" />
-      <Text>Description</Text>
+      <Text style={styles.modalLabel}>Description</Text>
       <Input value={description} onChangeText={setDescription} />
       <View style={styles.row}>
-        <Button title="Cancel" onPress={onClose} />
+        <RoundedButton title="Cancel" variant="outline" onPress={onClose} />
         <View style={{ width: 12 }} />
-        <Button
+        <RoundedButton
           title="Add"
           onPress={async () => {
             if (!expenseId || !amount || !description) return;
@@ -189,20 +208,20 @@ function SavingModal({ onClose }: { onClose: () => void }) {
   return (
     <View style={styles.modalContainer}>
       <Text style={styles.modalTitle}>Savings Transaction</Text>
-      <Text>Depot ID</Text>
+      <Text style={styles.modalLabel}>Depot ID</Text>
       <Input
         value={depotId ?? ''}
         onChangeText={setDepotId}
         placeholder="Depot ID"
       />
-      <Text>Amount (+ deposit / - withdrawal)</Text>
+      <Text style={styles.modalLabel}>Amount (+ deposit / - withdrawal)</Text>
       <Input value={amount} onChangeText={setAmount} keyboardType="numeric" />
-      <Text>Note</Text>
+      <Text style={styles.modalLabel}>Note</Text>
       <Input value={note} onChangeText={setNote} />
       <View style={styles.row}>
-        <Button title="Cancel" onPress={onClose} />
+        <RoundedButton title="Cancel" variant="outline" onPress={onClose} />
         <View style={{ width: 12 }} />
-        <Button
+        <RoundedButton
           title="Save"
           onPress={async () => {
             if (!depotId || !amount || !note) return;
@@ -216,37 +235,46 @@ function SavingModal({ onClose }: { onClose: () => void }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16 },
+  container: { flex: 1, padding: 16, paddingTop: 20, backgroundColor: '#0e0f14' },
   headerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    marginBottom: 8,
   },
-  title: { fontSize: 22, fontWeight: '600', marginBottom: 8 },
-  subtitle: { fontSize: 14, color: '#666', marginBottom: 12 },
-  card: {
-    padding: 12,
-    backgroundColor: '#f3f4f6',
-    borderRadius: 10,
-    marginBottom: 16,
+  title: { fontSize: 22, fontWeight: '800', marginBottom: 4, color: '#fff' },
+  subtitle: { fontSize: 14, color: '#94a3b8', marginBottom: 12 },
+  tilesGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', marginBottom: 12 },
+  tile: {
+    width: '48%',
+    backgroundColor: '#1e212b',
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 12,
   },
-  cardTitle: { fontWeight: '700', marginBottom: 8 },
+  tileTitle: { color: '#94a3b8', fontSize: 12, fontWeight: '700' },
+  tileValue: { color: '#f8fafc', fontSize: 18, fontWeight: '800', marginTop: 4 },
+  tileSub: { color: '#cbd5e1', fontSize: 12, marginTop: 4 },
   row: { flexDirection: 'row', alignItems: 'center', marginBottom: 16 },
   section: { marginTop: 8 },
-  sectionTitle: { fontSize: 16, fontWeight: '600', marginBottom: 8 },
+  sectionTitle: { fontSize: 16, fontWeight: '700', marginBottom: 8, color: '#fff' },
   listItem: {
-    paddingVertical: 10,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#ddd',
+    padding: 14,
+    backgroundColor: '#1e212b',
+    borderRadius: 12,
+    marginBottom: 8,
   },
-  bold: { fontWeight: '700' },
-  modalContainer: { flex: 1, padding: 16, paddingTop: 56 },
-  modalTitle: { fontSize: 20, fontWeight: '700', marginBottom: 16 },
+  bold: { fontWeight: '700', color: '#f8fafc' },
+  modalContainer: { flex: 1, padding: 16, paddingTop: 56, backgroundColor: '#111827' },
+  modalTitle: { fontSize: 20, fontWeight: '700', marginBottom: 16, color: '#fff' },
+  modalLabel: { color: '#cbd5e1', fontSize: 12, marginBottom: 6 },
   input: {
     borderWidth: 1,
-    borderColor: '#ccc',
+    borderColor: '#374151',
     borderRadius: 8,
     padding: 10,
     marginBottom: 12,
+    color: '#fff',
+    backgroundColor: '#0f172a',
   },
 });

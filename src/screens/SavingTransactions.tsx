@@ -12,6 +12,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import FABSpeedDial from '../components/FABSpeedDial';
 import TransactionListItem from '../components/molecules/TransactionListItem';
 import CreateTransactionSheet from '../components/organisms/savings/CreateTransactionSheet';
+import ScreenWrapper from '../components/layout/ScreenWrapper';
 
 function formatDate(dateStr?: string) {
   if (!dateStr) return '';
@@ -66,7 +67,8 @@ export default function SavingTransactions() {
   );
 
   return (
-    <View style={styles.container}>
+    <ScreenWrapper scrollable={false}>
+      <View style={styles.container}>
       <View style={styles.headerRow}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <Text style={styles.headerAction}>{'‹'}</Text>
@@ -148,6 +150,7 @@ export default function SavingTransactions() {
         }}
       />
     </View>
+    </ScreenWrapper>
   );
 }
 

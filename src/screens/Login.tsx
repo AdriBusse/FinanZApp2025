@@ -10,6 +10,7 @@ import Input from '../components/atoms/Input';
 import { Formik } from 'formik';
 import * as Yup from 'yup';
 import { useAuthStore } from '../store/auth';
+import ScreenWrapper from '../components/layout/ScreenWrapper';
 
 const LoginSchema = Yup.object().shape({
   username: Yup.string().required('Username is required'),
@@ -33,7 +34,8 @@ export default function LoginScreen() {
   }
 
   return (
-    <View style={styles.container}>
+    <ScreenWrapper>
+      <View style={styles.container}>
       <Text style={styles.title}>FinanZ Login</Text>
       <Formik
         initialValues={{ username: '', password: '' }}
@@ -92,6 +94,7 @@ export default function LoginScreen() {
         )}
       </Formik>
     </View>
+    </ScreenWrapper>
   );
 }
 
