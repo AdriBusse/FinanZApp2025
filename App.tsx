@@ -14,6 +14,8 @@ import SavingsList from './src/screens/SavingsList';
 import SavingTransactions from './src/screens/SavingTransactions';
 import Expenses from './src/screens/Expenses';
 import ExpenseTransactions from './src/screens/ExpenseTransactions';
+import CreateCategory from './src/screens/CreateCategory';
+import Categories from './src/screens/Categories';
 import Profile from './src/screens/Profile';
 import Report from './src/screens/Report';
 import { useAuthStore } from './src/store/auth';
@@ -62,6 +64,8 @@ function ExpensesStackScreen() {
     <ExpensesStack.Navigator screenOptions={{ headerShown: false }}>
       <ExpensesStack.Screen name="ExpensesList" component={Expenses} options={{ title: 'Expenses' }} />
       <ExpensesStack.Screen name="ExpenseTransactions" component={ExpenseTransactions} options={{ title: 'Transactions' }} />
+      <ExpensesStack.Screen name="Categories" component={Categories} options={{ title: 'Categories' }} />
+      <ExpensesStack.Screen name="CreateCategory" component={CreateCategory} options={{ title: 'Create Category' }} />
     </ExpensesStack.Navigator>
   );
 }
@@ -159,7 +163,7 @@ function AppTabs() {
       />
       <Tab.Screen
         name="ExpensesTab"
-        component={Expenses}
+        component={ExpensesStackScreen}
         options={{ title: 'Expenses' }}
       />
       {/* Center: Dashboard with custom button */}

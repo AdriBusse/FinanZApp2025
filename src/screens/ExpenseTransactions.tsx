@@ -1,11 +1,19 @@
 import React, { useMemo, useState } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  TouchableOpacity,
+  Alert,
+} from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import ScreenWrapper from '../components/layout/ScreenWrapper';
 import FABSpeedDial from '../components/FABSpeedDial';
 import TransactionListItem from '../components/molecules/TransactionListItem';
 import { useFinanceStore } from '../store/finance';
 import CreateExpenseTransactionSheet from '../components/organisms/expenses/CreateExpenseTransactionSheet';
+import EditExpenseTransactionSheet from '../components/organisms/expenses/EditExpenseTransactionSheet';
 import { apolloClient } from '../apollo/client';
 import { gql } from '@apollo/client';
 
@@ -42,12 +50,16 @@ function groupByDate(
     arr.push(t);
     map.set(k, arr);
   }
-  const entries = Array.from(map.entries()).sort((a, b) => (a[0] < b[0] ? 1 : -1));
+  const entries = Array.from(map.entries()).sort((a, b) =>
+    a[0] < b[0] ? 1 : -1,
+  );
   return entries;
 }
 
 export default function ExpenseTransactions() {
   const [createOpen, setCreateOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [selectedTransaction, setSelectedTransaction] = useState<any>(null);
   const [isSpeedDialOpen, setIsSpeedDialOpen] = useState(false);
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
@@ -59,7 +71,9 @@ export default function ExpenseTransactions() {
     () => groupByDate(expense?.transactions ?? []),
     [expense?.transactions],
   );
-  const total = expense?.sum ?? (expense?.transactions ?? []).reduce((s, t) => s + (t.amount || 0), 0);
+  const total =
+    expense?.sum ??
+    (expense?.transactions ?? []).reduce((s, t) => s + (t.amount || 0), 0);
 
   return (
     <ScreenWrapper scrollable={false}>
@@ -69,16 +83,20 @@ export default function ExpenseTransactions() {
             <Text style={styles.headerAction}>{'‹'}</Text>
           </TouchableOpacity>
           <Text style={styles.headerTitle}>{expense?.title ?? 'Expense'}</Text>
-          <View style={{ width: 24 }} />
+          <View style={styles.headerSpacer} />
         </View>
 
         <Text style={styles.periodTitle}>
-          {new Date().toLocaleString(undefined, { month: 'long', day: '2-digit' })}:
+          {new Date().toLocaleString(undefined, {
+            month: 'long',
+            day: '2-digit',
+          })}
+          :
         </Text>
         <Text style={styles.total}>{total?.toLocaleString?.() ?? total} d</Text>
 
         <FlatList
-          contentContainerStyle={{ paddingBottom: 120 }}
+          contentContainerStyle={styles.listContent}
           data={grouped}
           keyExtractor={([day]) => day}
           renderItem={({ item: [day, list] }) => (
@@ -91,20 +109,31 @@ export default function ExpenseTransactions() {
                   title={t.describtion || 'Transaction'}
                   subtitle={formatDate(t.createdAt)}
                   amount={t.amount}
+                  onPress={() => {
+                    setSelectedTransaction(t);
+                    setEditOpen(true);
+                  }}
                   onDelete={async id => {
-                    Alert.alert('Delete Transaction', 'Are you sure you want to delete this transaction?', [
-                      { text: 'Cancel', style: 'cancel' },
-                      {
-                        text: 'Delete',
-                        style: 'destructive',
-                        onPress: async () => {
-                          try {
-                            await apolloClient.mutate({ mutation: DELETE_EXPENSE_TRANSACTION, variables: { id } });
-                            await loadAll();
-                          } catch {}
+                    Alert.alert(
+                      'Delete Transaction',
+                      'Are you sure you want to delete this transaction?',
+                      [
+                        { text: 'Cancel', style: 'cancel' },
+                        {
+                          text: 'Delete',
+                          style: 'destructive',
+                          onPress: async () => {
+                            try {
+                              await apolloClient.mutate({
+                                mutation: DELETE_EXPENSE_TRANSACTION,
+                                variables: { id },
+                              });
+                              await loadAll();
+                            } catch {}
+                          },
                         },
-                      },
-                    ]);
+                      ],
+                    );
                   }}
                 />
               ))}
@@ -115,7 +144,7 @@ export default function ExpenseTransactions() {
         <FABSpeedDial
           isOpen={isSpeedDialOpen}
           onToggle={() => setIsSpeedDialOpen(v => !v)}
-          position="left"
+          position="right"
           actions={[
             {
               label: 'New Transaction',
@@ -130,9 +159,22 @@ export default function ExpenseTransactions() {
         <CreateExpenseTransactionSheet
           open={createOpen}
           onClose={() => setCreateOpen(false)}
+          expenseId={expenseId}
           onCreate={async (amount, describtion, categoryId) => {
             await createExpenseTx(expenseId, amount, describtion, categoryId);
             setCreateOpen(false);
+          }}
+        />
+
+        <EditExpenseTransactionSheet
+          open={editOpen}
+          onClose={() => {
+            setEditOpen(false);
+            setSelectedTransaction(null);
+          }}
+          transaction={selectedTransaction}
+          onUpdate={async () => {
+            await loadAll();
           }}
         />
       </View>
@@ -141,12 +183,34 @@ export default function ExpenseTransactions() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16, paddingTop: 20, backgroundColor: '#0e0f14' },
-  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
+  container: {
+    flex: 1,
+    padding: 16,
+    paddingTop: 20,
+    backgroundColor: '#0e0f14',
+  },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
   headerAction: { color: '#cbd5e1', fontSize: 24, padding: 4 },
   headerTitle: { color: '#fff', fontSize: 18, fontWeight: '700' },
-  periodTitle: { color: '#cbd5e1', fontSize: 22, fontWeight: '800', marginTop: 8 },
+  headerSpacer: { width: 24 },
+  periodTitle: {
+    color: '#cbd5e1',
+    fontSize: 22,
+    fontWeight: '800',
+    marginTop: 8,
+  },
   total: { color: '#fff', fontSize: 32, fontWeight: '900', marginVertical: 8 },
   section: { marginTop: 12 },
-  sectionTitle: { color: '#cbd5e1', fontSize: 14, fontWeight: '700', marginBottom: 8 },
+  sectionTitle: {
+    color: '#cbd5e1',
+    fontSize: 14,
+    fontWeight: '700',
+    marginBottom: 8,
+  },
+  listContent: { paddingBottom: 160 },
 });

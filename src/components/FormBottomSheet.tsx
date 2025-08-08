@@ -1,5 +1,5 @@
 import React, { ReactNode } from 'react';
-import { View, Text, StyleSheet, Button } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import BottomSheetModal from './BottomSheetModal';
 
 interface FormBottomSheetProps {
@@ -8,7 +8,6 @@ interface FormBottomSheetProps {
   title: string;
   children: ReactNode;
   submitLabel?: string;
-  cancelLabel?: string;
   onSubmit: () => void | Promise<void>;
   submitDisabled?: boolean;
   heightPercent?: number;
@@ -20,7 +19,6 @@ export default function FormBottomSheet({
   title,
   children,
   submitLabel = 'Save',
-  cancelLabel = 'Cancel',
   onSubmit,
   submitDisabled,
   heightPercent = 0.6,
@@ -31,30 +29,93 @@ export default function FormBottomSheet({
       onClose={onClose}
       heightPercent={heightPercent}
     >
-      <Text style={styles.modalTitle}>{title}</Text>
-      {children}
-      <View style={{ height: 12 }} />
-      <View style={{ flexDirection: 'row', justifyContent: 'flex-end' }}>
-        <Button title={cancelLabel} onPress={onClose} />
-        <View style={{ width: 12 }} />
-        <Button
-          title={submitLabel}
-          disabled={!!submitDisabled}
+      <View style={styles.header}>
+        <Text style={styles.modalTitle}>{title}</Text>
+        <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+          <Text style={styles.closeButtonText}>✕</Text>
+        </TouchableOpacity>
+      </View>
+      
+      <View style={styles.content}>
+        {children}
+      </View>
+      
+      <View style={styles.footer}>
+        <TouchableOpacity
+          style={[
+            styles.submitButton,
+            submitDisabled && styles.submitButtonDisabled,
+          ]}
           onPress={onSubmit}
-        />
+          disabled={submitDisabled}
+          activeOpacity={0.7}
+        >
+          <Text style={[
+            styles.submitButtonText,
+            submitDisabled && styles.submitButtonTextDisabled,
+          ]}>
+            {submitLabel}
+          </Text>
+        </TouchableOpacity>
       </View>
     </BottomSheetModal>
   );
 }
 
 export const formStyles = StyleSheet.create({
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
   modalTitle: {
     color: '#fff',
     fontSize: 18,
     fontWeight: '700',
-    marginBottom: 12,
   },
-  modalLabel: { color: '#cbd5e1', fontSize: 12, marginBottom: 6 },
+  closeButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#374151',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  closeButtonText: {
+    color: '#cbd5e1',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  content: {
+    flex: 1,
+  },
+  footer: {
+    marginTop: 16,
+  },
+  submitButton: {
+    backgroundColor: '#2e7d32',
+    paddingVertical: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  submitButtonDisabled: {
+    backgroundColor: '#374151',
+  },
+  submitButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  submitButtonTextDisabled: {
+    color: '#94a3b8',
+  },
+  modalLabel: { 
+    color: '#cbd5e1', 
+    fontSize: 12, 
+    marginBottom: 6 
+  },
   modalInput: {
     borderWidth: 1,
     borderColor: '#374151',

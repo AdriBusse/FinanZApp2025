@@ -12,6 +12,8 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import FABSpeedDial from '../components/FABSpeedDial';
 import TransactionListItem from '../components/molecules/TransactionListItem';
 import CreateTransactionSheet from '../components/organisms/savings/CreateTransactionSheet';
+import EditSavingTransactionSheet from '../components/organisms/savings/EditSavingTransactionSheet';
+import EditSavingDepotSheet from '../components/organisms/savings/EditSavingDepotSheet';
 import ScreenWrapper from '../components/layout/ScreenWrapper';
 
 function formatDate(dateStr?: string) {
@@ -50,11 +52,14 @@ function groupByDate(
 
 export default function SavingTransactions() {
   const [createOpen, setCreateOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [editDepotOpen, setEditDepotOpen] = useState(false);
+  const [selectedTransaction, setSelectedTransaction] = useState<any>(null);
   const [isSpeedDialOpen, setIsSpeedDialOpen] = useState(false);
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const depotId: string = route.params?.depotId ?? '';
-  const { depots, createSavingTx, deleteSavingTransaction } = useFinanceStore();
+  const { depots, createSavingTx, deleteSavingTransaction, loadAll } = useFinanceStore();
   const depot = depots.find(d => d.id === depotId);
 
   const grouped = useMemo(
@@ -73,7 +78,13 @@ export default function SavingTransactions() {
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <Text style={styles.headerAction}>{'‹'}</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>{depot?.name ?? 'Saving'}</Text>
+        <TouchableOpacity 
+          onPress={() => setEditDepotOpen(true)}
+          style={styles.headerTitleContainer}
+        >
+          <Text style={styles.headerTitle}>{depot?.name ?? 'Saving'}</Text>
+          <Text style={styles.editHint}>tap to edit</Text>
+        </TouchableOpacity>
         <View style={{ width: 24 }} />
       </View>
 
@@ -84,10 +95,15 @@ export default function SavingTransactions() {
         })}
         :
       </Text>
-      <Text style={styles.total}>{total.toLocaleString()} d</Text>
+      <Text style={[
+        styles.total,
+        { color: total >= 0 ? '#16a34a' : '#ef4444' }
+      ]}>
+        {total.toLocaleString()} €
+      </Text>
 
       <FlatList
-        contentContainerStyle={{ paddingBottom: 120 }}
+        contentContainerStyle={{ paddingBottom: 160 }}
         data={grouped}
         keyExtractor={([day]) => day}
         renderItem={({ item: [day, list] }) => (
@@ -100,6 +116,10 @@ export default function SavingTransactions() {
                 title={t.describtion || 'Transaction'}
                 subtitle={formatDate(t.createdAt)}
                 amount={t.amount}
+                onPress={() => {
+                  setSelectedTransaction(t);
+                  setEditOpen(true);
+                }}
                 onDelete={id => {
                   Alert.alert(
                     'Delete Transaction',
@@ -128,7 +148,7 @@ export default function SavingTransactions() {
       <FABSpeedDial
         isOpen={isSpeedDialOpen}
         onToggle={() => setIsSpeedDialOpen(v => !v)}
-        position="left"
+        position="right"
         actions={[
           {
             label: 'New Transaction',
@@ -147,6 +167,31 @@ export default function SavingTransactions() {
         onCreate={async (amount, describtion) => {
           await createSavingTx(depotId, amount, describtion);
           setCreateOpen(false);
+        }}
+      />
+
+      {/* Edit Transaction Bottom Sheet */}
+      <EditSavingTransactionSheet
+        open={editOpen}
+        onClose={() => {
+          setEditOpen(false);
+          setSelectedTransaction(null);
+        }}
+        transaction={selectedTransaction}
+        onUpdate={async () => {
+          await loadAll();
+        }}
+      />
+
+      {/* Edit Depot Bottom Sheet */}
+      <EditSavingDepotSheet
+        open={editDepotOpen}
+        onClose={() => {
+          setEditDepotOpen(false);
+        }}
+        depot={depot || null}
+        onUpdate={async () => {
+          await loadAll();
         }}
       />
     </View>
@@ -168,7 +213,12 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   headerAction: { color: '#cbd5e1', fontSize: 24, padding: 4 },
+  headerTitleContainer: {
+    flexDirection: 'column',
+    alignItems: 'center',
+  },
   headerTitle: { color: '#fff', fontSize: 18, fontWeight: '700' },
+  editHint: { color: '#94a3b8', fontSize: 12, marginTop: 2 },
   periodTitle: {
     color: '#cbd5e1',
     fontSize: 22,

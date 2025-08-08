@@ -46,6 +46,7 @@ export default function SavingsList() {
           data={depots}
           keyExtractor={d => d.id}
           ItemSeparatorComponent={() => <View style={styles.sep} />}
+          contentContainerStyle={styles.listContent}
           renderItem={({ item }) => (
             <TouchableOpacity
               style={styles.depotItem}
@@ -61,12 +62,12 @@ export default function SavingsList() {
                     { color: (item.sum ?? 0) >= 0 ? '#16a34a' : '#ef4444' },
                   ]}
                 >
-                  Total: {(item.sum ?? 0).toLocaleString()}
+                  Total: {(item.sum ?? 0).toLocaleString()} €
                 </Text>
               </View>
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                 <Text style={styles.depotBalance}>
-                  {(item.balance ?? 0).toLocaleString()}
+                  {(item.balance ?? 0).toLocaleString()} €
                 </Text>
                 <TouchableOpacity
                   accessibilityLabel="Delete depot"
@@ -104,7 +105,7 @@ export default function SavingsList() {
       <FABSpeedDial
         isOpen={isSpeedDialOpen}
         onToggle={toggleSpeedDial}
-        position="left"
+        position="right"
         actions={[
           {
             label: 'New Depot',
@@ -237,4 +238,5 @@ const styles = StyleSheet.create({
     color: '#fff',
     marginBottom: 12,
   },
+  listContent: { paddingBottom: 160 },
 });

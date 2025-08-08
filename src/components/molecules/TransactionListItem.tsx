@@ -7,6 +7,7 @@ export interface TransactionListItemProps {
   title: string;
   subtitle?: string;
   amount?: number;
+  onPress?: () => void;
   onDelete?: (id: string) => void;
 }
 
@@ -15,10 +16,15 @@ export default function TransactionListItem({
   title,
   subtitle,
   amount,
+  onPress,
   onDelete,
 }: TransactionListItemProps) {
   return (
-    <View style={styles.row}>
+    <TouchableOpacity 
+      style={styles.row}
+      onPress={onPress}
+      activeOpacity={onPress ? 0.7 : 1}
+    >
       <View style={{ flex: 1 }}>
         <Text style={styles.rowTitle}>{title}</Text>
         {!!subtitle && <Text style={styles.rowSub}>{subtitle}</Text>}
@@ -39,7 +45,7 @@ export default function TransactionListItem({
           <Trash2 color="#ef4444" size={20} />
         </TouchableOpacity>
       )}
-    </View>
+    </TouchableOpacity>
   );
 }
 

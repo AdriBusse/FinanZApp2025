@@ -55,6 +55,7 @@ export default function Expenses() {
             data={expenses}
             keyExtractor={e => e.id}
             ItemSeparatorComponent={() => <View style={styles.sep} />}
+            contentContainerStyle={styles.listContent}
             renderItem={({ item }) => (
               <TouchableOpacity
                 style={styles.expenseItem}
@@ -109,12 +110,20 @@ export default function Expenses() {
         <FABSpeedDial
           isOpen={isSpeedDialOpen}
           onToggle={() => setIsSpeedDialOpen(v => !v)}
-          position="left"
+          position="right"
           actions={[
             {
               label: 'New Expense',
               onPress: () => setIsCreateModalOpen(true),
               color: '#2563eb',
+            },
+            {
+              label: 'Categories',
+              onPress: () => {
+                setIsSpeedDialOpen(false);
+                navigation.navigate('Categories');
+              },
+              color: '#2e7d32',
             },
           ]}
         />
@@ -190,4 +199,5 @@ const styles = StyleSheet.create({
   expenseSub: { color: '#94a3b8', marginTop: 4 },
   expenseSum: { color: '#f8fafc', fontSize: 16, fontWeight: '700' },
   modalLabel: { color: '#cbd5e1', fontSize: 12, marginBottom: 6 },
+  listContent: { paddingBottom: 160 },
 });

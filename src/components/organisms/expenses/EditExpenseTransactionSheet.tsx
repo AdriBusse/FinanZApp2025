@@ -12,40 +12,48 @@ import FormBottomSheet, {
 } from '../../FormBottomSheet';
 import Input from '../../atoms/Input';
 import Dropdown from '../../atoms/Dropdown';
-import { CREATEEXPANSETRANSACTION } from '../../../queries/mutations/Expenses/CreateExpenseTransaction';
+import { UPDATEEXPENSETRANSACTION } from '../../../queries/mutations/Expenses/UpdateExpenseTransaction';
 import { useCategoriesStore } from '../../../store/categories';
 
-export default function CreateExpenseTransactionSheet({
+interface Transaction {
+  id: string;
+  amount: number;
+  describtion: string;
+  categoryId?: string | null;
+  category?: {
+    id: string;
+    name: string;
+  } | null;
+}
+
+export default function EditExpenseTransactionSheet({
   open,
   onClose,
-  onCreate,
-  expenseId,
+  onUpdate,
+  transaction,
 }: {
   open: boolean;
   onClose: () => void;
-  onCreate: (
-    amount: number,
-    describtion: string,
-    categoryId: string,
-  ) => Promise<void>;
-  expenseId: string;
+  onUpdate: () => Promise<void>;
+  transaction: Transaction | null;
 }) {
   const navigation = useNavigation<any>();
   const [amount, setAmount] = useState('');
   const [describtion, setDescribtion] = useState('');
-  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(
-    null,
-  );
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
 
   const { categories, loading, fetchCategories } = useCategoriesStore();
-  const [createTransaction, { loading: creating }] = useMutation(CREATEEXPANSETRANSACTION);
+  const [updateTransaction, { loading: updating }] = useMutation(UPDATEEXPENSETRANSACTION);
   
-  // Fetch categories when modal opens
+  // Initialize form with transaction data when modal opens
   useEffect(() => {
-    if (open) {
+    if (open && transaction) {
+      setAmount(transaction.amount?.toString() || '');
+      setDescribtion(transaction.describtion || '');
+      setSelectedCategoryId(transaction.categoryId || null);
       fetchCategories();
     }
-  }, [open, fetchCategories]);
+  }, [open, transaction, fetchCategories]);
   
   // Transform categories for dropdown
   const dropdownOptions = useMemo(() => {
@@ -75,27 +83,29 @@ export default function CreateExpenseTransactionSheet({
     !isNaN(Number(amount));
 
   const handleSubmit = async () => {
-    if (!isValid) return;
+    if (!isValid || !transaction) return;
     
     try {
-      await createTransaction({
+      await updateTransaction({
         variables: {
-          expenseId,
+          transactionId: transaction.id,
           amount: Number(amount),
           describtion,
           categoryId: selectedCategoryId || null,
         },
       });
       
+      // Call the onUpdate callback for any additional logic
+      await onUpdate();
+      
       // Reset form
       setAmount('');
       setDescribtion('');
       setSelectedCategoryId(null);
       
-      // Call the onCreate callback for any additional logic
-      await onCreate(Number(amount), describtion, selectedCategoryId || '');
+      onClose();
     } catch (error) {
-      console.error('Error creating transaction:', error);
+      console.error('Error updating transaction:', error);
     }
   };
 
@@ -103,20 +113,19 @@ export default function CreateExpenseTransactionSheet({
     <FormBottomSheet
       visible={open}
       onClose={onClose}
-      title="New Expense Transaction"
-      submitDisabled={!isValid || creating}
+      title="Edit Transaction"
+      submitDisabled={!isValid || updating}
       heightPercent={0.7}
       onSubmit={handleSubmit}
     >
-      <View 
-        style={styles.scrollContainer}
-      >
+      <View style={styles.container}>
         <Text style={commonFormStyles.modalLabel}>Description</Text>
         <Input
           value={describtion}
           onChangeText={setDescribtion}
           placeholder="What is this?"
           returnKeyType="next"
+          onFocus={(e) => e.target.setNativeProps({ selection: { start: 0, end: describtion.length } })}
         />
         
         <Text style={commonFormStyles.modalLabel}>Amount</Text>
@@ -126,6 +135,7 @@ export default function CreateExpenseTransactionSheet({
           keyboardType="numeric"
           placeholder="e.g. 12.50"
           returnKeyType="done"
+          onFocus={(e) => e.target.setNativeProps({ selection: { start: 0, end: amount.length } })}
           onSubmitEditing={() => {
             // Focus next input or submit if valid
             if (isValid) {
@@ -187,7 +197,7 @@ export default function CreateExpenseTransactionSheet({
 }
 
 const styles = StyleSheet.create({
-  scrollContainer: {
+  container: {
     flex: 1,
   },
   categoryPreview: {

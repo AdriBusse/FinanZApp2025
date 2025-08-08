@@ -1,4 +1,4 @@
-import React, { ReactNode, useEffect, useRef } from 'react';
+import React, { ReactNode, useEffect, useRef, useState } from 'react';
 import {
   Modal,
   View,
@@ -6,6 +6,10 @@ import {
   Animated,
   Dimensions,
   TouchableWithoutFeedback,
+  Keyboard,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
 } from 'react-native';
 
 interface BottomSheetModalProps {
@@ -21,11 +25,32 @@ export default function BottomSheetModal({
   heightPercent = 0.6,
   children,
 }: BottomSheetModalProps) {
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
   const screenHeight = Dimensions.get('window').height;
-  const targetHeight =
-    Math.max(0.3, Math.min(0.95, heightPercent)) * screenHeight;
+  const targetHeight = Math.max(0.3, Math.min(0.95, heightPercent)) * screenHeight;
   const translateY = useRef(new Animated.Value(targetHeight)).current;
   const backdrop = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const keyboardWillShow = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      (e) => {
+        setKeyboardHeight(e.endCoordinates.height);
+      }
+    );
+
+    const keyboardWillHide = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      () => {
+        setKeyboardHeight(0);
+      }
+    );
+
+    return () => {
+      keyboardWillShow.remove();
+      keyboardWillHide.remove();
+    };
+  }, []);
 
   useEffect(() => {
     if (visible) {
@@ -57,6 +82,10 @@ export default function BottomSheetModal({
     }
   }, [visible, translateY, targetHeight, backdrop]);
 
+  const modalHeight = keyboardHeight > 0 
+    ? Math.min(targetHeight, screenHeight - keyboardHeight - 50) // Leave 50px margin
+    : targetHeight;
+
   return (
     <Modal
       transparent
@@ -65,7 +94,10 @@ export default function BottomSheetModal({
       onRequestClose={onClose}
     >
       <View style={styles.overlay}>
-        <TouchableWithoutFeedback onPress={onClose}>
+        <TouchableWithoutFeedback onPress={() => {
+          Keyboard.dismiss();
+          onClose();
+        }}>
           <Animated.View
             style={[
               styles.backdrop,
@@ -81,13 +113,24 @@ export default function BottomSheetModal({
         <Animated.View
           style={[
             styles.sheet,
-            { height: targetHeight, transform: [{ translateY }] },
+            { 
+              height: modalHeight,
+              transform: [{ translateY }],
+            },
           ]}
         >
           <View style={styles.handleContainer}>
             <View style={styles.handle} />
           </View>
-          <View style={styles.content}>{children}</View>
+          <ScrollView 
+            style={styles.content}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            contentContainerStyle={styles.contentContainer}
+            nestedScrollEnabled={true}
+          >
+            {children}
+          </ScrollView>
         </Animated.View>
       </View>
     </Modal>
@@ -95,15 +138,38 @@ export default function BottomSheetModal({
 }
 
 const styles = StyleSheet.create({
-  overlay: { flex: 1, justifyContent: 'flex-end' },
-  backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: '#000' },
+  overlay: { 
+    flex: 1, 
+    justifyContent: 'flex-end',
+    backgroundColor: 'transparent',
+  },
+  backdrop: { 
+    ...StyleSheet.absoluteFillObject, 
+    backgroundColor: '#000' 
+  },
   sheet: {
     backgroundColor: '#111827',
     borderTopLeftRadius: 16,
     borderTopRightRadius: 16,
     overflow: 'hidden',
   },
-  handleContainer: { alignItems: 'center', paddingTop: 8 },
-  handle: { width: 48, height: 4, backgroundColor: '#374151', borderRadius: 2 },
-  content: { flex: 1, padding: 16 },
+  handleContainer: { 
+    alignItems: 'center', 
+    paddingTop: 8,
+    paddingBottom: 8,
+  },
+  handle: { 
+    width: 48, 
+    height: 4, 
+    backgroundColor: '#374151', 
+    borderRadius: 2 
+  },
+  content: { 
+    flex: 1,
+  },
+  contentContainer: { 
+    padding: 16, 
+    paddingBottom: 32,
+    flexGrow: 1,
+  },
 });
