@@ -57,4 +57,46 @@ jobs:
 
       - name: Accept Android SDK licenses
         shell: bash
-        run: yes | "${ANDROID_SDK_ROOT
+        run: yes | "${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager" --licenses || true
+
+      - name: Restore signing keystore
+        shell: bash
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          test -n "$ANDROID_KEYSTORE_BASE64" || { echo "Missing secret ANDROID_KEYSTORE_BASE64"; exit 1; }
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > android/app/release.keystore
+          ls -lh android/app/release.keystore
+
+      - name: Build signed Release APK
+        working-directory: android
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_ALIAS_PASSWORD: ${{ secrets.ANDROID_KEY_ALIAS_PASSWORD }}
+        run: |
+          chmod +x ./gradlew
+          ./gradlew --no-daemon clean assembleRelease
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release-apk
+          path: android/app/build/outputs/apk/release/*.apk
+
+      # Optional: also build a signed AAB for Play Store uploads
+      - name: Build signed App Bundle (AAB)
+        if: ${{ github.event_name != 'pull_request' }} # skip on PRs if desired
+        working-directory: android
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_ALIAS_PASSWORD: ${{ secrets.ANDROID_KEY_ALIAS_PASSWORD }}
+        run: ./gradlew --no-daemon bundleRelease
+
+      - name: Upload AAB artifact
+        if: ${{ github.event_name != 'pull_request' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release-aab
+          path: android/app/build/outputs/bundle/release/*.aab
