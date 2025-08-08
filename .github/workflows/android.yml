@@ -1,93 +1,60 @@
-# .gitlab-ci.yml
-stages:
-  - build
+name: Android Signed Release
 
-variables:
-  # Speeds up Gradle and avoids daemon hangs in CI
-  GRADLE_OPTS: "-Dorg.gradle.jvmargs='-Xmx3g -Dfile.encoding=UTF-8' -Dorg.gradle.parallel=true -Dorg.gradle.daemon=false"
-  # Some Android images already set this; keep it for clarity
-  ANDROID_SDK_ROOT: "/opt/android/sdk"
+on:
+  push:
+    branches:
+      - main
+      - release/**
+      - hotfix/**
+    tags:
+      - 'v*'
+  pull_request:
+  workflow_dispatch:
 
-# Use an image that already includes Android SDK, build-tools, Node, and JDK 17
-image: ghcr.io/reactnativecommunity/react-native-android:latest
+jobs:
+  build-android:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
 
-cache:
-  # Basic caches to speed up subsequent builds
-  - key: "npm-${CI_COMMIT_REF_SLUG}"
-    paths:
-      - node_modules/
-      - .npm/
-    policy: pull-push
-  - key: "gradle-${CI_COMMIT_REF_SLUG}"
-    paths:
-      - .gradle/
-      - android/.gradle/
-    policy: pull-push
+    # Optional: if you store secrets in a specific Environment, set it here
+    # environment:
+    #   name: production
 
-android:release:
-  stage: build
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "push"
-    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
-    - if: $CI_PIPELINE_SOURCE == "schedule"
-    - if: $CI_PIPELINE_SOURCE == "web"     # manual run if triggered from UI
-  before_script:
-    - node -v
-    - npm -v
-    - java -version
-    # Accept Android SDK licenses (first-time on a fresh runner)
-    - yes | sdkmanager --licenses || true
-    # Install JS deps
-    - npm ci
-    # Bake API_URL into the app bundle
-    - |
-      mkdir -p src/config
-      if [ -z "${API_URL:-}" ]; then
-        echo "ERROR: API_URL GitLab CI/CD variable is not set"; exit 1
-      fi
-      printf "export const API_URL = '%s' as const;\n" "$API_URL" > src/config/env.ts
-  script:
-    # Build release (bundles JS; no Metro required)
-    - cd android
-    - chmod +x ./gradlew
-    - ./gradlew --no-daemon clean assembleRelease
-    # Optional signing: produce a signed, installable APK if keystore variables are present
-    - |
-      set -e
-      UNSIGNED="app/build/outputs/apk/release/app-release-unsigned.apk"
-      if [ -f "$UNSIGNED" ]; then
-        echo "Unsigned release APK found at $UNSIGNED"
-      else
-        echo "ERROR: Unsigned release APK not found"; exit 1
-      fi
+    env:
+      CI: true
+      # Helpful Gradle defaults for CI
+      GRADLE_OPTS: -Dorg.gradle.daemon=false -Dorg.gradle.parallel=true -Dorg.gradle.jvmargs='-Xmx3g -Dfile.encoding=UTF-8'
 
-      if [ -n "${ANDROID_KEYSTORE_BASE64:-}" ] && \
-         [ -n "${ANDROID_KEYSTORE_PASSWORD:-}" ] && \
-         [ -n "${ANDROID_KEY_ALIAS:-}" ] && \
-         [ -n "${ANDROID_KEY_ALIAS_PASSWORD:-}" ]; then
-        echo "Signing release APK..."
-        echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > keystore.jks
-        ZIPALIGNED="app/build/outputs/apk/release/app-release-aligned.apk"
-        SIGNED="app/build/outputs/apk/release/app-release-signed.apk"
-        # zipalign and sign
-        "${ANDROID_SDK_ROOT}/build-tools/$(ls "${ANDROID_SDK_ROOT}/build-tools" | sort -V | tail -n 1)/zipalign" -v -p 4 "$UNSIGNED" "$ZIPALIGNED"
-        "${ANDROID_SDK_ROOT}/build-tools/$(ls "${ANDROID_SDK_ROOT}/build-tools" | sort -V | tail -n 1)/apksigner" sign \
-          --ks keystore.jks \
-          --ks-key-alias "$ANDROID_KEY_ALIAS" \
-          --ks-pass "pass:${ANDROID_KEYSTORE_PASSWORD}" \
-          --key-pass "pass:${ANDROID_KEY_ALIAS_PASSWORD}" \
-          --out "$SIGNED" \
-          "$ZIPALIGNED"
-        "${ANDROID_SDK_ROOT}/build-tools/$(ls "${ANDROID_SDK_ROOT}/build-tools" | sort -V | tail -n 1)/apksigner" verify "$SIGNED"
-        echo "Signed APK: $SIGNED"
-      else
-        echo "Signing variables not provided; exporting unsigned APK only."
-      fi
-  artifacts:
-    when: always
-    expire_in: 7 days
-    paths:
-      - android/app/build/outputs/apk/release/app-release-unsigned.apk
-      - android/app/build/outputs/apk/release/app-release-signed.apk
-  # Increase timeout for heavy builds
-  timeout: 45m
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node.js 20 and cache npm
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install JS dependencies
+        run: npm ci
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Gradle cache
+        uses: gradle/gradle-build-action@v3
+
+      - name: Ensure Android SDK path in local.properties
+        shell: bash
+        run: |
+          echo "sdk.dir=${ANDROID_SDK_ROOT}" > android/local.properties
+          cat android/local.properties
+
+      - name: Accept Android SDK licenses
+        shell: bash
+        run: yes | "${ANDROID_SDK_ROOT
