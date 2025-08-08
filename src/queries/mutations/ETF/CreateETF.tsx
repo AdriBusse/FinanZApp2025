@@ -1,4 +1,4 @@
-import {gql} from '@apollo/client';
+import { gql } from '@apollo/client';
 
 export const CREATEETF = gql`
   mutation CREATEEFT($isin: String!) {

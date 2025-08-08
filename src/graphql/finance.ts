@@ -7,8 +7,17 @@ export const SUMMARY_QUERY = gql`
       savingValue
       etfWorth
       etfMovement
-      todaySpent { id amount createdAt describtion }
-      latestExpense { id title sum }
+      todaySpent {
+        id
+        amount
+        createdAt
+        describtion
+      }
+      latestExpense {
+        id
+        title
+        sum
+      }
     }
   }
 `;
@@ -20,7 +29,12 @@ export const GET_SAVING_DEPOTS_QUERY = gql`
       name
       short
       sum
-      transactions { id amount createdAt describtion }
+      transactions {
+        id
+        amount
+        createdAt
+        describtion
+      }
     }
   }
 `;
@@ -31,27 +45,58 @@ export const GET_EXPENSES_QUERY = gql`
       id
       title
       sum
-      transactions { id amount createdAt describtion }
-      expenseByCategory { name amount color icon }
+      transactions {
+        id
+        amount
+        createdAt
+        describtion
+      }
+      expenseByCategory {
+        name
+        amount
+        color
+        icon
+      }
     }
   }
 `;
 
 export const CREATE_EXPENSE_TRANSACTION = gql`
-  mutation CreateExpenseTransaction($expenseId: String!, $amount: Float!, $describtion: String!, $categoryId: String) {
-    createExpenseTransaction(expenseId: $expenseId, amount: $amount, describtion: $describtion, categoryId: $categoryId) {
+  mutation CreateExpenseTransaction(
+    $expenseId: String!
+    $amount: Float!
+    $describtion: String!
+    $categoryId: String
+  ) {
+    createExpenseTransaction(
+      expenseId: $expenseId
+      amount: $amount
+      describtion: $describtion
+      categoryId: $categoryId
+    ) {
       id
       amount
       createdAt
       describtion
-      category { id name }
+      category {
+        id
+        name
+      }
     }
   }
 `;
 
 export const CREATE_SAVING_TRANSACTION = gql`
-  mutation CreateSavingTransaction($depotId: String!, $amount: Float!, $describtion: String!) {
-    createSavingTransaction(depotId: $depotId, amount: $amount, describtion: $describtion) {
+  mutation CreateSavingTransaction(
+    $depotId: String!
+    $amount: Float!
+    $describtion: String!
+  ) {
+    createSavingTransaction(
+      depotId: $depotId
+      amount: $amount
+      describtion: $describtion
+    ) {
       id
       amount
       createdAt

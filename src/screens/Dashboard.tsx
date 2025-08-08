@@ -18,7 +18,10 @@ export default function Dashboard() {
   }, [loadAll]);
 
   const todaySpentCount = summary?.todaySpent?.length ?? 0;
-  const todaySpentSum = (summary?.todaySpent ?? []).reduce((acc, t) => acc + (t?.amount ?? 0), 0);
+  const todaySpentSum = (summary?.todaySpent ?? []).reduce(
+    (acc, t) => acc + (t?.amount ?? 0),
+    0,
+  );
 
   return (
     <View style={styles.container}>
@@ -30,33 +33,57 @@ export default function Dashboard() {
 
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Overview</Text>
-        <Text>User: {user?.username ?? '—'} {user?.email ? `(${user.email})` : ''}</Text>
+        <Text>
+          User: {user?.username ?? '—'} {user?.email ? `(${user.email})` : ''}
+        </Text>
         <Text>Total Savings: {summary?.savingValue ?? 0}</Text>
         <Text>ETF Worth: {summary?.etfWorth ?? 0}</Text>
         <Text>ETF Movement: {summary?.etfMovement ?? 0}</Text>
-        <Text>Today Spent: {todaySpentSum} ({todaySpentCount} tx)</Text>
-        <Text>Latest Expense: {summary?.latestExpense?.title ?? '—'} (sum: {summary?.latestExpense?.sum ?? 0})</Text>
+        <Text>
+          Today Spent: {todaySpentSum} ({todaySpentCount} tx)
+        </Text>
+        <Text>
+          Latest Expense: {summary?.latestExpense?.title ?? '—'} (sum:{' '}
+          {summary?.latestExpense?.sum ?? 0})
+        </Text>
       </View>
 
       <View style={styles.row}>
         <Button title="Add Expense" onPress={() => setShowExpenseModal(true)} />
         <View style={{ width: 12 }} />
-        <Button title="Savings Transaction" onPress={() => setShowSavingModal(true)} />
+        <Button
+          title="Savings Transaction"
+          onPress={() => setShowSavingModal(true)}
+        />
       </View>
 
       <View style={styles.section}>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+        <View
+          style={{
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+          }}
+        >
           <Text style={styles.sectionTitle}>Saving Depots</Text>
-          <Button title="Open Savings" onPress={() => navigation.navigate('SavingsTab')} />
+          <Button
+            title="Open Savings"
+            onPress={() => navigation.navigate('SavingsTab')}
+          />
         </View>
         <FlatList
           data={depots}
-          keyExtractor={(d) => d.id}
+          keyExtractor={d => d.id}
           renderItem={({ item }) => (
             <View style={styles.listItem}>
               <Text
                 style={styles.bold}
-                onPress={() => navigation.navigate('SavingsTab', { screen: 'SavingTransactions', params: { depotId: item.id } })}
+                onPress={() =>
+                  navigation.navigate('SavingsTab', {
+                    screen: 'SavingTransactions',
+                    params: { depotId: item.id },
+                  })
+                }
               >
                 {item.name} ({item.short})
               </Text>
@@ -70,7 +97,7 @@ export default function Dashboard() {
         <Text style={styles.sectionTitle}>Expenses</Text>
         <FlatList
           data={expenses}
-          keyExtractor={(e) => e.id}
+          keyExtractor={e => e.id}
           renderItem={({ item }) => (
             <View style={styles.listItem}>
               <Text style={styles.bold}>{item.title}</Text>
@@ -87,7 +114,7 @@ export default function Dashboard() {
         ) : (
           <FlatList
             data={summary?.todaySpent ?? []}
-            keyExtractor={(t) => t.id}
+            keyExtractor={t => t.id}
             renderItem={({ item }) => (
               <View style={styles.listItem}>
                 <Text style={styles.bold}>{item.describtion}</Text>
@@ -98,15 +125,29 @@ export default function Dashboard() {
         )}
       </View>
 
-      <ExpenseModal visible={showExpenseModal} onClose={() => setShowExpenseModal(false)} />
-      <SavingModal visible={showSavingModal} onClose={() => setShowSavingModal(false)} />
+      <ExpenseModal
+        visible={showExpenseModal}
+        onClose={() => setShowExpenseModal(false)}
+      />
+      <SavingModal
+        visible={showSavingModal}
+        onClose={() => setShowSavingModal(false)}
+      />
     </View>
   );
 }
 
-function ExpenseModal({ visible: _visible, onClose }: { visible: boolean; onClose: () => void }) {
+function ExpenseModal({
+  visible: _visible,
+  onClose,
+}: {
+  visible: boolean;
+  onClose: () => void;
+}) {
   const { expenses, createExpenseTx } = useFinanceStore();
-  const [expenseId, setExpenseId] = useState<string | null>(expenses[0]?.id ?? null);
+  const [expenseId, setExpenseId] = useState<string | null>(
+    expenses[0]?.id ?? null,
+  );
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
 
@@ -114,7 +155,11 @@ function ExpenseModal({ visible: _visible, onClose }: { visible: boolean; onClos
     <View style={styles.modalContainer}>
       <Text style={styles.modalTitle}>Create Expense</Text>
       <Text>Expense ID</Text>
-      <Input value={expenseId ?? ''} onChangeText={setExpenseId} placeholder="Expense ID" />
+      <Input
+        value={expenseId ?? ''}
+        onChangeText={setExpenseId}
+        placeholder="Expense ID"
+      />
       <Text>Amount</Text>
       <Input value={amount} onChangeText={setAmount} keyboardType="numeric" />
       <Text>Description</Text>
@@ -145,7 +190,11 @@ function SavingModal({ onClose }: { onClose: () => void }) {
     <View style={styles.modalContainer}>
       <Text style={styles.modalTitle}>Savings Transaction</Text>
       <Text>Depot ID</Text>
-      <Input value={depotId ?? ''} onChangeText={setDepotId} placeholder="Depot ID" />
+      <Input
+        value={depotId ?? ''}
+        onChangeText={setDepotId}
+        placeholder="Depot ID"
+      />
       <Text>Amount (+ deposit / - withdrawal)</Text>
       <Input value={amount} onChangeText={setAmount} keyboardType="numeric" />
       <Text>Note</Text>
@@ -168,17 +217,36 @@ function SavingModal({ onClose }: { onClose: () => void }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 16 },
-  headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
   title: { fontSize: 22, fontWeight: '600', marginBottom: 8 },
   subtitle: { fontSize: 14, color: '#666', marginBottom: 12 },
-  card: { padding: 12, backgroundColor: '#f3f4f6', borderRadius: 10, marginBottom: 16 },
+  card: {
+    padding: 12,
+    backgroundColor: '#f3f4f6',
+    borderRadius: 10,
+    marginBottom: 16,
+  },
   cardTitle: { fontWeight: '700', marginBottom: 8 },
   row: { flexDirection: 'row', alignItems: 'center', marginBottom: 16 },
   section: { marginTop: 8 },
   sectionTitle: { fontSize: 16, fontWeight: '600', marginBottom: 8 },
-  listItem: { paddingVertical: 10, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#ddd' },
+  listItem: {
+    paddingVertical: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#ddd',
+  },
   bold: { fontWeight: '700' },
   modalContainer: { flex: 1, padding: 16, paddingTop: 56 },
   modalTitle: { fontSize: 20, fontWeight: '700', marginBottom: 16 },
-  input: { borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 10, marginBottom: 12 },
+  input: {
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 8,
+    padding: 10,
+    marginBottom: 12,
+  },
 });

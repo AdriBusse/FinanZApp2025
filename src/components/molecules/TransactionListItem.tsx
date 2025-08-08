@@ -10,14 +10,24 @@ export interface TransactionListItemProps {
   onDelete?: (id: string) => void;
 }
 
-export default function TransactionListItem({ id, title, subtitle, amount, onDelete }: TransactionListItemProps) {
+export default function TransactionListItem({
+  id,
+  title,
+  subtitle,
+  amount,
+  onDelete,
+}: TransactionListItemProps) {
   return (
     <View style={styles.row}>
       <View style={{ flex: 1 }}>
         <Text style={styles.rowTitle}>{title}</Text>
         {!!subtitle && <Text style={styles.rowSub}>{subtitle}</Text>}
       </View>
-      {typeof amount === 'number' && <Text style={styles.rowAmount}>{Math.round(amount).toLocaleString()} d</Text>}
+      {typeof amount === 'number' && (
+        <Text style={styles.rowAmount}>
+          {Math.round(amount).toLocaleString()} d
+        </Text>
+      )}
       {!!onDelete && (
         <TouchableOpacity
           accessibilityRole="button"
@@ -34,7 +44,15 @@ export default function TransactionListItem({ id, title, subtitle, amount, onDel
 }
 
 const styles = StyleSheet.create({
-  row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#1e212b', padding: 14, borderRadius: 12, marginBottom: 10 },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#1e212b',
+    padding: 14,
+    borderRadius: 12,
+    marginBottom: 10,
+  },
   rowTitle: { color: '#f8fafc', fontSize: 16, fontWeight: '700' },
   rowSub: { color: '#94a3b8', marginTop: 4 },
   rowAmount: { color: '#f1f5f9', fontWeight: '800' },

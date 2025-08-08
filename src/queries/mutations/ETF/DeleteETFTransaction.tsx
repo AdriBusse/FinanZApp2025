@@ -1,4 +1,4 @@
-import {gql} from '@apollo/client';
+import { gql } from '@apollo/client';
 
 export const DELETEETFTRANSACTION = gql`
   mutation deleteETFTransaction($id: String!) {

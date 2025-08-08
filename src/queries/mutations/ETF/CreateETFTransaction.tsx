@@ -1,4 +1,4 @@
-import {gql} from '@apollo/client';
+import { gql } from '@apollo/client';
 
 export const CREATEETFTRANSACTION = gql`
   mutation CREATEETFTRANSACTION($etfId: String!, $invest: Float, $fee: Float) {

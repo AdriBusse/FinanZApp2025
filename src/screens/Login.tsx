@@ -1,5 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, Button, StyleSheet, ActivityIndicator } from 'react-native';
+import {
+  View,
+  Text,
+  Button,
+  StyleSheet,
+  ActivityIndicator,
+} from 'react-native';
 import Input from '../components/atoms/Input';
 import { Formik } from 'formik';
 import * as Yup from 'yup';
@@ -20,7 +26,7 @@ export default function LoginScreen() {
 
   if (isInitializing) {
     return (
-      <View style={styles.containerCenter}> 
+      <View style={styles.containerCenter}>
         <ActivityIndicator />
       </View>
     );
@@ -43,7 +49,15 @@ export default function LoginScreen() {
           }
         }}
       >
-        {({ handleChange, handleBlur, handleSubmit, values, errors, touched, isSubmitting }) => (
+        {({
+          handleChange,
+          handleBlur,
+          handleSubmit,
+          values,
+          errors,
+          touched,
+          isSubmitting,
+        }) => (
           <>
             <Input
               placeholder="Username"
@@ -52,7 +66,9 @@ export default function LoginScreen() {
               onBlur={handleBlur('username')}
               value={values.username}
             />
-            {touched.username && errors.username ? <Text style={styles.error}>{errors.username}</Text> : null}
+            {touched.username && errors.username ? (
+              <Text style={styles.error}>{errors.username}</Text>
+            ) : null}
 
             <Input
               placeholder="Password"
@@ -61,11 +77,17 @@ export default function LoginScreen() {
               onBlur={handleBlur('password')}
               value={values.password}
             />
-            {touched.password && errors.password ? <Text style={styles.error}>{errors.password}</Text> : null}
+            {touched.password && errors.password ? (
+              <Text style={styles.error}>{errors.password}</Text>
+            ) : null}
 
             {error ? <Text style={styles.error}>{error}</Text> : null}
 
-            <Button title={isSubmitting ? 'Logging in...' : 'Login'} onPress={() => handleSubmit()} disabled={isSubmitting} />
+            <Button
+              title={isSubmitting ? 'Logging in...' : 'Login'}
+              onPress={() => handleSubmit()}
+              disabled={isSubmitting}
+            />
           </>
         )}
       </Formik>
@@ -77,6 +99,12 @@ const styles = StyleSheet.create({
   container: { flex: 1, padding: 16, paddingTop: 56 },
   containerCenter: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   title: { fontSize: 24, fontWeight: '700', marginBottom: 24 },
-  input: { borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 12, marginBottom: 12 },
+  input: {
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 12,
+  },
   error: { color: 'crimson', marginBottom: 12 },
 });

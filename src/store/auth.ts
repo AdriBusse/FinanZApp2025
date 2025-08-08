@@ -29,13 +29,19 @@ const getStorage = () => {
     const mem: Record<string, string | null> = {};
     return {
       getItem: async (k: string) => mem[k] ?? null,
-      setItem: async (k: string, v: string) => { mem[k] = v; },
-      multiRemove: async (keys: string[]) => { keys.forEach(k => { mem[k] = null; }); },
+      setItem: async (k: string, v: string) => {
+        mem[k] = v;
+      },
+      multiRemove: async (keys: string[]) => {
+        keys.forEach(k => {
+          mem[k] = null;
+        });
+      },
     } as const;
   }
 };
 
-export const useAuthStore = create<AuthState>((set) => ({
+export const useAuthStore = create<AuthState>(set => ({
   token: null,
   user: null,
   isInitializing: true,
@@ -46,12 +52,19 @@ export const useAuthStore = create<AuthState>((set) => ({
         storage.getItem(TOKEN_KEY),
         storage.getItem(USER_KEY),
       ]);
-      set({ token, user: userJson ? JSON.parse(userJson) : null, isInitializing: false });
+      set({
+        token,
+        user: userJson ? JSON.parse(userJson) : null,
+        isInitializing: false,
+      });
       if (token) {
         try {
           const { apolloClient } = require('../apollo/client');
           const { ME_QUERY } = require('../graphql/auth');
-          const meRes = await apolloClient.query({ query: ME_QUERY, fetchPolicy: 'network-only' });
+          const meRes = await apolloClient.query({
+            query: ME_QUERY,
+            fetchPolicy: 'network-only',
+          });
           const me = meRes?.data?.me ?? null;
           if (me) {
             await storage.setItem(USER_KEY, JSON.stringify(me));
@@ -90,7 +103,10 @@ export const useAuthStore = create<AuthState>((set) => ({
       // Call me endpoint to fetch latest user profile
       let me: User | null = null;
       try {
-        const meRes = await apolloClient.query({ query: ME_QUERY, fetchPolicy: 'network-only' });
+        const meRes = await apolloClient.query({
+          query: ME_QUERY,
+          fetchPolicy: 'network-only',
+        });
         me = meRes?.data?.me ?? null;
       } catch {
         me = payload.user ?? null;

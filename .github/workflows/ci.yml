@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [ main, master, develop ]
+    branches: [main, master, develop]
   pull_request:
-    branches: [ main, master, develop ]
+    branches: [main, master, develop]
 
 permissions:
   contents: read
@@ -147,7 +147,7 @@ jobs:
         run: |
           mkdir -p ios-build-logs
           cp -R ~/Library/Logs/DiagnosticReports ios-build-logs || true
-        
+
       - name: Upload iOS logs
         if: always()
         uses: actions/upload-artifact@v4

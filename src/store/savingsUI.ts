@@ -10,12 +10,13 @@ interface SavingsUIState {
   closeCreateDepotModal: () => void;
 }
 
-export const useSavingsUIStore = create<SavingsUIState>((set) => ({
+export const useSavingsUIStore = create<SavingsUIState>(set => ({
   isSpeedDialOpen: false,
   isCreateDepotModalOpen: false,
   openSpeedDial: () => set({ isSpeedDialOpen: true }),
   closeSpeedDial: () => set({ isSpeedDialOpen: false }),
-  toggleSpeedDial: () => set((s) => ({ isSpeedDialOpen: !s.isSpeedDialOpen })),
+  toggleSpeedDial: () => set(s => ({ isSpeedDialOpen: !s.isSpeedDialOpen })),
   openCreateDepotModal: () => set({ isCreateDepotModalOpen: true }),
-  closeCreateDepotModal: () => set({ isCreateDepotModalOpen: false, isSpeedDialOpen: false }),
+  closeCreateDepotModal: () =>
+    set({ isCreateDepotModalOpen: false, isSpeedDialOpen: false }),
 }));

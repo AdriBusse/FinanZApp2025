@@ -1,75 +1,344 @@
-query GetCoinGraphHistory($days: Float!, $vs_currency: String!, $id: String!) { getCoinGraphHistory(days: $days, vs_currency: $vs_currency, id: $id) { id prices market_caps } }
+query GetCoinGraphHistory($days: Float!, $vs_currency: String!, $id: String!) {
+  getCoinGraphHistory(days: $days, vs_currency: $vs_currency, id: $id) {
+    id
+    prices
+    market_caps
+  }
+}
 
-query GetCoinDetails($vs_currency: String!, $id: String) { getCoinDetails(vs_currency: $vs_currency, id: $id) { id symbol name } }
+query GetCoinDetails($vs_currency: String!, $id: String) {
+  getCoinDetails(vs_currency: $vs_currency, id: $id) {
+    id
+    symbol
+    name
+  }
+}
 
-query SearchCryptoCoin($query: String!) { searchCryptoCoin(query: $query) { id name symbol } }
+query SearchCryptoCoin($query: String!) {
+  searchCryptoCoin(query: $query) {
+    id
+    name
+    symbol
+  }
+}
 
-query GetSupportedVsCurrencies { getSupportedVsCurrencies  }
+query GetSupportedVsCurrencies {
+  getSupportedVsCurrencies
+}
 
-query GetMarketData($sparkline: Boolean, $page: Float, $per_page: Float, $order: String, $vs_currency: String, $ids: String) { getMarketData(sparkline: $sparkline, page: $page, per_page: $per_page, order: $order, vs_currency: $vs_currency, ids: $ids) { id symbol name } }
+query GetMarketData(
+  $sparkline: Boolean
+  $page: Float
+  $per_page: Float
+  $order: String
+  $vs_currency: String
+  $ids: String
+) {
+  getMarketData(
+    sparkline: $sparkline
+    page: $page
+    per_page: $per_page
+    order: $order
+    vs_currency: $vs_currency
+    ids: $ids
+  ) {
+    id
+    symbol
+    name
+  }
+}
 
-query SearchETF($searchKey: String!) { searchETF(searchKey: $searchKey) { id name title } }
+query SearchETF($searchKey: String!) {
+  searchETF(searchKey: $searchKey) {
+    id
+    name
+    title
+  }
+}
 
-query GetExpenses($archived: Boolean, $order: String) { getExpenses(archived: $archived, order: $order) { id title currency } }
+query GetExpenses($archived: Boolean, $order: String) {
+  getExpenses(archived: $archived, order: $order) {
+    id
+    title
+    currency
+  }
+}
 
-query GetExpenseCategories { getExpenseCategories { id name color } }
+query GetExpenseCategories {
+  getExpenseCategories {
+    id
+    name
+    color
+  }
+}
 
-query GetExpense($id: String!) { getExpense(id: $id) { id title currency } }
+query GetExpense($id: String!) {
+  getExpense(id: $id) {
+    id
+    title
+    currency
+  }
+}
 
-query Me { me { id username firstName } }
+query Me {
+  me {
+    id
+    username
+    firstName
+  }
+}
 
-query GetUser($username: String!) { getUser(username: $username) { id username firstName } }
+query GetUser($username: String!) {
+  getUser(username: $username) {
+    id
+    username
+    firstName
+  }
+}
 
-query GetETF($id: String!) { getETF(id: $id) { id name title } }
+query GetETF($id: String!) {
+  getETF(id: $id) {
+    id
+    name
+    title
+  }
+}
 
-query GetETFs { getETFs { id name title } }
+query GetETFs {
+  getETFs {
+    id
+    name
+    title
+  }
+}
 
-query GetSavingDepot($id: String!) { getSavingDepot(id: $id) { id name short } }
+query GetSavingDepot($id: String!) {
+  getSavingDepot(id: $id) {
+    id
+    name
+    short
+  }
+}
 
-query GetSavingDepots { getSavingDepots { id name short } }
+query GetSavingDepots {
+  getSavingDepots {
+    id
+    name
+    short
+  }
+}
 
-query Summary { summary { id etfWorth etfMovement } }
+query Summary {
+  summary {
+    id
+    etfWorth
+    etfMovement
+  }
+}
 
-mutation UpdateSavingDepot($short: String, $name: String, $id: String!) { updateSavingDepot(short: $short, name: $name, id: $id) { id name short } }
+mutation UpdateSavingDepot($short: String, $name: String, $id: String!) {
+  updateSavingDepot(short: $short, name: $name, id: $id) {
+    id
+    name
+    short
+  }
+}
 
-mutation UpdateExpense($archived: Boolean, $currency: String, $title: String, $id: String!) { updateExpense(archived: $archived, currency: $currency, title: $title, id: $id) { id title currency } }
+mutation UpdateExpense(
+  $archived: Boolean
+  $currency: String
+  $title: String
+  $id: String!
+) {
+  updateExpense(
+    archived: $archived
+    currency: $currency
+    title: $title
+    id: $id
+  ) {
+    id
+    title
+    currency
+  }
+}
 
-mutation UpdateExpenseCategory($color: String, $icon: String, $name: String, $id: String!) { updateExpenseCategory(color: $color, icon: $icon, name: $name, id: $id) { id name color } }
+mutation UpdateExpenseCategory(
+  $color: String
+  $icon: String
+  $name: String
+  $id: String!
+) {
+  updateExpenseCategory(color: $color, icon: $icon, name: $name, id: $id) {
+    id
+    name
+    color
+  }
+}
 
-mutation UpdateExpenseTransaction($date: String, $amount: Float, $categoryId: String, $describtion: String, $transactionId: String!) { updateExpenseTransaction(date: $date, amount: $amount, categoryId: $categoryId, describtion: $describtion, transactionId: $transactionId) { id describtion amount } }
+mutation UpdateExpenseTransaction(
+  $date: String
+  $amount: Float
+  $categoryId: String
+  $describtion: String
+  $transactionId: String!
+) {
+  updateExpenseTransaction(
+    date: $date
+    amount: $amount
+    categoryId: $categoryId
+    describtion: $describtion
+    transactionId: $transactionId
+  ) {
+    id
+    describtion
+    amount
+  }
+}
 
-mutation DeleteExpenseCategory($id: String!) { deleteExpenseCategory(id: $id)  }
+mutation DeleteExpenseCategory($id: String!) {
+  deleteExpenseCategory(id: $id)
+}
 
-mutation CreateExpenseCategory($icon: String, $color: String, $name: String!) { createExpenseCategory(icon: $icon, color: $color, name: $name) { id name color } }
+mutation CreateExpenseCategory($icon: String, $color: String, $name: String!) {
+  createExpenseCategory(icon: $icon, color: $color, name: $name) {
+    id
+    name
+    color
+  }
+}
 
-mutation CreateExpenseTransaction($date: Float, $categoryId: String, $expenseId: String!, $amount: Float!, $describtion: String!) { createExpenseTransaction(date: $date, categoryId: $categoryId, expenseId: $expenseId, amount: $amount, describtion: $describtion) { id describtion amount } }
+mutation CreateExpenseTransaction(
+  $date: Float
+  $categoryId: String
+  $expenseId: String!
+  $amount: Float!
+  $describtion: String!
+) {
+  createExpenseTransaction(
+    date: $date
+    categoryId: $categoryId
+    expenseId: $expenseId
+    amount: $amount
+    describtion: $describtion
+  ) {
+    id
+    describtion
+    amount
+  }
+}
 
-mutation DeleteExpense($id: String!) { deleteExpense(id: $id)  }
+mutation DeleteExpense($id: String!) {
+  deleteExpense(id: $id)
+}
 
-mutation CreateExpense($currency: String, $title: String!) { createExpense(currency: $currency, title: $title) { id title currency } }
+mutation CreateExpense($currency: String, $title: String!) {
+  createExpense(currency: $currency, title: $title) {
+    id
+    title
+    currency
+  }
+}
 
-mutation Logout { logout  }
+mutation Logout {
+  logout
+}
 
-mutation Signup($data: RegisterInput!) { signup(data: $data) { id username firstName } }
+mutation Signup($data: RegisterInput!) {
+  signup(data: $data) {
+    id
+    username
+    firstName
+  }
+}
 
-mutation Login($password: String!, $username: String!) { login(password: $password, username: $username) { id token } }
+mutation Login($password: String!, $username: String!) {
+  login(password: $password, username: $username) {
+    id
+    token
+  }
+}
 
-mutation UpdateSavingTransaction($date: String, $amount: Float, $describtion: String, $transactionId: Float!) { updateSavingTransaction(date: $date, amount: $amount, describtion: $describtion, transactionId: $transactionId) { id describtion amount } }
+mutation UpdateSavingTransaction(
+  $date: String
+  $amount: Float
+  $describtion: String
+  $transactionId: Float!
+) {
+  updateSavingTransaction(
+    date: $date
+    amount: $amount
+    describtion: $describtion
+    transactionId: $transactionId
+  ) {
+    id
+    describtion
+    amount
+  }
+}
 
-mutation DeleteETFTransaction($id: String!) { deleteETFTransaction(id: $id)  }
+mutation DeleteETFTransaction($id: String!) {
+  deleteETFTransaction(id: $id)
+}
 
-mutation DeleteETF($id: String!) { deleteETF(id: $id)  }
+mutation DeleteETF($id: String!) {
+  deleteETF(id: $id)
+}
 
-mutation CreateETFTransaction($date: String, $fee: Float, $invest: Float, $etfId: String!) { createETFTransaction(date: $date, fee: $fee, invest: $invest, etfId: $etfId) { id invest fee } }
+mutation CreateETFTransaction(
+  $date: String
+  $fee: Float
+  $invest: Float
+  $etfId: String!
+) {
+  createETFTransaction(date: $date, fee: $fee, invest: $invest, etfId: $etfId) {
+    id
+    invest
+    fee
+  }
+}
 
-mutation CreateETF($isin: String!) { createETF(isin: $isin) { id name title } }
+mutation CreateETF($isin: String!) {
+  createETF(isin: $isin) {
+    id
+    name
+    title
+  }
+}
 
-mutation DeleteSavingTransaction($id: String!) { deleteSavingTransaction(id: $id)  }
+mutation DeleteSavingTransaction($id: String!) {
+  deleteSavingTransaction(id: $id)
+}
 
-mutation DeleteSavingDepot($id: String!) { deleteSavingDepot(id: $id)  }
+mutation DeleteSavingDepot($id: String!) {
+  deleteSavingDepot(id: $id)
+}
 
-mutation CreateSavingTransaction($date: Float, $depotId: String!, $amount: Float!, $describtion: String!) { createSavingTransaction(date: $date, depotId: $depotId, amount: $amount, describtion: $describtion) { id describtion amount } }
+mutation CreateSavingTransaction(
+  $date: Float
+  $depotId: String!
+  $amount: Float!
+  $describtion: String!
+) {
+  createSavingTransaction(
+    date: $date
+    depotId: $depotId
+    amount: $amount
+    describtion: $describtion
+  ) {
+    id
+    describtion
+    amount
+  }
+}
 
-mutation CreateSavingDepot($short: String!, $name: String!) { createSavingDepot(short: $short, name: $name) { id name short } }
+mutation CreateSavingDepot($short: String!, $name: String!) {
+  createSavingDepot(short: $short, name: $name) {
+    id
+    name
+    short
+  }
+}
 
-mutation DeleteExpenseTransaction($id: String!) { deleteExpenseTransaction(id: $id)  }
+mutation DeleteExpenseTransaction($id: String!) {
+  deleteExpenseTransaction(id: $id)
+}

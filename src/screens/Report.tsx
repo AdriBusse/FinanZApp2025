@@ -5,7 +5,9 @@ export default function Report() {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Report</Text>
-      <Text style={styles.subtitle}>Insights and analytics will appear here.</Text>
+      <Text style={styles.subtitle}>
+        Insights and analytics will appear here.
+      </Text>
     </View>
   );
 }

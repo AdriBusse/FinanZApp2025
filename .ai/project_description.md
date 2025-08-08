@@ -8,16 +8,19 @@ It’s designed for simplicity, accuracy, and security — giving you the tools 
 ## **Features**
 
 ### 💰 Savings Accounts
+
 - Create and manage **multiple savings accounts**.
 - Record **positive transactions** (deposits) and **negative transactions** (withdrawals) to update balances.
 - Keep an overview of all accounts in a single dashboard.
 
 ### 📊 Expense Tracking
-- Create **expense topics** (e.g., *January 2025*, *Vacation*, *Household*).
+
+- Create **expense topics** (e.g., _January 2025_, _Vacation_, _Household_).
 - Add detailed **expense entries** under each topic.
 - Assign **categories** to expenses for better organization and analytics.
 
 ### 🔐 Secure Login
+
 - **Username and password** authentication.
 - **Stay signed in** using fingerprint authentication — the app securely stores and reloads the token for fast access.
 
@@ -26,6 +29,7 @@ It’s designed for simplicity, accuracy, and security — giving you the tools 
 ## **Tech Stack**
 
 ### **Frontend (App)**
+
 - **React Native** for cross-platform development (iOS & Android)
 - **Forms**: [Yup](https://github.com/jquense/yup) for validation, [Formik](https://formik.org/) for form management
 - **API Communication**: GraphQL with [Apollo Client](https://www.apollographql.com/docs/react/)
@@ -34,13 +38,16 @@ It’s designed for simplicity, accuracy, and security — giving you the tools 
 - navigation with [React Navigation](https://reactnavigation.org/) for seamless transitions
 
 ### **Backend**
+
 - **NestJS** for scalable server-side logic
 - **PostgreSQL** for data storage
 - **GraphQL API** with Apollo Server
 - graphql schema cfrom the backend can be found in .ai/backend_graphql_schema.json
+
 ---
 
 ## **Core Benefits**
+
 - **Simple financial overview** without unnecessary complexity.
 - **Customizable expense organization** for personal budgeting.
 - **Secure and fast login** with biometric authentication.

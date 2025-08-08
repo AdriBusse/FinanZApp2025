@@ -1,192 +1,221 @@
 {
-"meta": {
-"name": "Junie React Native Guidelines",
-"version": "1.0.0",
-"projectType": "react-native",
-"style": "atomic-design"
-},
-"principles": [
-"Prefer composition over inheritance",
-"Keep components small and single-purpose",
-"Separate UI from business logic",
-"Shared logic goes into hooks, not components",
-"No hard-coded design tokens; use theme",
-"Accessibility and testability by default"
-],
-"directoryStructure": {
-"root": "src",
-"paths": {
-"atoms": "src/components/atoms",
-"molecules": "src/components/molecules",
-"organisms": "src/components/organisms",
-"templates": "src/templates",
-"pages": "src/pages",
-"hooks": "src/hooks",
-"context": "src/context",
-"theme": "src/theme",
-"utils": "src/utils",
-"assets": "src/assets",
-"services": "src/services"
-},
-"dependencyRules": [
-{ "from": "atoms", "canImport": [] },
-{ "from": "molecules", "canImport": ["atoms"] },
-{ "from": "organisms", "canImport": ["atoms", "molecules"] },
-{ "from": "templates", "canImport": ["organisms", "molecules", "atoms"] },
-{ "from": "pages", "canImport": ["templates", "organisms", "molecules", "atoms", "hooks", "context", "theme", "utils", "services"] }
-]
-},
-"componentConstraints": {
-"maxLinesPerComponent": 120,
-"maxProps": 8,
-"preferPropsObjectOverManyArgs": true,
-"maxNestingDepthJsx": 3,
-"maxCallbackInlineInJsx": 2,
-"requireDisplayName": true,
-"requirePropsInterface": true,
-"disallowDefaultExportForComponents": false,
-"memoizePureComponents": true,
-"forceChildrenSupportWhenApplicable": true
-},
-"atomicDefinitions": {
-"atoms": "Primitive, styleable UI elements with no business logic (Button, Text, Icon, Spacer, Avatar, Badge, Divider).",
-"molecules": "Small compositions of atoms that form a single unit (InputWithLabel, ListItem, CardHeader).",
-"organisms": "Complex, reusable UI sections combining molecules/atoms (HeaderBar, ProfileCard, FilterPanel).",
-"templates": "Page-level layout scaffolds placing organisms without real data.",
-"pages": "Route screens wiring data, navigation, and state to templates/organisms."
-},
-"styling": {
-"library": "nativewind",
-"allowInlineStyles": false,
-"allowStyleSheetCreate": true,
-"designTokens": {
-"useTheme": true,
-"requireSpacingScale": true,
-"requireColorRoles": ["primary", "secondary", "background", "surface", "text", "muted", "danger", "warning", "success"]
-}
-},
-"state": {
-"serverState": "react-query",
-"localState": "zustand",
-"rules": [
-"No network calls inside components; put them in services and wrap with React Query hooks.",
-"Avoid prop drilling: lift to context or use dedicated store when 3+ levels deep.",
-"Keep atoms/molecules pure: no navigation, no data fetching."
-]
-},
-"navigation": {
-"library": "react-navigation",
-"patterns": [
-"Use pages/* for screens.",
-"Navigator config in src/navigation/*.tsx.",
-"Lazy-load screens where possible."
-]
-},
-"i18n": {
-"library": "i18next",
-"rules": [
-"No hard-coded user-facing strings.",
-"Use keys and fallback locales.",
-"Components accept translated text via props if they’re atoms."
-]
-},
-"accessibility": {
-"requireAccessibilityProps": true,
-"rules": [
-"Buttons/pressables must set accessibilityRole.",
-"Interactive areas use hitSlop.",
-"Meaningful accessibilityLabel and testID for interactive elements."
-]
-},
-"performance": {
-"rules": [
-"Use React.memo for pure atoms/molecules.",
-"Stabilize handlers with useCallback and values with useMemo.",
-"Use FlatList/SectionList with keyExtractor and getItemLayout where feasible.",
-"Avoid heavy inline functions/objects in JSX."
-]
-},
-"testing": {
-"frameworks": ["jest", "react-native-testing-library"],
-"requirements": {
-"atoms": "snapshot + behavior",
-"molecules": "behavior + edge cases",
-"organisms": "interaction + contract",
-"pages": "integration happy path",
-"coverageTarget": 0.7
-}
-},
-"generationChecklist": [
-"Choose the atomic level (atom/molecule/organism/template/page).",
-"Name the component using PascalCase.",
-"Define Props interface (no any).",
-"Render minimal JSX with clear structure; keep under max lines.",
-"Add accessibilityRole/Label where relevant.",
-"Add story/examples (if using Storybook) or a usage snippet.",
-"Write tests appropriate to atomic level.",
-"Add styles via theme/tokens (no hard-coded colors).",
-"Export in index.ts barrel for its folder."
-],
-"fileTemplates": {
-"component": {
-"pathPattern": "src/components/<level>/<Name>/<Name>.tsx",
-"content": "import React, { memo } from 'react';\nimport { View, Text, Pressable, ViewProps } from 'react-native';\nimport { cn } from '@/theme/cn';\n\nexport type <Name>Props = ViewProps & {\n  title?: string;\n  children?: React.ReactNode;\n};\n\nfunction <NameBase>({ title, children, style, ...rest }: <Name>Props) {\n  return (\n    <View accessibilityRole=\"none\" style={style} {...rest}>\n      {title ? <Text>{title}</Text> : null}\n      {children}\n    </View>\n  );\n}\n\nexport const <Name> = memo(<NameBase>);\n"
-},
-"test": {
-"pathPattern": "src/components/<level>/<Name>/<Name>.test.tsx",
-"content": "import React from 'react';\nimport { render } from '@testing-library/react-native';\nimport { <Name> } from './<Name>';\n\ntest('<Name> renders', () => {\n  const { getByText } = render(<Name title=\"Hello\" />);\n  expect(getByText('Hello')).toBeTruthy();\n});\n"
-},
-"barrel": {
-"pathPattern": "src/components/<level>/<Name>/index.ts",
-"content": "export * from './<Name>';\n"
-}
-},
-"lintSuggestions": {
-"eslint": {
-"rules": {
-"max-lines-per-function": ["warn", 80],
-"complexity": ["warn", 10],
-"max-depth": ["warn", 3],
-"react/jsx-max-props-per-line": ["warn", { "maximum": 3 }],
-"react/jsx-no-bind": ["warn", { "allowArrowFunctions": false }],
-"@typescript-eslint/explicit-module-boundary-types": "warn",
-"no-restricted-imports": [
-"error",
-{
-"paths": [],
-"patterns": [
-{ "group": ["src/components/molecules/*"], "message": "Molecules must not import organisms" },
-{ "group": ["src/components/atoms/*"], "message": "Atoms must not import molecules or organisms" }
-]
-}
-]
-}
-},
-"prettier": { "printWidth": 100, "singleQuote": true }
-},
-"antipatterns": [
-"Placing network calls inside components",
-"Hard-coding colors/spacing instead of theme tokens",
-"Large components that mix layout, data, and navigation",
-"Duplicated UI patterns instead of extracting a reusable atom/molecule",
-"Inline anonymous components inside JSX"
-],
-"junieBehavior": {
-"askBeforeGenerating": [
-"Which atomic level should this be?",
-"What props and their types are required?",
-"Is this UI-only (presentational) or does it need state/data?",
-"Where will it live in the folder structure?"
-],
-"autoActions": [
-"Refactor oversized components into smaller atomic levels",
-"Extract repeated JSX into atoms/molecules",
-"Create tests and usage examples",
-"Enforce theme tokens and accessibility props"
-],
-"refuseWhen": [
-"A single component would exceed size constraints without a refactor path",
-"Business logic is requested in atoms/molecules"
-]
-}
+  "meta": {
+    "name": "Junie React Native Guidelines",
+    "version": "1.0.0",
+    "projectType": "react-native",
+    "style": "atomic-design"
+  },
+  "principles": [
+    "Prefer composition over inheritance",
+    "Keep components small and single-purpose",
+    "Separate UI from business logic",
+    "Shared logic goes into hooks, not components",
+    "No hard-coded design tokens; use theme",
+    "Accessibility and testability by default"
+  ],
+  "directoryStructure": {
+    "root": "src",
+    "paths": {
+      "atoms": "src/components/atoms",
+      "molecules": "src/components/molecules",
+      "organisms": "src/components/organisms",
+      "templates": "src/templates",
+      "pages": "src/pages",
+      "hooks": "src/hooks",
+      "context": "src/context",
+      "theme": "src/theme",
+      "utils": "src/utils",
+      "assets": "src/assets",
+      "services": "src/services"
+    },
+    "dependencyRules": [
+      { "from": "atoms", "canImport": [] },
+      { "from": "molecules", "canImport": ["atoms"] },
+      { "from": "organisms", "canImport": ["atoms", "molecules"] },
+      { "from": "templates", "canImport": ["organisms", "molecules", "atoms"] },
+      {
+        "from": "pages",
+        "canImport": [
+          "templates",
+          "organisms",
+          "molecules",
+          "atoms",
+          "hooks",
+          "context",
+          "theme",
+          "utils",
+          "services"
+        ]
+      }
+    ]
+  },
+  "componentConstraints": {
+    "maxLinesPerComponent": 120,
+    "maxProps": 8,
+    "preferPropsObjectOverManyArgs": true,
+    "maxNestingDepthJsx": 3,
+    "maxCallbackInlineInJsx": 2,
+    "requireDisplayName": true,
+    "requirePropsInterface": true,
+    "disallowDefaultExportForComponents": false,
+    "memoizePureComponents": true,
+    "forceChildrenSupportWhenApplicable": true
+  },
+  "atomicDefinitions": {
+    "atoms": "Primitive, styleable UI elements with no business logic (Button, Text, Icon, Spacer, Avatar, Badge, Divider).",
+    "molecules": "Small compositions of atoms that form a single unit (InputWithLabel, ListItem, CardHeader).",
+    "organisms": "Complex, reusable UI sections combining molecules/atoms (HeaderBar, ProfileCard, FilterPanel).",
+    "templates": "Page-level layout scaffolds placing organisms without real data.",
+    "pages": "Route screens wiring data, navigation, and state to templates/organisms."
+  },
+  "styling": {
+    "library": "nativewind",
+    "allowInlineStyles": false,
+    "allowStyleSheetCreate": true,
+    "designTokens": {
+      "useTheme": true,
+      "requireSpacingScale": true,
+      "requireColorRoles": [
+        "primary",
+        "secondary",
+        "background",
+        "surface",
+        "text",
+        "muted",
+        "danger",
+        "warning",
+        "success"
+      ]
+    }
+  },
+  "state": {
+    "serverState": "react-query",
+    "localState": "zustand",
+    "rules": [
+      "No network calls inside components; put them in services and wrap with React Query hooks.",
+      "Avoid prop drilling: lift to context or use dedicated store when 3+ levels deep.",
+      "Keep atoms/molecules pure: no navigation, no data fetching."
+    ]
+  },
+  "navigation": {
+    "library": "react-navigation",
+    "patterns": [
+      "Use pages/* for screens.",
+      "Navigator config in src/navigation/*.tsx.",
+      "Lazy-load screens where possible."
+    ]
+  },
+  "i18n": {
+    "library": "i18next",
+    "rules": [
+      "No hard-coded user-facing strings.",
+      "Use keys and fallback locales.",
+      "Components accept translated text via props if they’re atoms."
+    ]
+  },
+  "accessibility": {
+    "requireAccessibilityProps": true,
+    "rules": [
+      "Buttons/pressables must set accessibilityRole.",
+      "Interactive areas use hitSlop.",
+      "Meaningful accessibilityLabel and testID for interactive elements."
+    ]
+  },
+  "performance": {
+    "rules": [
+      "Use React.memo for pure atoms/molecules.",
+      "Stabilize handlers with useCallback and values with useMemo.",
+      "Use FlatList/SectionList with keyExtractor and getItemLayout where feasible.",
+      "Avoid heavy inline functions/objects in JSX."
+    ]
+  },
+  "testing": {
+    "frameworks": ["jest", "react-native-testing-library"],
+    "requirements": {
+      "atoms": "snapshot + behavior",
+      "molecules": "behavior + edge cases",
+      "organisms": "interaction + contract",
+      "pages": "integration happy path",
+      "coverageTarget": 0.7
+    }
+  },
+  "generationChecklist": [
+    "Choose the atomic level (atom/molecule/organism/template/page).",
+    "Name the component using PascalCase.",
+    "Define Props interface (no any).",
+    "Render minimal JSX with clear structure; keep under max lines.",
+    "Add accessibilityRole/Label where relevant.",
+    "Add story/examples (if using Storybook) or a usage snippet.",
+    "Write tests appropriate to atomic level.",
+    "Add styles via theme/tokens (no hard-coded colors).",
+    "Export in index.ts barrel for its folder."
+  ],
+  "fileTemplates": {
+    "component": {
+      "pathPattern": "src/components/<level>/<Name>/<Name>.tsx",
+      "content": "import React, { memo } from 'react';\nimport { View, Text, Pressable, ViewProps } from 'react-native';\nimport { cn } from '@/theme/cn';\n\nexport type <Name>Props = ViewProps & {\n  title?: string;\n  children?: React.ReactNode;\n};\n\nfunction <NameBase>({ title, children, style, ...rest }: <Name>Props) {\n  return (\n    <View accessibilityRole=\"none\" style={style} {...rest}>\n      {title ? <Text>{title}</Text> : null}\n      {children}\n    </View>\n  );\n}\n\nexport const <Name> = memo(<NameBase>);\n"
+    },
+    "test": {
+      "pathPattern": "src/components/<level>/<Name>/<Name>.test.tsx",
+      "content": "import React from 'react';\nimport { render } from '@testing-library/react-native';\nimport { <Name> } from './<Name>';\n\ntest('<Name> renders', () => {\n  const { getByText } = render(<Name title=\"Hello\" />);\n  expect(getByText('Hello')).toBeTruthy();\n});\n"
+    },
+    "barrel": {
+      "pathPattern": "src/components/<level>/<Name>/index.ts",
+      "content": "export * from './<Name>';\n"
+    }
+  },
+  "lintSuggestions": {
+    "eslint": {
+      "rules": {
+        "max-lines-per-function": ["warn", 80],
+        "complexity": ["warn", 10],
+        "max-depth": ["warn", 3],
+        "react/jsx-max-props-per-line": ["warn", { "maximum": 3 }],
+        "react/jsx-no-bind": ["warn", { "allowArrowFunctions": false }],
+        "@typescript-eslint/explicit-module-boundary-types": "warn",
+        "no-restricted-imports": [
+          "error",
+          {
+            "paths": [],
+            "patterns": [
+              {
+                "group": ["src/components/molecules/*"],
+                "message": "Molecules must not import organisms"
+              },
+              {
+                "group": ["src/components/atoms/*"],
+                "message": "Atoms must not import molecules or organisms"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "prettier": { "printWidth": 100, "singleQuote": true }
+  },
+  "antipatterns": [
+    "Placing network calls inside components",
+    "Hard-coding colors/spacing instead of theme tokens",
+    "Large components that mix layout, data, and navigation",
+    "Duplicated UI patterns instead of extracting a reusable atom/molecule",
+    "Inline anonymous components inside JSX"
+  ],
+  "junieBehavior": {
+    "askBeforeGenerating": [
+      "Which atomic level should this be?",
+      "What props and their types are required?",
+      "Is this UI-only (presentational) or does it need state/data?",
+      "Where will it live in the folder structure?"
+    ],
+    "autoActions": [
+      "Refactor oversized components into smaller atomic levels",
+      "Extract repeated JSX into atoms/molecules",
+      "Create tests and usage examples",
+      "Enforce theme tokens and accessibility props"
+    ],
+    "refuseWhen": [
+      "A single component would exceed size constraints without a refactor path",
+      "Business logic is requested in atoms/molecules"
+    ]
+  }
 }

@@ -1,12 +1,25 @@
 import React, { useState } from 'react';
 import { Text, Alert } from 'react-native';
-import FormBottomSheet, { formStyles as commonFormStyles } from '../../FormBottomSheet';
+import FormBottomSheet, {
+  formStyles as commonFormStyles,
+} from '../../FormBottomSheet';
 import Input from '../../atoms/Input';
 
-export default function CreateTransactionSheet({ open, onClose, onCreate }: { open: boolean; onClose: () => void; onCreate: (amount: number, describtion: string) => Promise<void> }) {
+export default function CreateTransactionSheet({
+  open,
+  onClose,
+  onCreate,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onCreate: (amount: number, describtion: string) => Promise<void>;
+}) {
   const [amount, setAmount] = useState('');
   const [describtion, setDescribtion] = useState('');
-  const isValid = amount.trim().length > 0 && describtion.trim().length > 0 && !isNaN(Number(amount));
+  const isValid =
+    amount.trim().length > 0 &&
+    describtion.trim().length > 0 &&
+    !isNaN(Number(amount));
   return (
     <FormBottomSheet
       visible={open}
@@ -25,10 +38,21 @@ export default function CreateTransactionSheet({ open, onClose, onCreate }: { op
         }
       }}
     >
-      <Text style={commonFormStyles.modalLabel}>Amount (+ deposit / - withdrawal)</Text>
-      <Input value={amount} onChangeText={setAmount} keyboardType="numeric" placeholder="e.g. 50" />
+      <Text style={commonFormStyles.modalLabel}>
+        Amount (+ deposit / - withdrawal)
+      </Text>
+      <Input
+        value={amount}
+        onChangeText={setAmount}
+        keyboardType="numeric"
+        placeholder="e.g. 50"
+      />
       <Text style={commonFormStyles.modalLabel}>Description</Text>
-      <Input value={describtion} onChangeText={setDescribtion} placeholder="What is this?" />
+      <Input
+        value={describtion}
+        onChangeText={setDescribtion}
+        placeholder="What is this?"
+      />
     </FormBottomSheet>
   );
 }
