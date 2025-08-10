@@ -44,12 +44,18 @@ export const GET_EXPENSES_QUERY = gql`
     getExpenses {
       id
       title
+      currency
+      archived
       sum
       transactions {
         id
         amount
         createdAt
         describtion
+        category {
+          id
+          name
+        }
       }
       expenseByCategory {
         name

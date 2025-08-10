@@ -7,6 +7,7 @@ export interface TransactionListItemProps {
   title: string;
   subtitle?: string;
   amount?: number;
+  currency?: string;
   onPress?: () => void;
   onDelete?: (id: string) => void;
 }
@@ -16,6 +17,7 @@ export default function TransactionListItem({
   title,
   subtitle,
   amount,
+  currency,
   onPress,
   onDelete,
 }: TransactionListItemProps) {
@@ -31,7 +33,7 @@ export default function TransactionListItem({
       </View>
       {typeof amount === 'number' && (
         <Text style={styles.rowAmount}>
-          {Math.round(amount).toLocaleString()} d
+          {`${Math.round(amount).toLocaleString()}${currency ? ` ${currency}` : ''}`}
         </Text>
       )}
       {!!onDelete && (
@@ -39,7 +41,7 @@ export default function TransactionListItem({
           accessibilityRole="button"
           accessibilityLabel="Delete transaction"
           onPress={() => onDelete(id)}
-          style={{ marginLeft: 12, padding: 6 }}
+          style={{ marginLeft: 8, padding: 4 }}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
           <Trash2 color="#ef4444" size={20} />
@@ -55,11 +57,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     backgroundColor: '#1e212b',
-    padding: 14,
-    borderRadius: 12,
-    marginBottom: 10,
+    padding: 10,
+    borderRadius: 10,
+    marginBottom: 6,
   },
   rowTitle: { color: '#f8fafc', fontSize: 16, fontWeight: '700' },
-  rowSub: { color: '#94a3b8', marginTop: 4 },
+  rowSub: { color: '#94a3b8', marginTop: 2 },
   rowAmount: { color: '#f1f5f9', fontWeight: '800' },
 });

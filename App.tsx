@@ -10,10 +10,12 @@ import { ApolloProvider } from '@apollo/client';
 import { apolloClient } from './src/apollo/client';
 import Dashboard from './src/screens/Dashboard';
 import Login from './src/screens/Login';
+import Register from './src/screens/Register';
 import SavingsList from './src/screens/SavingsList';
 import SavingTransactions from './src/screens/SavingTransactions';
 import Expenses from './src/screens/Expenses';
 import ExpenseTransactions from './src/screens/ExpenseTransactions';
+import ExpenseStats from './src/screens/ExpenseStats';
 import CreateCategory from './src/screens/CreateCategory';
 import Categories from './src/screens/Categories';
 import Profile from './src/screens/Profile';
@@ -66,6 +68,7 @@ function ExpensesStackScreen() {
       <ExpensesStack.Screen name="ExpenseTransactions" component={ExpenseTransactions} options={{ title: 'Transactions' }} />
       <ExpensesStack.Screen name="Categories" component={Categories} options={{ title: 'Categories' }} />
       <ExpensesStack.Screen name="CreateCategory" component={CreateCategory} options={{ title: 'Create Category' }} />
+      <ExpensesStack.Screen name="ExpenseStats" component={ExpenseStats} options={{ title: 'Statistics' }} />
     </ExpensesStack.Navigator>
   );
 }
@@ -125,6 +128,7 @@ function AppTabs() {
 
   return (
     <Tab.Navigator
+      initialRouteName="DashboardTab"
       screenOptions={({ route }) => ({
         tabBarIcon: ({ color, size }) => {
           const isDashboard = route.name === 'DashboardTab';
@@ -215,6 +219,11 @@ function AppInner() {
             <AuthStack.Screen
               name="Login"
               component={Login}
+              options={{ headerShown: false }}
+            />
+            <AuthStack.Screen
+              name="Register"
+              component={Register}
               options={{ headerShown: false }}
             />
           </AuthStack.Navigator>

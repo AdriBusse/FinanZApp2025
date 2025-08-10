@@ -4,6 +4,8 @@ import {
   Text,
   ActivityIndicator,
   StyleSheet,
+  Modal,
+  TouchableOpacity,
 } from 'react-native';
 import { useMutation } from '@apollo/client';
 import { useNavigation } from '@react-navigation/native';
@@ -12,6 +14,7 @@ import FormBottomSheet, {
 } from '../../FormBottomSheet';
 import Input from '../../atoms/Input';
 import Dropdown from '../../atoms/Dropdown';
+import Calendar from '../../atoms/Calendar';
 import { CREATEEXPANSETRANSACTION } from '../../../queries/mutations/Expenses/CreateExpenseTransaction';
 import { useCategoriesStore } from '../../../store/categories';
 
@@ -36,9 +39,15 @@ export default function CreateExpenseTransactionSheet({
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(
     null,
   );
+  // Date state (defaults to today)
+  const now = new Date();
+  const [year, setYear] = useState(now.getFullYear());
+  const [month, setMonth] = useState(now.getMonth()); // 0-11
+  const [day, setDay] = useState(now.getDate());
 
   const { categories, loading, fetchCategories } = useCategoriesStore();
   const [createTransaction, { loading: creating }] = useMutation(CREATEEXPANSETRANSACTION);
+  const [calendarOpen, setCalendarOpen] = useState(false);
   
   // Fetch categories when modal opens
   useEffect(() => {
@@ -46,6 +55,26 @@ export default function CreateExpenseTransactionSheet({
       fetchCategories();
     }
   }, [open, fetchCategories]);
+
+  // Reset form when sheet closes
+  useEffect(() => {
+    if (!open) {
+      setAmount('');
+      setDescribtion('');
+      setSelectedCategoryId(null);
+      const t = new Date();
+      setYear(t.getFullYear());
+      setMonth(t.getMonth());
+      setDay(t.getDate());
+    }
+  }, [open]);
+
+  // Clamp day when month/year changes
+  useEffect(() => {
+    const max = new Date(year, month + 1, 0).getDate();
+    if (day > max) setDay(max);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [year, month]);
   
   // Transform categories for dropdown
   const dropdownOptions = useMemo(() => {
@@ -74,26 +103,28 @@ export default function CreateExpenseTransactionSheet({
     describtion.trim().length > 0 &&
     !isNaN(Number(amount));
 
+  const selectedDate = useMemo(() => new Date(year, month, day, 12, 0, 0), [year, month, day]);
+
   const handleSubmit = async () => {
     if (!isValid) return;
-    
     try {
+      const createdAmount = Number(amount);
+      const createdDesc = describtion;
+      const createdCategoryId = selectedCategoryId || '';
       await createTransaction({
         variables: {
           expenseId,
-          amount: Number(amount),
-          describtion,
+          amount: createdAmount,
+          describtion: createdDesc,
           categoryId: selectedCategoryId || null,
+          date: Math.floor(selectedDate.getTime()),
         },
       });
-      
-      // Reset form
-      setAmount('');
-      setDescribtion('');
-      setSelectedCategoryId(null);
-      
-      // Call the onCreate callback for any additional logic
-      await onCreate(Number(amount), describtion, selectedCategoryId || '');
+      // Close immediately after positive response to prevent repeated taps
+      onClose();
+      // Fire and forget any follow-up logic (e.g., refetch, toast)
+      void onCreate(createdAmount, createdDesc, createdCategoryId);
+      // Do not manually reset; the sheet's close effect resets fields
     } catch (error) {
       console.error('Error creating transaction:', error);
     }
@@ -126,12 +157,7 @@ export default function CreateExpenseTransactionSheet({
           keyboardType="numeric"
           placeholder="e.g. 12.50"
           returnKeyType="done"
-          onSubmitEditing={() => {
-            // Focus next input or submit if valid
-            if (isValid) {
-              handleSubmit();
-            }
-          }}
+          // No implicit submit from keyboard; only Save button triggers
         />
 
         <Dropdown
@@ -152,35 +178,46 @@ export default function CreateExpenseTransactionSheet({
           disabled={loading}
         />
 
-        {selectedCategoryId && (
-          <View style={styles.categoryPreview}>
-            <Text style={commonFormStyles.modalLabel}>Selected Category</Text>
-            <View style={styles.previewContainer}>
-              {(() => {
-                const selectedCategory = categories.find(cat => cat.id === selectedCategoryId);
-                return selectedCategory ? (
-                  <View style={styles.previewItem}>
-                    {selectedCategory.icon && (
-                      <Text style={styles.previewIcon}>{selectedCategory.icon}</Text>
-                    )}
-                    <Text style={[
-                      styles.previewName,
-                      selectedCategory.color && { color: selectedCategory.color }
-                    ]}>
-                      {selectedCategory.name}
-                    </Text>
-                    {selectedCategory.color && (
-                      <View style={[
-                        styles.previewColor,
-                        { backgroundColor: selectedCategory.color }
-                      ]} />
-                    )}
-                  </View>
-                ) : null;
-              })()}
+        {/* Category preview removed per request — dropdown selection is sufficient */}
+
+        {/* Date moved below category */}
+        <Text style={commonFormStyles.modalLabel}>Date</Text>
+        <View style={styles.pressWrapper}>
+          <Input
+            value={`${String(selectedDate.getDate()).padStart(2,'0')}.${String(selectedDate.getMonth()+1).padStart(2,'0')}.${selectedDate.getFullYear()}`}
+            editable={false}
+            placeholder="Select a date"
+          />
+          <TouchableOpacity
+            style={styles.pressOverlay}
+            activeOpacity={0.8}
+            onPress={() => setCalendarOpen(true)}
+          />
+        </View>
+        <Modal
+          visible={calendarOpen}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setCalendarOpen(false)}
+        >
+          <TouchableOpacity
+            style={styles.modalOverlay}
+            activeOpacity={1}
+            onPress={() => setCalendarOpen(false)}
+          >
+            <View style={styles.modalContent}>
+              <Calendar
+                value={selectedDate}
+                onChange={(d) => {
+                  setYear(d.getFullYear());
+                  setMonth(d.getMonth());
+                  setDay(d.getDate());
+                  setCalendarOpen(false);
+                }}
+              />
             </View>
-          </View>
-        )}
+          </TouchableOpacity>
+        </Modal>
       </View>
     </FormBottomSheet>
   );
@@ -188,6 +225,14 @@ export default function CreateExpenseTransactionSheet({
 
 const styles = StyleSheet.create({
   scrollContainer: {
+    flex: 1,
+  },
+  dateRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 12,
+  },
+  dateCol: {
     flex: 1,
   },
   categoryPreview: {
@@ -202,6 +247,36 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginTop: 10,
+  },
+  dateText: {
+    color: '#cbd5e1',
+    fontSize: 12,
+    marginTop: 6,
+    marginBottom: 8,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    backgroundColor: '#111827',
+    borderRadius: 12,
+    width: '90%',
+    maxHeight: '70%',
+    overflow: 'hidden',
+    padding: 12,
+  },
+  pressWrapper: {
+    position: 'relative',
+  },
+  pressOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
   },
   previewItem: {
     flexDirection: 'row',

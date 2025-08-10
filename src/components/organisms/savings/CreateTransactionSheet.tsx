@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Text, Alert } from 'react-native';
 import FormBottomSheet, {
   formStyles as commonFormStyles,
@@ -20,6 +20,14 @@ export default function CreateTransactionSheet({
     amount.trim().length > 0 &&
     describtion.trim().length > 0 &&
     !isNaN(Number(amount));
+
+  // Reset form when modal closes
+  useEffect(() => {
+    if (!open) {
+      setAmount('');
+      setDescribtion('');
+    }
+  }, [open]);
   return (
     <FormBottomSheet
       visible={open}
@@ -38,6 +46,12 @@ export default function CreateTransactionSheet({
         }
       }}
     >
+      <Text style={commonFormStyles.modalLabel}>Description</Text>
+      <Input
+        value={describtion}
+        onChangeText={setDescribtion}
+        placeholder="What is this?"
+      />
       <Text style={commonFormStyles.modalLabel}>
         Amount (+ deposit / - withdrawal)
       </Text>
@@ -46,12 +60,6 @@ export default function CreateTransactionSheet({
         onChangeText={setAmount}
         keyboardType="numeric"
         placeholder="e.g. 50"
-      />
-      <Text style={commonFormStyles.modalLabel}>Description</Text>
-      <Input
-        value={describtion}
-        onChangeText={setDescribtion}
-        placeholder="What is this?"
       />
     </FormBottomSheet>
   );

@@ -9,6 +9,7 @@ import {
   Alert,
 } from 'react-native';
 import Input from '../components/atoms/Input';
+import RoundedButton from '../components/atoms/RoundedButton';
 import { useFinanceStore } from '../store/finance';
 import { useNavigation } from '@react-navigation/native';
 import { useSavingsUIStore } from '../store/savingsUI';
@@ -47,6 +48,20 @@ export default function SavingsList() {
           keyExtractor={d => d.id}
           ItemSeparatorComponent={() => <View style={styles.sep} />}
           contentContainerStyle={styles.listContent}
+          ListEmptyComponent={() => (
+            <View style={styles.emptyWrap}>
+              <Text style={styles.emptyTitle}>No saving depots yet</Text>
+              <Text style={styles.emptySub}>
+                Create your first depot to start tracking savings.
+              </Text>
+              <RoundedButton
+                title="Create Depot"
+                onPress={openCreateDepotModal}
+                fullWidth
+                style={{ marginTop: 12 }}
+              />
+            </View>
+          )}
           renderItem={({ item }) => (
             <TouchableOpacity
               style={styles.depotItem}
@@ -66,9 +81,6 @@ export default function SavingsList() {
                 </Text>
               </View>
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <Text style={styles.depotBalance}>
-                  {(item.balance ?? 0).toLocaleString()} €
-                </Text>
                 <TouchableOpacity
                   accessibilityLabel="Delete depot"
                   onPress={() => {
@@ -137,6 +149,15 @@ function CreateDepotModal({
   const [short, setShort] = React.useState('');
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const isValid = name.trim().length > 0 && short.trim().length > 0;
+
+  // Reset when closed so the next open is empty
+  React.useEffect(() => {
+    if (!visible) {
+      setName('');
+      setShort('');
+      setIsSubmitting(false);
+    }
+  }, [visible]);
 
   return (
     <FormBottomSheet
@@ -239,4 +260,11 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   listContent: { paddingBottom: 160 },
+  emptyWrap: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 48,
+  },
+  emptyTitle: { color: '#fff', fontSize: 18, fontWeight: '800' },
+  emptySub: { color: '#94a3b8', marginTop: 6, marginBottom: 12, textAlign: 'center' },
 });

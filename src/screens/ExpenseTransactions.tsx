@@ -14,8 +14,10 @@ import TransactionListItem from '../components/molecules/TransactionListItem';
 import { useFinanceStore } from '../store/finance';
 import CreateExpenseTransactionSheet from '../components/organisms/expenses/CreateExpenseTransactionSheet';
 import EditExpenseTransactionSheet from '../components/organisms/expenses/EditExpenseTransactionSheet';
+import EditExpenseSheet from '../components/organisms/expenses/EditExpenseSheet';
 import { apolloClient } from '../apollo/client';
 import { gql } from '@apollo/client';
+import RoundedButton from '../components/atoms/RoundedButton';
 
 const DELETE_EXPENSE_TRANSACTION = gql`
   mutation DELETEEXPANSETRANSACTION($id: String!) {
@@ -61,6 +63,7 @@ export default function ExpenseTransactions() {
   const [editOpen, setEditOpen] = useState(false);
   const [selectedTransaction, setSelectedTransaction] = useState<any>(null);
   const [isSpeedDialOpen, setIsSpeedDialOpen] = useState(false);
+  const [editExpenseOpen, setEditExpenseOpen] = useState(false);
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const expenseId: string = route.params?.expenseId ?? '';
@@ -82,23 +85,37 @@ export default function ExpenseTransactions() {
           <TouchableOpacity onPress={() => navigation.goBack()}>
             <Text style={styles.headerAction}>{'‹'}</Text>
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>{expense?.title ?? 'Expense'}</Text>
+          <TouchableOpacity onPress={() => setEditExpenseOpen(true)} activeOpacity={0.7}>
+            <View style={styles.headerTitleWrap}>
+              <Text style={styles.headerTitle}>{expense?.title ?? 'Expense'}</Text>
+              <Text style={styles.headerHint}>Tap to edit</Text>
+            </View>
+          </TouchableOpacity>
           <View style={styles.headerSpacer} />
         </View>
 
-        <Text style={styles.periodTitle}>
-          {new Date().toLocaleString(undefined, {
-            month: 'long',
-            day: '2-digit',
-          })}
-          :
+        <Text style={styles.total}>
+          {`${Number(total ?? 0).toLocaleString()}${expense?.currency ? ` ${expense.currency}` : ''}`}
         </Text>
-        <Text style={styles.total}>{total?.toLocaleString?.() ?? total} d</Text>
 
         <FlatList
           contentContainerStyle={styles.listContent}
           data={grouped}
           keyExtractor={([day]) => day}
+          ListEmptyComponent={() => (
+            <View style={styles.emptyWrap}>
+              <Text style={styles.emptyTitle}>No transactions yet</Text>
+              <Text style={styles.emptySub}>
+                Add your first transaction to this expense.
+              </Text>
+              <RoundedButton
+                title="Add Transaction"
+                onPress={() => setCreateOpen(true)}
+                fullWidth
+                style={{ marginTop: 12 }}
+              />
+            </View>
+          )}
           renderItem={({ item: [day, list] }) => (
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>{formatDate(day)}</Text>
@@ -109,6 +126,7 @@ export default function ExpenseTransactions() {
                   title={t.describtion || 'Transaction'}
                   subtitle={formatDate(t.createdAt)}
                   amount={t.amount}
+                  currency={expense?.currency ?? undefined}
                   onPress={() => {
                     setSelectedTransaction(t);
                     setEditOpen(true);
@@ -147,6 +165,14 @@ export default function ExpenseTransactions() {
           position="right"
           actions={[
             {
+              label: 'Stats',
+              onPress: () => {
+                setIsSpeedDialOpen(false);
+                navigation.navigate('ExpenseStats', { expenseId });
+              },
+              color: '#0ea5e9',
+            },
+            {
               label: 'New Transaction',
               onPress: () => {
                 setIsSpeedDialOpen(false);
@@ -160,9 +186,10 @@ export default function ExpenseTransactions() {
           open={createOpen}
           onClose={() => setCreateOpen(false)}
           expenseId={expenseId}
-          onCreate={async (amount, describtion, categoryId) => {
-            await createExpenseTx(expenseId, amount, describtion, categoryId);
-            setCreateOpen(false);
+          onCreate={async () => {
+            // The sheet performs the actual mutation to preserve selected date
+            // Only refresh the data here
+            await loadAll();
           }}
         />
 
@@ -173,6 +200,15 @@ export default function ExpenseTransactions() {
             setSelectedTransaction(null);
           }}
           transaction={selectedTransaction}
+          onUpdate={async () => {
+            await loadAll();
+          }}
+        />
+
+        <EditExpenseSheet
+          open={editExpenseOpen}
+          onClose={() => setEditExpenseOpen(false)}
+          expense={expense ?? null}
           onUpdate={async () => {
             await loadAll();
           }}
@@ -197,6 +233,8 @@ const styles = StyleSheet.create({
   },
   headerAction: { color: '#cbd5e1', fontSize: 24, padding: 4 },
   headerTitle: { color: '#fff', fontSize: 18, fontWeight: '700' },
+  headerTitleWrap: { alignItems: 'center' },
+  headerHint: { color: '#94a3b8', fontSize: 12, marginTop: 2 },
   headerSpacer: { width: 24 },
   periodTitle: {
     color: '#cbd5e1',
@@ -205,12 +243,19 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   total: { color: '#fff', fontSize: 32, fontWeight: '900', marginVertical: 8 },
-  section: { marginTop: 12 },
+  section: { marginTop: 8 },
   sectionTitle: {
     color: '#cbd5e1',
     fontSize: 14,
     fontWeight: '700',
-    marginBottom: 8,
+    marginBottom: 6,
   },
   listContent: { paddingBottom: 160 },
+  emptyWrap: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 48,
+  },
+  emptyTitle: { color: '#fff', fontSize: 18, fontWeight: '800' },
+  emptySub: { color: '#94a3b8', marginTop: 6, marginBottom: 12, textAlign: 'center' },
 });

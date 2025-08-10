@@ -15,6 +15,7 @@ import CreateTransactionSheet from '../components/organisms/savings/CreateTransa
 import EditSavingTransactionSheet from '../components/organisms/savings/EditSavingTransactionSheet';
 import EditSavingDepotSheet from '../components/organisms/savings/EditSavingDepotSheet';
 import ScreenWrapper from '../components/layout/ScreenWrapper';
+import RoundedButton from '../components/atoms/RoundedButton';
 
 function formatDate(dateStr?: string) {
   if (!dateStr) return '';
@@ -106,6 +107,20 @@ export default function SavingTransactions() {
         contentContainerStyle={{ paddingBottom: 160 }}
         data={grouped}
         keyExtractor={([day]) => day}
+        ListEmptyComponent={() => (
+          <View style={styles.emptyWrap}>
+            <Text style={styles.emptyTitle}>No transactions yet</Text>
+            <Text style={styles.emptySub}>
+              Add your first transaction to this saving depot.
+            </Text>
+            <RoundedButton
+              title="Add Transaction"
+              onPress={() => setCreateOpen(true)}
+              fullWidth
+              style={{ marginTop: 12 }}
+            />
+          </View>
+        )}
         renderItem={({ item: [day, list] }) => (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>{formatDate(day)}</Text>
@@ -226,12 +241,12 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   total: { color: '#fff', fontSize: 32, fontWeight: '900', marginVertical: 8 },
-  section: { marginTop: 12 },
+  section: { marginTop: 8 },
   sectionTitle: {
     color: '#cbd5e1',
     fontSize: 14,
     fontWeight: '700',
-    marginBottom: 8,
+    marginBottom: 6,
   },
   row: {
     flexDirection: 'row',
@@ -245,4 +260,11 @@ const styles = StyleSheet.create({
   rowTitle: { color: '#f8fafc', fontSize: 16, fontWeight: '700' },
   rowSub: { color: '#94a3b8', marginTop: 4 },
   rowAmount: { color: '#f1f5f9', fontWeight: '800' },
+  emptyWrap: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 48,
+  },
+  emptyTitle: { color: '#fff', fontSize: 18, fontWeight: '800' },
+  emptySub: { color: '#94a3b8', marginTop: 6, marginBottom: 12, textAlign: 'center' },
 });

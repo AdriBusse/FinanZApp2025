@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -13,10 +13,12 @@ import ScreenWrapper from '../components/layout/ScreenWrapper';
 import FABSpeedDial from '../components/FABSpeedDial';
 import FormBottomSheet from '../components/FormBottomSheet';
 import Input from '../components/atoms/Input';
+import RoundedButton from '../components/atoms/RoundedButton';
 import { Trash2 } from 'lucide-react-native';
 import { useFinanceStore } from '../store/finance';
 import { apolloClient } from '../apollo/client';
 import { gql } from '@apollo/client';
+import { preferences } from '../services/preferences';
 
 const CREATE_EXPENSE = gql`
   mutation CreateExpense($title: String!) {
@@ -37,28 +39,86 @@ export default function Expenses() {
   const { expenses, isLoading, loadAll } = useFinanceStore();
   const [isSpeedDialOpen, setIsSpeedDialOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [showArchived, setShowArchived] = useState(false);
+
+  const displayedExpenses = useMemo(
+    () => (showArchived ? expenses : (expenses || []).filter(e => !e.archived)),
+    [expenses, showArchived],
+  );
 
   useEffect(() => {
     if (!expenses || expenses.length === 0) void loadAll();
   }, [expenses, loadAll]);
 
+  // Load persisted preference once
+  useEffect(() => {
+    let mounted = true;
+    preferences
+      .getShowArchivedExpenses()
+      .then(v => {
+        if (mounted) setShowArchived(v);
+      })
+      .catch(() => {});
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
   return (
     <ScreenWrapper scrollable={false}>
       <View style={styles.container}>
-        <Text style={styles.title}>Expenses</Text>
+        <View style={styles.titleRow}>
+          <Text style={styles.title}>Expenses</Text>
+          <TouchableOpacity
+            onPress={async () => {
+              const next = !showArchived;
+              setShowArchived(next);
+              await preferences.setShowArchivedExpenses(next);
+            }}
+            accessibilityRole="button"
+            accessibilityLabel="Toggle archived filter"
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.titleMeta}>
+              {showArchived ? 'Archived included' : 'Archived excluded'}
+            </Text>
+          </TouchableOpacity>
+        </View>
         {isLoading && expenses.length === 0 ? (
           <View style={styles.center}>
             <ActivityIndicator />
           </View>
         ) : (
           <FlatList
-            data={expenses}
+            data={displayedExpenses}
             keyExtractor={e => e.id}
             ItemSeparatorComponent={() => <View style={styles.sep} />}
             contentContainerStyle={styles.listContent}
+            ListEmptyComponent={() => (
+              <View style={styles.emptyWrap}>
+                <Text style={styles.emptyTitle}>
+                  {showArchived ? 'No expenses found' : 'No active expenses'}
+                </Text>
+                <Text style={styles.emptySub}>
+                  {showArchived
+                    ? 'You have no expenses yet. Create your first one.'
+                    : 'Archived expenses are hidden. Create a new one to get started.'}
+                </Text>
+                <RoundedButton
+                  title="Create Expense"
+                  onPress={() => setIsCreateModalOpen(true)}
+                  fullWidth
+                  style={{ marginTop: 12 }}
+                />
+              </View>
+            )}
             renderItem={({ item }) => (
               <TouchableOpacity
-                style={styles.expenseItem}
+                style={[
+                  styles.expenseItem,
+                  showArchived && item.archived ? styles.archivedItem : null,
+                ]}
                 onPress={() =>
                   navigation.navigate('ExpenseTransactions', { expenseId: item.id })
                 }
@@ -113,6 +173,15 @@ export default function Expenses() {
           position="right"
           actions={[
             {
+              label: 'Archived',
+              onPress: async () => {
+                const next = !showArchived;
+                setShowArchived(next);
+                await preferences.setShowArchivedExpenses(next);
+              },
+              color: showArchived ? '#16a34a' : '#ef4444',
+            },
+            {
               label: 'New Expense',
               onPress: () => setIsCreateModalOpen(true),
               color: '#2563eb',
@@ -154,6 +223,14 @@ function CreateExpenseModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const isValid = title.trim().length > 0;
 
+  // Reset when closed so the next open is empty
+  React.useEffect(() => {
+    if (!visible) {
+      setTitle('');
+      setIsSubmitting(false);
+    }
+  }, [visible]);
+
   return (
     <FormBottomSheet
       visible={visible}
@@ -185,7 +262,14 @@ function CreateExpenseModal({
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 16, backgroundColor: '#0e0f14' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  title: { fontSize: 24, fontWeight: '700', color: '#fff', marginBottom: 16 },
+  title: { fontSize: 24, fontWeight: '700', color: '#fff' },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  titleMeta: { color: '#94a3b8', fontSize: 12 },
   expenseItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -200,4 +284,12 @@ const styles = StyleSheet.create({
   expenseSum: { color: '#f8fafc', fontSize: 16, fontWeight: '700' },
   modalLabel: { color: '#cbd5e1', fontSize: 12, marginBottom: 6 },
   listContent: { paddingBottom: 160 },
+  archivedItem: { opacity: 0.6 },
+  emptyWrap: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 48,
+  },
+  emptyTitle: { color: '#fff', fontSize: 18, fontWeight: '800' },
+  emptySub: { color: '#94a3b8', marginTop: 6, marginBottom: 12, textAlign: 'center' },
 });

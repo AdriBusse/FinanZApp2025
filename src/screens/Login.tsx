@@ -1,15 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  Button,
-  StyleSheet,
-  ActivityIndicator,
-} from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity } from 'react-native';
 import Input from '../components/atoms/Input';
 import { Formik } from 'formik';
 import * as Yup from 'yup';
 import { useAuthStore } from '../store/auth';
+import RoundedButton from '../components/atoms/RoundedButton';
+import { useNavigation } from '@react-navigation/native';
 import ScreenWrapper from '../components/layout/ScreenWrapper';
 
 const LoginSchema = Yup.object().shape({
@@ -20,6 +16,7 @@ const LoginSchema = Yup.object().shape({
 export default function LoginScreen() {
   const { login, initFromStorage, isInitializing } = useAuthStore();
   const [error, setError] = useState<string | null>(null);
+  const navigation = useNavigation<any>();
 
   useEffect(() => {
     initFromStorage();
@@ -85,11 +82,20 @@ export default function LoginScreen() {
 
             {error ? <Text style={styles.error}>{error}</Text> : null}
 
-            <Button
+            <RoundedButton
               title={isSubmitting ? 'Logging in...' : 'Login'}
               onPress={() => handleSubmit()}
-              disabled={isSubmitting}
+              loading={isSubmitting}
+              fullWidth
+              style={{ marginTop: 8 }}
             />
+
+            <View style={styles.linkRow}>
+              <Text style={styles.linkHint}>Don't have an account?</Text>
+              <TouchableOpacity onPress={() => navigation.navigate('Register')}>
+                <Text style={styles.link}> Sign up</Text>
+              </TouchableOpacity>
+            </View>
           </>
         )}
       </Formik>
@@ -101,7 +107,7 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 16, paddingTop: 56 },
   containerCenter: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  title: { fontSize: 24, fontWeight: '700', marginBottom: 24 },
+  title: { fontSize: 24, fontWeight: '700', marginBottom: 24, color: '#fff' },
   input: {
     borderWidth: 1,
     borderColor: '#ccc',
@@ -110,4 +116,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   error: { color: 'crimson', marginBottom: 12 },
+  linkRow: { flexDirection: 'row', alignItems: 'center', marginTop: 16 },
+  linkHint: { color: '#cbd5e1' },
+  link: { color: '#2e7d32', fontWeight: '700' },
 });

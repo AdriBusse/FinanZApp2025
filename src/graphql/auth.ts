@@ -13,15 +13,14 @@ export const LOGIN_MUTATION = gql`
   }
 `;
 
-export const REGISTER_MUTATION = gql`
-  mutation Register($input: RegisterInput!) {
-    register(input: $input) {
-      token
-      user {
-        id
-        username
-        email
-      }
+// Schema: signup(data: RegisterInput!): User
+// RegisterInput { username: String!, email: String!, password: String! }
+export const SIGNUP_MUTATION = gql`
+  mutation Signup($data: RegisterInput!) {
+    signup(data: $data) {
+      id
+      username
+      email
     }
   }
 `;
