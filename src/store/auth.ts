@@ -1,4 +1,9 @@
 import create from 'zustand';
+import {
+  getSecureTokenWithBiometric,
+  setSecureToken,
+  resetSecureToken,
+} from '../services/secureToken';
 
 export interface User {
   id: string;
@@ -15,7 +20,6 @@ interface AuthState {
   initFromStorage: () => Promise<void>;
 }
 
-const TOKEN_KEY = 'auth.token';
 const USER_KEY = 'auth.user';
 
 // Safe AsyncStorage access for test environments
@@ -48,30 +52,42 @@ export const useAuthStore = create<AuthState>(set => ({
   initFromStorage: async () => {
     const storage = getStorage();
     try {
-      const [token, userJson] = await Promise.all([
-        storage.getItem(TOKEN_KEY),
-        storage.getItem(USER_KEY),
-      ]);
-      set({
-        token,
-        user: userJson ? JSON.parse(userJson) : null,
-        isInitializing: false,
-      });
-      if (token) {
-        try {
-          const { apolloClient } = require('../apollo/client');
-          const { ME_QUERY } = require('../graphql/auth');
-          const meRes = await apolloClient.query({
-            query: ME_QUERY,
-            fetchPolicy: 'network-only',
-          });
-          const me = meRes?.data?.me ?? null;
-          if (me) {
-            await storage.setItem(USER_KEY, JSON.stringify(me));
-            set({ user: me });
-          }
-        } catch {}
+      // Load cached user profile (non-sensitive) without auth
+      const userJson = await storage.getItem(USER_KEY);
+      set({ user: userJson ? JSON.parse(userJson) : null });
+
+      // If a secure token exists, this will prompt for Face ID/Touch ID on access
+      const token = await getSecureTokenWithBiometric(
+        'Unlock to access your account'
+      );
+
+      if (!token) {
+        // Biometric canceled/failed or no token stored: stay logged out
+        set({ token: null, isInitializing: false });
+        return;
       }
+
+      // Set token in-memory for Apollo and UI, then validate via Me query
+      set({ token });
+      try {
+        const { apolloClient } = require('../apollo/client');
+        const { ME_QUERY } = require('../graphql/auth');
+        const meRes = await apolloClient.query({
+          query: ME_QUERY,
+          fetchPolicy: 'network-only',
+        });
+        const me = meRes?.data?.me ?? null;
+        if (me) {
+          await storage.setItem(USER_KEY, JSON.stringify(me));
+          set({ user: me });
+        }
+      } catch {
+        // Token invalid -> clear and require login next time
+        await resetSecureToken();
+        set({ token: null, user: null });
+      }
+
+      set({ isInitializing: false });
     } catch (e) {
       set({ token: null, user: null, isInitializing: false });
     }
@@ -97,8 +113,8 @@ export const useAuthStore = create<AuthState>(set => ({
         throw new Error('Invalid login response');
       }
 
-      // Store token first so ME query includes Authorization header
-      await storage.setItem(TOKEN_KEY, payload.token);
+      // Store token securely (Keychain/Keystore) with biometric protection
+      await setSecureToken(payload.token);
 
       // Call me endpoint to fetch latest user profile
       let me: User | null = null;
@@ -130,16 +146,16 @@ export const useAuthStore = create<AuthState>(set => ({
   },
   logout: async () => {
     const storage = getStorage();
-    await storage.multiRemove([TOKEN_KEY, USER_KEY]);
+    await resetSecureToken();
+    await storage.multiRemove([USER_KEY]);
     set({ token: null, user: null });
   },
 }));
 
 export const getAuthToken = async (): Promise<string | null> => {
+  // Return in-memory token only to avoid triggering biometric prompts per request
   try {
-    const storage = getStorage();
-    const token = await storage.getItem(TOKEN_KEY);
-    return token;
+    return useAuthStore.getState().token;
   } catch {
     return null;
   }
