@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Alert,
+  Switch,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import ScreenWrapper from '../components/layout/ScreenWrapper';
@@ -21,8 +22,20 @@ import { gql } from '@apollo/client';
 import { preferences } from '../services/preferences';
 
 const CREATE_EXPENSE = gql`
-  mutation CreateExpense($title: String!) {
-    createExpense(title: $title) {
+  mutation CreateExpense(
+    $title: String!
+    $currency: String
+    $monthlyRecurring: Boolean
+    $spendingLimit: Int
+    $skipTemplateIds: [ID!]
+  ) {
+    createExpense(
+      title: $title
+      currency: $currency
+      monthlyRecurring: $monthlyRecurring
+      spendingLimit: $spendingLimit
+      skipTemplateIds: $skipTemplateIds
+    ) {
       id
     }
   }
@@ -194,6 +207,14 @@ export default function Expenses() {
               },
               color: '#2e7d32',
             },
+            {
+              label: 'Templates',
+              onPress: () => {
+                setIsSpeedDialOpen(false);
+                navigation.navigate('ExpenseTemplates');
+              },
+              color: '#0ea5e9',
+            },
           ]}
         />
 
@@ -220,16 +241,60 @@ function CreateExpenseModal({
   onCreated: () => Promise<void>;
 }) {
   const [title, setTitle] = useState('');
+  const [currency, setCurrency] = useState('');
+  const [monthlyRecurring, setMonthlyRecurring] = useState(false);
+  const [spendingLimit, setSpendingLimit] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const isValid = title.trim().length > 0;
+
+  // Templates handling
+  const [templates, setTemplates] = useState<Array<{ id: string; describtion: string }>>([]);
+  const [selectedTemplateIds, setSelectedTemplateIds] = useState<string[]>([]);
+
+  const GET_TEMPLATES = gql`
+    query GET_EXPENSE_TEMPLATES {
+      getExpenseTransactionTemplates { id describtion }
+    }
+  `;
+
+  const loadTemplates = async () => {
+    try {
+      const { data } = await apolloClient.query({ query: GET_TEMPLATES, fetchPolicy: 'network-only' });
+      const list: Array<{ id: string; describtion: string }> = data?.getExpenseTransactionTemplates ?? [];
+      setTemplates(list);
+      // Initialize selection: use saved prefs intersecting with current list; default to all
+      const saved = (await preferences.getSelectedExpenseTemplateIds()) ?? null;
+      if (saved && saved.length > 0) {
+        const existing = list.filter(t => saved.includes(t.id)).map(t => t.id);
+        setSelectedTemplateIds(existing.length > 0 ? existing : list.map(t => t.id));
+      } else {
+        setSelectedTemplateIds(list.map(t => t.id));
+      }
+    } catch (e) {
+      // ignore errors; empty list
+      setTemplates([]);
+    }
+  };
 
   // Reset when closed so the next open is empty
   React.useEffect(() => {
     if (!visible) {
       setTitle('');
+      setCurrency('');
+      setMonthlyRecurring(false);
+      setSpendingLimit('');
+      setTemplates([]);
+      setSelectedTemplateIds([]);
       setIsSubmitting(false);
     }
   }, [visible]);
+
+  // Load templates only when needed
+  React.useEffect(() => {
+    if (visible && monthlyRecurring) {
+      void loadTemplates();
+    }
+  }, [visible, monthlyRecurring]);
 
   return (
     <FormBottomSheet
@@ -242,11 +307,29 @@ function CreateExpenseModal({
         if (!isValid) return;
         try {
           setIsSubmitting(true);
+          const skipTemplateIds = monthlyRecurring && templates.length > 0
+            ? templates.filter(t => !selectedTemplateIds.includes(t.id)).map(t => t.id)
+            : undefined;
           await apolloClient.mutate({
             mutation: CREATE_EXPENSE,
-            variables: { title: title.trim() },
+            variables: {
+              title: title.trim(),
+              currency: currency.trim() || null,
+              monthlyRecurring,
+              spendingLimit: spendingLimit.trim() && !Number.isNaN(Number(spendingLimit))
+                ? parseInt(spendingLimit, 10)
+                : null,
+              skipTemplateIds,
+            },
           });
+          // Persist template selection for next time
+          if (monthlyRecurring) {
+            await preferences.setSelectedExpenseTemplateIds(selectedTemplateIds);
+          }
           setTitle('');
+          setCurrency('');
+          setMonthlyRecurring(false);
+          setSpendingLimit('');
           await onCreated();
         } finally {
           setIsSubmitting(false);
@@ -255,6 +338,54 @@ function CreateExpenseModal({
     >
       <Text style={styles.modalLabel}>Title</Text>
       <Input value={title} onChangeText={setTitle} placeholder="e.g. Groceries" />
+      <Text style={styles.modalLabel}>Currency</Text>
+      <Input value={currency} onChangeText={setCurrency} placeholder="e.g. EUR" maxLength={6} />
+      <Text style={styles.modalLabel}>Spending Limit</Text>
+      <Input
+        value={spendingLimit}
+        onChangeText={setSpendingLimit}
+        placeholder="e.g. 300"
+        keyboardType="numeric"
+      />
+
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 }}>
+        <Text style={styles.modalLabel}>Monthly recurring</Text>
+        <Switch value={monthlyRecurring} onValueChange={setMonthlyRecurring} />
+      </View>
+
+      {monthlyRecurring && (
+        <View style={{ marginTop: 8 }}>
+          <Text style={styles.modalLabel}>Templates to include</Text>
+          {templates.length === 0 ? (
+            <Text style={{ color: '#94a3b8' }}>No templates available yet</Text>
+          ) : (
+            templates.map(t => {
+              const checked = selectedTemplateIds.includes(t.id);
+              return (
+                <TouchableOpacity
+                  key={t.id}
+                  style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 6 }}
+                  onPress={() => {
+                    setSelectedTemplateIds(prev =>
+                      checked ? prev.filter(id => id !== t.id) : [...prev, t.id]
+                    );
+                  }}
+                >
+                  <Text style={{ color: '#f8fafc' }}>{t.describtion}</Text>
+                  <Switch
+                    value={checked}
+                    onValueChange={(v) => {
+                      setSelectedTemplateIds(prev =>
+                        v ? [...prev, t.id] : prev.filter(id => id !== t.id)
+                      );
+                    }}
+                  />
+                </TouchableOpacity>
+              );
+            })
+          )}
+        </View>
+      )}
     </FormBottomSheet>
   );
 }

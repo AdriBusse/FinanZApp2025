@@ -6,6 +6,8 @@ import {
   View,
   Pressable,
 } from 'react-native';
+import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Platform } from 'react-native';
 import { ApolloProvider } from '@apollo/client';
 import { apolloClient } from './src/apollo/client';
 import Dashboard from './src/screens/Dashboard';
@@ -16,6 +18,7 @@ import SavingTransactions from './src/screens/SavingTransactions';
 import Expenses from './src/screens/Expenses';
 import ExpenseTransactions from './src/screens/ExpenseTransactions';
 import ExpenseStats from './src/screens/ExpenseStats';
+import ExpenseTemplates from './src/screens/ExpenseTemplates';
 import CreateCategory from './src/screens/CreateCategory';
 import Categories from './src/screens/Categories';
 import Profile from './src/screens/Profile';
@@ -69,11 +72,13 @@ function ExpensesStackScreen() {
       <ExpensesStack.Screen name="Categories" component={Categories} options={{ title: 'Categories' }} />
       <ExpensesStack.Screen name="CreateCategory" component={CreateCategory} options={{ title: 'Create Category' }} />
       <ExpensesStack.Screen name="ExpenseStats" component={ExpenseStats} options={{ title: 'Statistics' }} />
+      <ExpensesStack.Screen name="ExpenseTemplates" component={ExpenseTemplates} options={{ title: 'Templates' }} />
     </ExpensesStack.Navigator>
   );
 }
 
 function AppTabs() {
+  const insets = useSafeAreaInsets();
   // Custom center tab button for Dashboard (bigger, circular active indicator)
   const CenterTabBarButton = (props: BottomTabBarButtonProps) => {
     const {
@@ -153,9 +158,9 @@ function AppTabs() {
         tabBarShowLabel: true,
         tabBarActiveTintColor: '#2e7d32',
         tabBarStyle: {
-          height: 64,
+          height: 64 + (insets.bottom || 0),
           paddingTop: 6,
-          paddingBottom: 8,
+          paddingBottom: Math.max(8, insets.bottom || 0),
         },
       })}
     >
@@ -201,13 +206,14 @@ function AppTabs() {
 function AppInner() {
   const isDarkMode = useColorScheme() === 'dark';
   const { token, initFromStorage, isInitializing } = useAuthStore();
+  const insets = useSafeAreaInsets();
 
   React.useEffect(() => {
     initFromStorage();
   }, [initFromStorage]);
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { paddingTop: Platform.OS === 'android' ? insets.top : 0 }]}>
       <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
       <NavigationContainer theme={isDarkMode ? DarkTheme : DefaultTheme}>
         {isInitializing ? (
@@ -236,7 +242,9 @@ function AppInner() {
 function App() {
   return (
     <ApolloProvider client={apolloClient}>
-      <AppInner />
+      <SafeAreaProvider>
+        <AppInner />
+      </SafeAreaProvider>
     </ApolloProvider>
   );
 }

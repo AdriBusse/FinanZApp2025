@@ -33,7 +33,12 @@ interface FinanceState {
     amount: number,
     describtion: string,
   ) => Promise<void>;
-  createSavingDepot: (name: string, short: string) => Promise<void>;
+  createSavingDepot: (
+    name: string,
+    short: string,
+    currency?: string | null,
+    savinggoal?: number | null,
+  ) => Promise<void>;
   deleteSavingTransaction: (id: string) => Promise<void>;
   deleteSavingDepot: (id: string) => Promise<void>;
 }
@@ -72,7 +77,13 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
   createExpenseTx: async (expenseId, amount, describtion, categoryId) => {
     await apolloClient.mutate({
       mutation: CREATE_EXPENSE_TRANSACTION,
-      variables: { expenseId, amount, describtion, categoryId },
+      variables: {
+        expenseId,
+        amount,
+        describtion,
+        categoryId,
+        autocategorize: false,
+      },
     });
     await get().loadAll();
   },
@@ -83,10 +94,10 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
     });
     await get().loadAll();
   },
-  createSavingDepot: async (name, short) => {
+  createSavingDepot: async (name, short, currency = null, savinggoal = null) => {
     await apolloClient.mutate({
       mutation: CREATE_SAVING_DEPOT,
-      variables: { name, short },
+      variables: { name, short, currency, savinggoal },
       refetchQueries: [{ query: GET_SAVING_DEPOTS_QUERY }],
     });
     await get().loadAll();

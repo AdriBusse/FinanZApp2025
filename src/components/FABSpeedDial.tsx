@@ -6,6 +6,7 @@ import {
   ViewStyle,
   TouchableOpacity,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import FloatingActionButton from './atoms/FloatingActionButton';
 
 export type SpeedDialAction = {
@@ -29,6 +30,7 @@ export default function FABSpeedDial({
   position = 'left',
   style,
 }: FABSpeedDialProps) {
+  const insets = useSafeAreaInsets();
   return (
     <View style={styles.root} pointerEvents="box-none">
       {isOpen && (
@@ -41,6 +43,7 @@ export default function FABSpeedDial({
       <View
         style={[
           styles.fabContainer,
+          { bottom: 24 + (insets.bottom || 0) },
           position === 'left'
             ? { left: 16, alignItems: 'flex-start' }
             : { right: 16, alignItems: 'flex-end' },

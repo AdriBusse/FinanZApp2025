@@ -11,6 +11,7 @@ import {
   Platform,
   ScrollView,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface BottomSheetModalProps {
   visible: boolean;
@@ -25,6 +26,7 @@ export default function BottomSheetModal({
   heightPercent = 0.6,
   children,
 }: BottomSheetModalProps) {
+  const insets = useSafeAreaInsets();
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const screenHeight = Dimensions.get('window').height;
   const targetHeight = Math.max(0.3, Math.min(0.95, heightPercent)) * screenHeight;
@@ -116,6 +118,7 @@ export default function BottomSheetModal({
             { 
               height: modalHeight,
               transform: [{ translateY }],
+              paddingBottom: Math.max(0, insets.bottom || 0),
             },
           ]}
         >
@@ -126,7 +129,10 @@ export default function BottomSheetModal({
             style={styles.content}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
-            contentContainerStyle={styles.contentContainer}
+            contentContainerStyle={[
+              styles.contentContainer,
+              { paddingBottom: 32 + (insets.bottom || 0) },
+            ]}
             nestedScrollEnabled={true}
           >
             {children}

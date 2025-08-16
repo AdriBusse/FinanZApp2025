@@ -7,6 +7,8 @@ export const GETDEPOT = gql`
       id
       sum
       short
+      currency
+      savinggoal
       transactions {
         id
         describtion

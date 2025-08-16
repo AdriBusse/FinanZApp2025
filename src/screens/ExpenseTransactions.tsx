@@ -18,6 +18,7 @@ import EditExpenseSheet from '../components/organisms/expenses/EditExpenseSheet'
 import { apolloClient } from '../apollo/client';
 import { gql } from '@apollo/client';
 import RoundedButton from '../components/atoms/RoundedButton';
+import HorizontalBar from '../components/atoms/HorizontalBar';
 
 const DELETE_EXPENSE_TRANSACTION = gql`
   mutation DELETEEXPANSETRANSACTION($id: String!) {
@@ -78,6 +79,12 @@ export default function ExpenseTransactions() {
     expense?.sum ??
     (expense?.transactions ?? []).reduce((s, t) => s + (t.amount || 0), 0);
 
+  // Spending limit progress
+  const spendingLimit = expense?.spendingLimit ?? 0;
+  const spent = Number(total ?? 0);
+  const ratio = spendingLimit > 0 ? spent / spendingLimit : 0;
+  const barColor = ratio >= 0.9 ? '#f87171' : '#60a5fa'; // darker red when within 10% of the limit, darker blue otherwise
+
   return (
     <ScreenWrapper scrollable={false}>
       <View style={styles.container}>
@@ -97,6 +104,23 @@ export default function ExpenseTransactions() {
         <Text style={styles.total}>
           {`${Number(total ?? 0).toLocaleString()}${expense?.currency ? ` ${expense.currency}` : ''}`}
         </Text>
+
+        {/* Spending limit progress bar */}
+        {typeof expense?.spendingLimit === 'number' && (expense?.spendingLimit ?? 0) > 0 ? (
+          <>
+            <Text style={styles.diagCaption}>Limit:</Text>
+            <HorizontalBar
+              value={spent}
+              max={spendingLimit as number}
+              height={12}
+              fillColor={barColor}
+              trackColor="#1f2937"
+              labelColor="#cbd5e1"
+              labelText={`${Number(spent).toLocaleString()}${expense?.currency ? ` ${expense.currency}` : ''} / ${Number(spendingLimit).toLocaleString()}${expense?.currency ? ` ${expense.currency}` : ''}`}
+              style={{ marginTop: 4 }}
+            />
+          </>
+        ) : null}
 
         <FlatList
           contentContainerStyle={styles.listContent}
@@ -249,6 +273,13 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     marginBottom: 6,
+  },
+  diagCaption: {
+    color: '#94a3b8',
+    fontSize: 12,
+    fontWeight: '600',
+    marginTop: 6,
+    marginBottom: 2,
   },
   listContent: { paddingBottom: 160 },
   emptyWrap: {
