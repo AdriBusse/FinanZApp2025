@@ -24,6 +24,7 @@ import Categories from './src/screens/Categories';
 import Profile from './src/screens/Profile';
 import Report from './src/screens/Report';
 import { useAuthStore } from './src/store/auth';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import {
   NavigationContainer,
   DefaultTheme,
@@ -205,7 +206,7 @@ function AppTabs() {
 
 function AppInner() {
   const isDarkMode = useColorScheme() === 'dark';
-  const { token, initFromStorage, isInitializing } = useAuthStore();
+  const { token, initFromStorage, isInitializing, user } = useAuthStore();
   const insets = useSafeAreaInsets();
 
   React.useEffect(() => {
@@ -215,7 +216,10 @@ function AppInner() {
   return (
     <View style={[styles.container, { paddingTop: Platform.OS === 'android' ? insets.top : 0 }]}>
       <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
-      <NavigationContainer theme={isDarkMode ? DarkTheme : DefaultTheme}>
+      <NavigationContainer
+        key={token ? `auth:${user?.id ?? 'unknown'}` : 'auth:guest'}
+        theme={isDarkMode ? DarkTheme : DefaultTheme}
+      >
         {isInitializing ? (
           <View style={{ flex: 1 }} />
         ) : token ? (
@@ -241,11 +245,15 @@ function AppInner() {
 
 function App() {
   return (
+    <GestureHandlerRootView>
     <ApolloProvider client={apolloClient}>
-      <SafeAreaProvider>
-        <AppInner />
-      </SafeAreaProvider>
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <SafeAreaProvider>
+          <AppInner />
+        </SafeAreaProvider>
+      </GestureHandlerRootView>
     </ApolloProvider>
+    </GestureHandlerRootView>
   );
 }
 

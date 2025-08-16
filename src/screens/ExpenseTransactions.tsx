@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -70,6 +70,18 @@ export default function ExpenseTransactions() {
   const expenseId: string = route.params?.expenseId ?? '';
   const { expenses, createExpenseTx, loadAll } = useFinanceStore();
   const expense = expenses.find(e => e.id === expenseId);
+
+  // Open create sheet when navigated with { openCreate: true }
+  useEffect(() => {
+    const p = (route as any)?.params;
+    if (p?.openCreate) {
+      setCreateOpen(true);
+      // clear the flag so it doesn't reopen on re-render
+      try {
+        (navigation as any)?.setParams?.({ openCreate: false });
+      } catch {}
+    }
+  }, [route, navigation]);
 
   const grouped = useMemo(
     () => groupByDate(expense?.transactions ?? []),

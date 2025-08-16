@@ -9,7 +9,7 @@ import {
   Alert,
   Switch,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import ScreenWrapper from '../components/layout/ScreenWrapper';
 import FABSpeedDial from '../components/FABSpeedDial';
 import FormBottomSheet from '../components/FormBottomSheet';
@@ -49,6 +49,7 @@ const DELETE_EXPENSE = gql`
 
 export default function Expenses() {
   const navigation = useNavigation<any>();
+  const route = useRoute<any>();
   const { expenses, isLoading, loadAll } = useFinanceStore();
   const [isSpeedDialOpen, setIsSpeedDialOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -76,6 +77,14 @@ export default function Expenses() {
       mounted = false;
     };
   }, []);
+
+  // Open create modal when navigated with param { openCreate: true }
+  useEffect(() => {
+    const p = (route as any)?.params;
+    if (p?.openCreate) {
+      setIsCreateModalOpen(true);
+    }
+  }, [route]);
 
   return (
     <ScreenWrapper scrollable={false}>

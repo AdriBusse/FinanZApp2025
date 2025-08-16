@@ -13,12 +13,12 @@ export async function isBiometryAvailable(): Promise<boolean> {
 
 export async function setSecureToken(token: string): Promise<void> {
   const supportsBio = await isBiometryAvailable();
-  const options: Keychain.Options = {
+  const options: any = {
     service: SERVICE,
     accessible: Keychain.ACCESSIBLE.WHEN_UNLOCKED,
     // Android requires securityLevel to ensure hardware-backed storage when possible
     securityLevel: Keychain.SECURITY_LEVEL.SECURE_HARDWARE,
-  } as Keychain.Options;
+  };
 
   if (supportsBio) {
     // Require current enrolled biometrics to access the token
@@ -36,7 +36,7 @@ export async function getSecureTokenWithBiometric(prompt?: string): Promise<stri
     const result = await Keychain.getGenericPassword({
       service: SERVICE,
       authenticationPrompt: prompt || 'Unlock to access your account',
-    } as Keychain.Options);
+    } as any);
     if (result) {
       return result.password;
     }
@@ -48,6 +48,6 @@ export async function getSecureTokenWithBiometric(prompt?: string): Promise<stri
 
 export async function resetSecureToken(): Promise<void> {
   try {
-    await Keychain.resetGenericPassword({ service: SERVICE } as Keychain.Options);
+    await Keychain.resetGenericPassword({ service: SERVICE } as any);
   } catch {}
 }
