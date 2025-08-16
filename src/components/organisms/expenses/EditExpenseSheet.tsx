@@ -10,6 +10,8 @@ interface Expense {
   title: string;
   currency?: string | null;
   archived?: boolean | null;
+  monthlyRecurring?: boolean | null;
+  spendingLimit?: number | null;
 }
 
 export default function EditExpenseSheet({
@@ -26,6 +28,8 @@ export default function EditExpenseSheet({
   const [title, setTitle] = useState('');
   const [currency, setCurrency] = useState('');
   const [archived, setArchived] = useState(false);
+  const [monthlyRecurring, setMonthlyRecurring] = useState(false);
+  const [spendingLimit, setSpendingLimit] = useState('');
 
   const [updateExpense, { loading: updating }] = useMutation(UPDATEEXPENSE);
 
@@ -35,6 +39,12 @@ export default function EditExpenseSheet({
       setTitle(expense.title || '');
       setCurrency(expense.currency || '');
       setArchived(!!expense.archived);
+      setMonthlyRecurring(!!expense.monthlyRecurring);
+      setSpendingLimit(
+        typeof expense.spendingLimit === 'number' && !Number.isNaN(expense.spendingLimit)
+          ? String(expense.spendingLimit)
+          : ''
+      );
     }
   }, [open, expense]);
 
@@ -49,6 +59,11 @@ export default function EditExpenseSheet({
           title: title.trim(),
           currency: currency.trim() || null,
           archived,
+          monthlyRecurring,
+          spendingLimit:
+            spendingLimit.trim().length > 0 && !Number.isNaN(Number(spendingLimit))
+              ? parseInt(spendingLimit, 10)
+              : null,
         },
       });
       await onUpdate();
@@ -64,7 +79,7 @@ export default function EditExpenseSheet({
       onClose={onClose}
       title="Edit Expense"
       submitDisabled={!isValid || updating}
-      heightPercent={0.6}
+      heightPercent={0.75}
       onSubmit={handleSubmit}
     >
       <View style={styles.container}>
@@ -88,6 +103,18 @@ export default function EditExpenseSheet({
         <View style={styles.row}>
           <Text style={styles.rowLabel}>Archived</Text>
           <Switch value={archived} onValueChange={setArchived} />
+        </View>
+        <Text style={commonFormStyles.modalLabel}>Spending Limit</Text>
+        <Input
+          value={spendingLimit}
+          onChangeText={setSpendingLimit}
+          placeholder="e.g. 300"
+          keyboardType="numeric"
+        />
+
+        <View style={styles.row}>
+          <Text style={styles.rowLabel}>Monthly recurring</Text>
+          <Switch value={monthlyRecurring} onValueChange={setMonthlyRecurring} />
         </View>
       </View>
     </FormBottomSheet>

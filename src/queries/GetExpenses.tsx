@@ -7,6 +7,9 @@ export const GETEXPENSES = gql`
       title
       sum
       currency
+      archived
+      monthlyRecurring
+      spendingLimit
     }
   }
 `;

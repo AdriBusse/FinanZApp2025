@@ -155,6 +155,8 @@ export type Expense = {
   currency?: Maybe<Scalars['String']['output']>;
   expenseByCategory: Array<ExpenseByCategory>;
   id: Scalars['ID']['output'];
+  monthlyRecurring: Scalars['Boolean']['output'];
+  spendingLimit?: Maybe<Scalars['Int']['output']>;
   sum: Scalars['Float']['output'];
   title: Scalars['String']['output'];
   transactions?: Maybe<Array<ExpenseTransaction>>;
@@ -290,7 +292,10 @@ export type MutationCreateEtfTransactionArgs = {
 };
 
 export type MutationCreateExpenseArgs = {
+  monthlyRecurring?: InputMaybe<Scalars['Boolean']['input']>;
   currency?: InputMaybe<Scalars['String']['input']>;
+  skipTemplateIds?: InputMaybe<Array<Scalars['ID']['input']>>;
+  spendingLimit?: InputMaybe<Scalars['Int']['input']>;
   title: Scalars['String']['input'];
 };
 
@@ -302,6 +307,7 @@ export type MutationCreateExpenseCategoryArgs = {
 
 export type MutationCreateExpenseTransactionArgs = {
   amount: Scalars['Float']['input'];
+  autocategorize?: InputMaybe<Scalars['Boolean']['input']>;
   categoryId?: InputMaybe<Scalars['String']['input']>;
   date?: InputMaybe<Scalars['Float']['input']>;
   describtion: Scalars['String']['input'];
@@ -309,6 +315,8 @@ export type MutationCreateExpenseTransactionArgs = {
 };
 
 export type MutationCreateSavingDepotArgs = {
+  currency?: InputMaybe<Scalars['String']['input']>;
+  savinggoal?: InputMaybe<Scalars['Int']['input']>;
   name: Scalars['String']['input'];
   short: Scalars['String']['input'];
 };
@@ -361,6 +369,8 @@ export type MutationUpdateExpenseArgs = {
   archived?: InputMaybe<Scalars['Boolean']['input']>;
   currency?: InputMaybe<Scalars['String']['input']>;
   id: Scalars['String']['input'];
+  monthlyRecurring?: InputMaybe<Scalars['Boolean']['input']>;
+  spendingLimit?: InputMaybe<Scalars['Int']['input']>;
   title?: InputMaybe<Scalars['String']['input']>;
 };
 
@@ -380,8 +390,10 @@ export type MutationUpdateExpenseTransactionArgs = {
 };
 
 export type MutationUpdateSavingDepotArgs = {
+  currency?: InputMaybe<Scalars['String']['input']>;
   id: Scalars['String']['input'];
   name?: InputMaybe<Scalars['String']['input']>;
+  savinggoal?: InputMaybe<Scalars['Int']['input']>;
   short?: InputMaybe<Scalars['String']['input']>;
 };
 
@@ -472,6 +484,8 @@ export type SavingDepot = {
   createdAt: Scalars['DateTime']['output'];
   id: Scalars['ID']['output'];
   name: Scalars['String']['output'];
+  currency?: Maybe<Scalars['String']['output']>;
+  savinggoal?: Maybe<Scalars['Int']['output']>;
   short: Scalars['String']['output'];
   sum: Scalars['Float']['output'];
   transactions?: Maybe<Array<SavingTransaction>>;

@@ -6,6 +6,7 @@ import {
   StyleSheet,
   Modal,
   TouchableOpacity,
+  Switch,
 } from 'react-native';
 import { useMutation } from '@apollo/client';
 import { useNavigation } from '@react-navigation/native';
@@ -17,6 +18,7 @@ import Dropdown from '../../atoms/Dropdown';
 import Calendar from '../../atoms/Calendar';
 import { CREATEEXPANSETRANSACTION } from '../../../queries/mutations/Expenses/CreateExpenseTransaction';
 import { useCategoriesStore } from '../../../store/categories';
+import { preferences } from '../../../services/preferences';
 
 export default function CreateExpenseTransactionSheet({
   open,
@@ -39,6 +41,7 @@ export default function CreateExpenseTransactionSheet({
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(
     null,
   );
+  const [autoCategorize, setAutoCategorize] = useState(false);
   // Date state (defaults to today)
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
@@ -55,6 +58,16 @@ export default function CreateExpenseTransactionSheet({
       fetchCategories();
     }
   }, [open, fetchCategories]);
+
+  // Load persisted autocategorize default when opening
+  useEffect(() => {
+    if (open) {
+      preferences
+        .getTxAutoCategorizeDefault()
+        .then(v => setAutoCategorize(!!v))
+        .catch(() => {});
+    }
+  }, [open]);
 
   // Reset form when sheet closes
   useEffect(() => {
@@ -118,12 +131,15 @@ export default function CreateExpenseTransactionSheet({
           describtion: createdDesc,
           categoryId: selectedCategoryId || null,
           date: Math.floor(selectedDate.getTime()),
+          autocategorize: autoCategorize,
         },
       });
       // Close immediately after positive response to prevent repeated taps
       onClose();
       // Fire and forget any follow-up logic (e.g., refetch, toast)
       void onCreate(createdAmount, createdDesc, createdCategoryId);
+      // Persist preference for next time
+      void preferences.setTxAutoCategorizeDefault(autoCategorize);
       // Do not manually reset; the sheet's close effect resets fields
     } catch (error) {
       console.error('Error creating transaction:', error);
@@ -177,6 +193,17 @@ export default function CreateExpenseTransactionSheet({
           loading={loading}
           disabled={loading}
         />
+
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 }}>
+          <Text style={commonFormStyles.modalLabel}>Autocategorize</Text>
+          <Switch
+            value={autoCategorize}
+            onValueChange={async (v) => {
+              setAutoCategorize(v);
+              try { await preferences.setTxAutoCategorizeDefault(v); } catch {}
+            }}
+          />
+        </View>
 
         {/* Category preview removed per request — dropdown selection is sufficient */}
 

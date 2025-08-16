@@ -28,6 +28,8 @@ export const GET_SAVING_DEPOTS_QUERY = gql`
       id
       name
       short
+      currency
+      savinggoal
       sum
       transactions {
         id
@@ -46,6 +48,8 @@ export const GET_EXPENSES_QUERY = gql`
       title
       currency
       archived
+      monthlyRecurring
+      spendingLimit
       sum
       transactions {
         id
@@ -73,12 +77,14 @@ export const CREATE_EXPENSE_TRANSACTION = gql`
     $amount: Float!
     $describtion: String!
     $categoryId: String
+    $autocategorize: Boolean
   ) {
     createExpenseTransaction(
       expenseId: $expenseId
       amount: $amount
       describtion: $describtion
       categoryId: $categoryId
+      autocategorize: $autocategorize
     ) {
       id
       amount
@@ -112,11 +118,23 @@ export const CREATE_SAVING_TRANSACTION = gql`
 `;
 
 export const CREATE_SAVING_DEPOT = gql`
-  mutation CreateSavingDepot($name: String!, $short: String!) {
-    createSavingDepot(name: $name, short: $short) {
+  mutation CreateSavingDepot(
+    $name: String!
+    $short: String!
+    $currency: String
+    $savinggoal: Int
+  ) {
+    createSavingDepot(
+      name: $name
+      short: $short
+      currency: $currency
+      savinggoal: $savinggoal
+    ) {
       id
       name
       short
+      currency
+      savinggoal
       sum
     }
   }

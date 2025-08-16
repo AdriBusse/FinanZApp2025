@@ -4,6 +4,8 @@ export interface IGetDepot {
     id: string;
     sum: number;
     short: string;
+    currency?: string | null;
+    savinggoal?: number | null;
     transactions: Array<Transactions>;
   };
 }

@@ -15,6 +15,8 @@ interface Depot {
   id: string;
   name: string;
   short: string;
+  currency?: string | null;
+  savinggoal?: number | null;
 }
 
 export default function EditSavingDepotSheet({
@@ -30,6 +32,8 @@ export default function EditSavingDepotSheet({
 }) {
   const [name, setName] = useState('');
   const [short, setShort] = useState('');
+  const [currency, setCurrency] = useState('');
+  const [savingGoal, setSavingGoal] = useState('');
 
   const [updateDepot, { loading: updating }] = useMutation(UPDATESAVINGDEPOT);
   
@@ -38,6 +42,12 @@ export default function EditSavingDepotSheet({
     if (open && depot) {
       setName(depot.name || '');
       setShort(depot.short || '');
+      setCurrency(depot.currency || '');
+      setSavingGoal(
+        typeof depot.savinggoal === 'number' && !Number.isNaN(depot.savinggoal)
+          ? String(depot.savinggoal)
+          : ''
+      );
     }
   }, [open, depot]);
 
@@ -52,6 +62,11 @@ export default function EditSavingDepotSheet({
           id: depot.id,
           name: name.trim(),
           short: short.trim(),
+          currency: currency.trim() || null,
+          savinggoal:
+            savingGoal.trim().length > 0 && !Number.isNaN(Number(savingGoal))
+              ? parseInt(savingGoal, 10)
+              : null,
         },
       });
       
@@ -61,6 +76,8 @@ export default function EditSavingDepotSheet({
       // Reset form
       setName('');
       setShort('');
+      setCurrency('');
+      setSavingGoal('');
       
       onClose();
     } catch (error) {
@@ -101,6 +118,22 @@ export default function EditSavingDepotSheet({
               handleSubmit();
             }
           }}
+        />
+
+        <Text style={commonFormStyles.modalLabel}>Currency</Text>
+        <Input
+          value={currency}
+          onChangeText={setCurrency}
+          placeholder="e.g. EUR"
+          maxLength={6}
+        />
+
+        <Text style={commonFormStyles.modalLabel}>Saving Goal</Text>
+        <Input
+          value={savingGoal}
+          onChangeText={setSavingGoal}
+          placeholder="e.g. 5000"
+          keyboardType="numeric"
         />
       </View>
     </FormBottomSheet>

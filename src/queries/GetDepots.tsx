@@ -5,6 +5,9 @@ export const GETDEPOTS = gql`
     getSavingDepots {
       name
       id
+      short
+      currency
+      savinggoal
       sum
     }
   }

@@ -6,6 +6,8 @@ import {
   View,
   Pressable,
 } from 'react-native';
+import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Platform } from 'react-native';
 import { ApolloProvider } from '@apollo/client';
 import { apolloClient } from './src/apollo/client';
 import Dashboard from './src/screens/Dashboard';
@@ -16,11 +18,13 @@ import SavingTransactions from './src/screens/SavingTransactions';
 import Expenses from './src/screens/Expenses';
 import ExpenseTransactions from './src/screens/ExpenseTransactions';
 import ExpenseStats from './src/screens/ExpenseStats';
+import ExpenseTemplates from './src/screens/ExpenseTemplates';
 import CreateCategory from './src/screens/CreateCategory';
 import Categories from './src/screens/Categories';
 import Profile from './src/screens/Profile';
 import Report from './src/screens/Report';
 import { useAuthStore } from './src/store/auth';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import {
   NavigationContainer,
   DefaultTheme,
@@ -69,11 +73,13 @@ function ExpensesStackScreen() {
       <ExpensesStack.Screen name="Categories" component={Categories} options={{ title: 'Categories' }} />
       <ExpensesStack.Screen name="CreateCategory" component={CreateCategory} options={{ title: 'Create Category' }} />
       <ExpensesStack.Screen name="ExpenseStats" component={ExpenseStats} options={{ title: 'Statistics' }} />
+      <ExpensesStack.Screen name="ExpenseTemplates" component={ExpenseTemplates} options={{ title: 'Templates' }} />
     </ExpensesStack.Navigator>
   );
 }
 
 function AppTabs() {
+  const insets = useSafeAreaInsets();
   // Custom center tab button for Dashboard (bigger, circular active indicator)
   const CenterTabBarButton = (props: BottomTabBarButtonProps) => {
     const {
@@ -153,9 +159,9 @@ function AppTabs() {
         tabBarShowLabel: true,
         tabBarActiveTintColor: '#2e7d32',
         tabBarStyle: {
-          height: 64,
+          height: 64 + (insets.bottom || 0),
           paddingTop: 6,
-          paddingBottom: 8,
+          paddingBottom: Math.max(8, insets.bottom || 0),
         },
       })}
     >
@@ -200,16 +206,20 @@ function AppTabs() {
 
 function AppInner() {
   const isDarkMode = useColorScheme() === 'dark';
-  const { token, initFromStorage, isInitializing } = useAuthStore();
+  const { token, initFromStorage, isInitializing, user } = useAuthStore();
+  const insets = useSafeAreaInsets();
 
   React.useEffect(() => {
     initFromStorage();
   }, [initFromStorage]);
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { paddingTop: Platform.OS === 'android' ? insets.top : 0 }]}>
       <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
-      <NavigationContainer theme={isDarkMode ? DarkTheme : DefaultTheme}>
+      <NavigationContainer
+        key={token ? `auth:${user?.id ?? 'unknown'}` : 'auth:guest'}
+        theme={isDarkMode ? DarkTheme : DefaultTheme}
+      >
         {isInitializing ? (
           <View style={{ flex: 1 }} />
         ) : token ? (
@@ -235,9 +245,15 @@ function AppInner() {
 
 function App() {
   return (
+    <GestureHandlerRootView>
     <ApolloProvider client={apolloClient}>
-      <AppInner />
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <SafeAreaProvider>
+          <AppInner />
+        </SafeAreaProvider>
+      </GestureHandlerRootView>
     </ApolloProvider>
+    </GestureHandlerRootView>
   );
 }
 

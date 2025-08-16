@@ -16,6 +16,7 @@ import EditSavingTransactionSheet from '../components/organisms/savings/EditSavi
 import EditSavingDepotSheet from '../components/organisms/savings/EditSavingDepotSheet';
 import ScreenWrapper from '../components/layout/ScreenWrapper';
 import RoundedButton from '../components/atoms/RoundedButton';
+import HorizontalBar from '../components/atoms/HorizontalBar';
 
 function formatDate(dateStr?: string) {
   if (!dateStr) return '';
@@ -96,12 +97,31 @@ export default function SavingTransactions() {
         })}
         :
       </Text>
-      <Text style={[
-        styles.total,
-        { color: total >= 0 ? '#16a34a' : '#ef4444' }
-      ]}>
-        {total.toLocaleString()} €
+      <Text
+        style={[
+          styles.total,
+          { color: total >= 0 ? '#16a34a' : '#ef4444' },
+        ]}
+      >
+        {`${total.toLocaleString()}${depot?.currency ? ` ${depot.currency}` : ''}`}
       </Text>
+
+      {/* Saving goal progress bar */}
+      {typeof depot?.savinggoal === 'number' && (depot?.savinggoal ?? 0) > 0 ? (
+        <>
+          <Text style={styles.diagCaption}>Goal:</Text>
+          <HorizontalBar
+            value={total}
+            max={depot!.savinggoal as number}
+            height={12}
+            fillColor="#60a5fa"
+            trackColor="#1f2937"
+            labelColor="#cbd5e1"
+            labelText={`${Number(total ?? 0).toLocaleString()}${depot?.currency ? ` ${depot.currency}` : ''} / ${Number(depot!.savinggoal as number).toLocaleString()}${depot?.currency ? ` ${depot.currency}` : ''}`}
+            style={{ marginTop: 4 }}
+          />
+        </>
+      ) : null}
 
       <FlatList
         contentContainerStyle={{ paddingBottom: 160 }}
@@ -131,6 +151,7 @@ export default function SavingTransactions() {
                 title={t.describtion || 'Transaction'}
                 subtitle={formatDate(t.createdAt)}
                 amount={t.amount}
+                currency={depot?.currency || undefined}
                 onPress={() => {
                   setSelectedTransaction(t);
                   setEditOpen(true);
@@ -247,6 +268,13 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     marginBottom: 6,
+  },
+  diagCaption: {
+    color: '#94a3b8',
+    fontSize: 12,
+    fontWeight: '600',
+    marginTop: 6,
+    marginBottom: 2,
   },
   row: {
     flexDirection: 'row',

@@ -77,7 +77,7 @@ export default function SavingsList() {
                     { color: (item.sum ?? 0) >= 0 ? '#16a34a' : '#ef4444' },
                   ]}
                 >
-                  Total: {(item.sum ?? 0).toLocaleString()} €
+                  {`Total: ${(item.sum ?? 0).toLocaleString()}${item.currency ? ` ${item.currency}` : ''}`}
                 </Text>
               </View>
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -147,6 +147,8 @@ function CreateDepotModal({
   const { createSavingDepot } = useFinanceStore();
   const [name, setName] = React.useState('');
   const [short, setShort] = React.useState('');
+  const [currency, setCurrency] = React.useState('');
+  const [savingGoal, setSavingGoal] = React.useState('');
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const isValid = name.trim().length > 0 && short.trim().length > 0;
 
@@ -155,6 +157,8 @@ function CreateDepotModal({
     if (!visible) {
       setName('');
       setShort('');
+      setCurrency('');
+      setSavingGoal('');
       setIsSubmitting(false);
     }
   }, [visible]);
@@ -170,12 +174,21 @@ function CreateDepotModal({
         if (!isValid) return;
         try {
           setIsSubmitting(true);
-          await createSavingDepot(name.trim(), short.trim());
+          await createSavingDepot(
+            name.trim(),
+            short.trim(),
+            currency.trim() || null,
+            savingGoal.trim().length > 0 && !Number.isNaN(Number(savingGoal))
+              ? parseInt(savingGoal, 10)
+              : null,
+          );
           onClose();
         } finally {
           setIsSubmitting(false);
           setName('');
           setShort('');
+          setCurrency('');
+          setSavingGoal('');
         }
       }}
     >
@@ -187,6 +200,20 @@ function CreateDepotModal({
         onChangeText={setShort}
         placeholder="e.g. VAC"
         maxLength={6}
+      />
+      <Text style={styles.modalLabel}>Currency</Text>
+      <Input
+        value={currency}
+        onChangeText={setCurrency}
+        placeholder="e.g. EUR"
+        maxLength={6}
+      />
+      <Text style={styles.modalLabel}>Saving Goal</Text>
+      <Input
+        value={savingGoal}
+        onChangeText={setSavingGoal}
+        placeholder="e.g. 5000"
+        keyboardType="numeric"
       />
     </FormBottomSheet>
   );

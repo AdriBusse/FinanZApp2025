@@ -34,7 +34,7 @@ export default function RoundedButton({
   style,
   textStyle,
 }: RoundedButtonProps) {
-  const isDisabled = disabled || loading;
+  const isDisabled = !!(disabled || loading);
   const { container, label } = getStyles(variant, size, !!fullWidth, isDisabled);
 
   return (
