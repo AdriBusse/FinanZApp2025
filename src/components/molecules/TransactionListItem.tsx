@@ -44,7 +44,7 @@ export default function TransactionListItem({
           style={{ marginLeft: 8, padding: 4 }}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
-          <Trash2 color="#ef4444" size={20} />
+          <Trash2 color="#ef4444" size={20} style={{ opacity: 0.8 }} />
         </TouchableOpacity>
       )}
     </TouchableOpacity>

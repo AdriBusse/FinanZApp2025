@@ -10,16 +10,18 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useMutation } from '@apollo/client';
-import { Trash2, Edit } from 'lucide-react-native';
+import { Trash2, Edit, Info } from 'lucide-react-native';
 import ScreenWrapper from '../components/layout/ScreenWrapper';
 import FABSpeedDial from '../components/FABSpeedDial';
 import { useCategoriesStore } from '../store/categories';
 import { DELETEEXPENSECATEGORY } from '../queries/mutations/Expenses/DeleteExpenseCategory';
+import InfoModal from '../components/atoms/InfoModal';
 
 export default function Categories() {
   const navigation = useNavigation<any>();
   const [isSpeedDialOpen, setIsSpeedDialOpen] = useState(false);
   const { categories, loading, error, fetchCategories, deleteCategory } = useCategoriesStore();
+  const [infoOpen, setInfoOpen] = useState(false);
 
   const [deleteCategoryMutation, { loading: deleting }] = useMutation(DELETEEXPENSECATEGORY);
 
@@ -91,7 +93,7 @@ export default function Categories() {
           onPress={() => handleDeleteCategory(item)}
           activeOpacity={0.7}
         >
-          <Trash2 color="#ef4444" size={20} />
+          <Trash2 color="#ef4444" size={20} style={{ opacity: 0.8 }} />
         </TouchableOpacity>
       </View>
     </View>
@@ -132,7 +134,9 @@ export default function Categories() {
             <Text style={styles.headerAction}>{'‹'}</Text>
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Categories</Text>
-          <View style={styles.headerSpacer} />
+          <TouchableOpacity onPress={() => setInfoOpen(true)} accessibilityLabel="About categories" activeOpacity={0.7}>
+            <Info color="#94a3b8" size={20} />
+          </TouchableOpacity>
         </View>
 
         {categories.length === 0 ? (
@@ -142,6 +146,9 @@ export default function Categories() {
             <Text style={styles.emptySubtitle}>
               Create your first category to organize your expenses
             </Text>
+            <TouchableOpacity onPress={() => setInfoOpen(true)} activeOpacity={0.7}>
+              <Text style={{ color: '#93c5fd', fontWeight: '700' }}>What is this?</Text>
+            </TouchableOpacity>
           </View>
         ) : (
           <FlatList
@@ -164,7 +171,13 @@ export default function Categories() {
             },
           ]}
         />
-      </View>
+      <InfoModal
+        visible={infoOpen}
+        title="Categories"
+        content="Categories help you organize expense transactions. Assign a category (e.g., Food, Transport) to analyze spending by type. You can edit name, icon and color to fit your workflow."
+        onClose={() => setInfoOpen(false)}
+      />
+    </View>
     </ScreenWrapper>
   );
 }

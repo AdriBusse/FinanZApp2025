@@ -17,6 +17,8 @@ import EditSavingDepotSheet from '../components/organisms/savings/EditSavingDepo
 import ScreenWrapper from '../components/layout/ScreenWrapper';
 import RoundedButton from '../components/atoms/RoundedButton';
 import HorizontalBar from '../components/atoms/HorizontalBar';
+import { Info } from 'lucide-react-native';
+import InfoModal from '../components/atoms/InfoModal';
 
 function formatDate(dateStr?: string) {
   if (!dateStr) return '';
@@ -58,6 +60,7 @@ export default function SavingTransactions() {
   const [editDepotOpen, setEditDepotOpen] = useState(false);
   const [selectedTransaction, setSelectedTransaction] = useState<any>(null);
   const [isSpeedDialOpen, setIsSpeedDialOpen] = useState(false);
+  const [infoOpen, setInfoOpen] = useState(false);
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const depotId: string = route.params?.depotId ?? '';
@@ -87,7 +90,9 @@ export default function SavingTransactions() {
           <Text style={styles.headerTitle}>{depot?.name ?? 'Saving'}</Text>
           <Text style={styles.editHint}>tap to edit</Text>
         </TouchableOpacity>
-        <View style={{ width: 24 }} />
+        <TouchableOpacity onPress={() => setInfoOpen(true)} accessibilityLabel="About saving detail" activeOpacity={0.7}>
+          <Info color="#94a3b8" size={20} />
+        </TouchableOpacity>
       </View>
 
       <Text style={styles.periodTitle}>
@@ -133,6 +138,9 @@ export default function SavingTransactions() {
             <Text style={styles.emptySub}>
               Add your first transaction to this saving depot.
             </Text>
+            <TouchableOpacity onPress={() => setInfoOpen(true)} activeOpacity={0.7}>
+              <Text style={{ color: '#93c5fd', fontWeight: '700' }}>What is this?</Text>
+            </TouchableOpacity>
             <RoundedButton
               title="Add Transaction"
               onPress={() => setCreateOpen(true)}
@@ -229,6 +237,13 @@ export default function SavingTransactions() {
         onUpdate={async () => {
           await loadAll();
         }}
+      />
+
+      <InfoModal
+        visible={infoOpen}
+        title="Saving detail"
+        content="This view lists all transactions for the selected saving depot. Track progress toward your goal and add deposits or withdrawals with the + button."
+        onClose={() => setInfoOpen(false)}
       />
     </View>
     </ScreenWrapper>

@@ -1,13 +1,14 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Modal, ScrollView, useWindowDimensions, Alert } from 'react-native';
-import DraggableFlatList from 'react-native-draggable-flatlist';
+import { View, Text, StyleSheet, TouchableOpacity, Modal, ScrollView, Alert, Animated } from 'react-native';
 import { useFinanceStore } from '../store/finance';
 import { useNavigation } from '@react-navigation/native';
 import RoundedButton from '../components/atoms/RoundedButton';
 import ScreenWrapper from '../components/layout/ScreenWrapper';
 import { preferences } from '../services/preferences';
 import { useAuthStore } from '../store/auth';
-import { Plus, Lock, Unlock, Trash2, ExternalLink } from 'lucide-react-native';
+import { Plus, Lock, Unlock, Trash2, ExternalLink, GripVertical, Info } from 'lucide-react-native';
+import DashboardGrid from '../components/dashboard/DashboardGrid';
+import InfoModal from '../components/atoms/InfoModal';
 
 type WidgetType =
   | 'saving_sum'
@@ -29,7 +30,6 @@ type Widget = {
 };
 
 export default function Dashboard() {
-  const { width: screenW } = useWindowDimensions();
   const { summary, depots, expenses, loadAll } = useFinanceStore();
   const navigation = useNavigation<any>();
   const userId = useAuthStore(s => s.user?.id);
@@ -40,13 +40,8 @@ export default function Dashboard() {
   const [addType, setAddType] = useState<WidgetType | null>(null);
   const [selecting, setSelecting] = useState<'depot' | 'expense' | null>(null);
   const [layoutReady, setLayoutReady] = useState(false);
-  const [isDragging, setIsDragging] = useState(false);
-  const [draggingIndex, setDraggingIndex] = useState<number | null>(null);
-
-  const editData = React.useMemo(() => {
-    const base = [...layout, ({ id: '__plus__' } as any)];
-    return isDragging ? [...base, ({ id: '__trash__' } as any)] : base;
-  }, [layout, isDragging]);
+  const saveTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [infoOpen, setInfoOpen] = useState(false);
 
   useEffect(() => {
     loadAll().catch(() => {});
@@ -77,11 +72,16 @@ export default function Dashboard() {
     };
   }, [userId]);
 
-  // Persist layout
+  // Persist layout (debounced)
   useEffect(() => {
-    // Avoid writing during user switch until the user's layout has been loaded
     if (!userId || !layoutReady) return;
-    void preferences.setDashboardLayout(layout);
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => {
+      void preferences.setDashboardLayout(layout);
+    }, 400);
+    return () => {
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    };
   }, [layout, userId, layoutReady]);
 
   function addWidget(w: Widget) {
@@ -208,6 +208,46 @@ export default function Dashboard() {
     );
   }
 
+  // Edit-mode tile with clear drag affordance and hold progress
+  const HOLD_MS = 220;
+  const EditDraggableTile: React.FC<{ item: Widget; isActive: boolean; drag: () => void; onPress: () => void }> = ({ item, isActive, drag, onPress }) => {
+    const widthAnim = React.useRef(new Animated.Value(0)).current;
+    const startHold = () => {
+      widthAnim.setValue(0);
+      Animated.timing(widthAnim, { toValue: 1, duration: HOLD_MS, useNativeDriver: false }).start();
+    };
+    const resetHold = () => {
+      widthAnim.stopAnimation();
+      widthAnim.setValue(0);
+    };
+    const progressStyle = {
+      width: widthAnim.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] }),
+    } as const;
+
+    return (
+      <TouchableOpacity
+        activeOpacity={0.9}
+        onPressIn={startHold}
+        onPressOut={resetHold}
+        onLongPress={() => { resetHold(); drag(); }}
+        delayLongPress={HOLD_MS}
+        disabled={!editMode}
+        onPress={onPress}
+        style={[styles.widgetTile, isActive ? styles.activeLift : null]}
+      >
+        {/* Hold-to-drag progress bar */}
+        <View style={styles.holdBarTrack}>
+          <Animated.View style={[styles.holdBarProgress, progressStyle]} />
+        </View>
+        {/* Drag handle indicator */}
+        <View style={styles.dragHandle}>
+          <GripVertical color="#94a3b8" size={14} />
+        </View>
+        {renderWidgetContent(item)}
+      </TouchableOpacity>
+    );
+  };
+
   // All dynamic content is rendered via widgets above.
 
   return (
@@ -215,143 +255,61 @@ export default function Dashboard() {
       <View style={styles.container}>
       <View style={styles.headerRow}>
         <Text style={styles.title}>Dashboard</Text>
+        <TouchableOpacity onPress={() => setInfoOpen(true)} accessibilityLabel="About dashboard" activeOpacity={0.7}>
+          <Info color="#94a3b8" size={20} />
+        </TouchableOpacity>
       </View>
 
       {/* Customizable dashboard grid */}
       <View style={styles.gridHeader}>
-        <TouchableOpacity disabled onPress={() => setEditMode(e => !e)} style={[styles.lockBtn, { opacity: 0.5 }]} accessibilityRole="button" accessibilityLabel="Toggle dashboard edit mode (disabled)">
+        <TouchableOpacity onPress={() => setEditMode(e => !e)} style={styles.lockBtn} accessibilityRole="button" accessibilityLabel="Toggle dashboard edit mode">
           {editMode ? <Unlock color="#cbd5e1" size={18} /> : <Lock color="#cbd5e1" size={18} />}
         </TouchableOpacity>
       </View>
-      {editMode && (
-        <>
-          <Text style={{ color: '#94a3b8', marginBottom: 8 }}>Long-press a tile to drag. Drop on the red box to delete.</Text>
-          <Text style={{ color: '#f59e0b', marginBottom: 8 }}>Debug: layout={layout.length} editData={editData.length}</Text>
-        </>
-      )}
 
       {editMode ? (
-        <>
-        <DraggableFlatList
-          key="edit"
-          data={editData}
-          keyExtractor={(w, i) => `${w.id}-${i}`}
-          numColumns={2}
-          style={{ flex: 1 }}
-          contentContainerStyle={{ paddingBottom: 12, flexGrow: 1 }}
-          removeClippedSubviews={false}
-          extraData={editData.length}
-          onDragBegin={(index) => { setIsDragging(true); setDraggingIndex(index); }}
-          onDragEnd={({ data, from, to }) => {
-            const trashIndex = data.findIndex(x => (x as any).id === '__trash__');
-            setIsDragging(false);
-            if (trashIndex >= 0 && to === trashIndex && draggingIndex != null) {
-              // Dropped on trash: remove original item
-              setLayout(prev => prev.filter((_, i) => i !== draggingIndex));
-              setDraggingIndex(null);
-              return;
-            }
-            // Reorder: ignore sentinels (trash & plus)
-            const clean = data.filter(x => (x as any).id !== '__trash__' && (x as any).id !== '__plus__') as Widget[];
-            setLayout(clean);
-            setDraggingIndex(null);
-          }}
-          activationDistance={8}
-          renderItem={({ item, getIndex, drag, isActive }) => {
-            // Debug log to confirm render on device
-            try { console.log('Dashboard edit render item', (item as any).id); } catch {}
-            const idx = getIndex?.() ?? 0;
-            const tileW = Math.floor((screenW - 16 * 2 - 12) / 2);
-            try { console.log('Dashboard edit tileW', tileW); } catch {}
-            if ((item as any).id === '__plus__') {
-              return (
-                <View style={{ width: tileW, marginRight: idx % 2 === 0 ? 12 : 0, minHeight: 120, backgroundColor: 'rgba(255,255,0,0.06)' }}>
-                  <TouchableOpacity style={[styles.widgetTile, styles.plusTile, styles.debugBorder]} onPress={() => { setAddOpen(true); setAddType(null); setSelecting(null); }}>
-                    <Plus color="#60a5fa" size={28} />
-                    <Text style={{ color: '#94a3b8', marginTop: 6 }}>Add</Text>
-                  </TouchableOpacity>
-                </View>
-              );
-            }
-            if ((item as any).id === '__trash__') {
-              return (
-                <View style={{ width: tileW, marginRight: idx % 2 === 0 ? 12 : 0, minHeight: 120, backgroundColor: 'rgba(255,255,0,0.06)' }}>
-                  <View style={[styles.widgetTile, styles.trashTile, styles.debugBorder]}> 
-                    <Trash2 color="#ef4444" size={24} />
-                    <Text style={{ color: '#ef4444', marginTop: 6 }}>Drop to delete</Text>
-                  </View>
-                </View>
-              );
-            }
-            return (
-              <View style={{ width: tileW, marginRight: idx % 2 === 0 ? 12 : 0, minHeight: 120, backgroundColor: 'rgba(255,255,0,0.06)' }}>
-                <TouchableOpacity
-                  activeOpacity={0.8}
-                  onLongPress={drag}
-                  delayLongPress={80}
-                  disabled={!editMode}
-                  onPress={() => onWidgetPress(item as Widget)}
-                  style={[
-                    styles.widgetTile,
-                    styles.debugBorder,
-                    { flex: 0 },
-                    isActive ? { borderWidth: 1, borderColor: '#60a5fa' } : null,
-                  ]}
-                >
-                  {renderWidgetContent(item as Widget)}
-                </TouchableOpacity>
-              </View>
-            );
-          }}
-        />
-        {/* DEBUG: Mirror non-draggable FlatList to verify visibility */}
-        <Text style={{ color: '#ef4444', marginTop: 12 }}>DEBUG: Mirror list (should show same tiles)</Text>
-        <FlatList
-          data={editData}
-          keyExtractor={(w, i) => `${w.id}-mirror-${i}`}
-          numColumns={1}
-          style={{ flex: 1 }}
-          contentContainerStyle={{ paddingBottom: 12 }}
-          renderItem={({ item }) => (
-            <View style={{ width: '100%', height: 80, backgroundColor: '#22c55e', borderRadius: 8, marginBottom: 8, alignItems: 'center', justifyContent: 'center' }}>
-              <Text style={{ color: '#0b1a0f', fontWeight: '700' }}>{(item as any).id}</Text>
-            </View>
+        <DashboardGrid
+          data={layout}
+          editMode
+          horizontalPadding={16}
+          keyExtractor={(w) => w.id}
+          onDragEnd={(data) => { setLayout(data as Widget[]); }}
+          renderTile={({ item, isActive, drag }) => (
+            <EditDraggableTile
+              item={item as Widget}
+              isActive={isActive}
+              drag={drag}
+              onPress={() => onWidgetPress(item as Widget)}
+            />
           )}
         />
-        </>
       ) : (
-        <FlatList
-          key="view"
-          data={[...layout, { id: '__plus__', type: 'quick_expense' } as any]}
-          keyExtractor={(w, i) => `${w.id}-${i}`}
-          numColumns={2}
-          columnWrapperStyle={{ justifyContent: 'space-between' }}
-          contentContainerStyle={{ paddingBottom: 12 }}
-          renderItem={({ item }) => {
+        <DashboardGrid
+          data={[...layout, { id: '__plus__' } as any]}
+          editMode={false}
+          horizontalPadding={16}
+          keyExtractor={(w) => `${(w as any).id}`}
+          renderTile={({ item }) => {
             if ((item as any).id === '__plus__') {
               return (
-                <View style={styles.gridItem}>
-                  <TouchableOpacity style={[styles.widgetTile, styles.plusTile]} onPress={() => { setAddOpen(true); setAddType(null); setSelecting(null); }}>
-                    <Plus color="#60a5fa" size={28} />
-                    <Text style={{ color: '#94a3b8', marginTop: 6 }}>Add</Text>
-                  </TouchableOpacity>
-                </View>
+                <TouchableOpacity style={[styles.widgetTile, styles.plusTile]} onPress={() => { setAddOpen(true); setAddType(null); setSelecting(null); }}>
+                  <Plus color="#60a5fa" size={28} />
+                  <Text style={{ color: '#94a3b8', marginTop: 6 }}>Add</Text>
+                </TouchableOpacity>
               );
             }
             return (
-              <View style={styles.gridItem}>
-                <TouchableOpacity activeOpacity={0.8} onPress={() => onWidgetPress(item as Widget)} style={styles.widgetTile}>
-                  <TouchableOpacity
-                    onPress={() => confirmDeleteWidget((item as Widget).id)}
-                    style={styles.deleteBtn}
-                    accessibilityRole="button"
-                    accessibilityLabel="Delete tile"
-                  >
-                    <Trash2 color="#cbd5e1" size={16} />
-                  </TouchableOpacity>
-                  {renderWidgetContent(item as Widget)}
+              <TouchableOpacity activeOpacity={0.8} onPress={() => onWidgetPress(item as Widget)} style={styles.widgetTile}>
+                <TouchableOpacity
+                  onPress={() => confirmDeleteWidget((item as Widget).id)}
+                  style={styles.deleteBtn}
+                  accessibilityRole="button"
+                  accessibilityLabel="Delete tile"
+                >
+                  <Trash2 color="#cbd5e1" size={16} />
                 </TouchableOpacity>
-              </View>
+                {renderWidgetContent(item as Widget)}
+              </TouchableOpacity>
             );
           }}
         />
@@ -409,6 +367,12 @@ export default function Dashboard() {
           </View>
         </View>
       </Modal>
+      <InfoModal
+        visible={infoOpen}
+        title="Dashboard"
+        content="Customize your dashboard with tiles: totals, quick links and more. Tap the lock icon to enable edit mode, then long-press a tile to drag and reorder. Use the + tile to add new widgets."
+        onClose={() => setInfoOpen(false)}
+      />
     </View>
     </ScreenWrapper>
   );
@@ -463,6 +427,36 @@ const styles = StyleSheet.create({
   widgetSub: { color: '#cbd5e1', fontSize: 12, marginTop: 4 },
   widgetActions: { flexDirection: 'row', alignItems: 'center', marginTop: 10 },
   iconBtn: { padding: 6 },
+  activeLift: {
+    transform: [{ scale: 1.03 }],
+    elevation: 6,
+    shadowColor: '#000',
+    shadowOpacity: 0.18,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+  },
+  holdBarTrack: {
+    position: 'absolute',
+    top: 8,
+    left: 12,
+    right: 12,
+    height: 3,
+    backgroundColor: '#0b1220',
+    borderRadius: 2,
+    overflow: 'hidden',
+  },
+  holdBarProgress: {
+    height: 3,
+    backgroundColor: '#60a5fa',
+  },
+  dragHandle: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    padding: 4,
+    borderRadius: 6,
+    backgroundColor: 'rgba(148,163,184,0.08)',
+  },
   deleteBtn: {
     position: 'absolute',
     top: 8,

@@ -15,12 +15,14 @@ import { useNavigation } from '@react-navigation/native';
 import { useSavingsUIStore } from '../store/savingsUI';
 import FABSpeedDial from '../components/FABSpeedDial';
 import FormBottomSheet from '../components/FormBottomSheet';
-import { Trash2 } from 'lucide-react-native';
+import { Trash2, Info } from 'lucide-react-native';
 import ScreenWrapper from '../components/layout/ScreenWrapper';
+import InfoModal from '../components/atoms/InfoModal';
 
 export default function SavingsList() {
   const { depots, isLoading, loadAll, deleteSavingDepot } = useFinanceStore();
   const navigation = useNavigation<any>();
+  const [infoOpen, setInfoOpen] = React.useState(false);
 
   useEffect(() => {
     if (!depots || depots.length === 0) void loadAll();
@@ -37,7 +39,12 @@ export default function SavingsList() {
   return (
     <ScreenWrapper scrollable={false}>
       <View style={styles.container}>
-      <Text style={styles.title}>Savings</Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
+        <Text style={styles.title}>Savings</Text>
+        <TouchableOpacity onPress={() => setInfoOpen(true)} accessibilityLabel="About savings" hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} style={{ marginLeft: 8 }}>
+          <Info color="#94a3b8" size={20} />
+        </TouchableOpacity>
+      </View>
       {isLoading && depots.length === 0 ? (
         <View style={styles.center}>
           <ActivityIndicator />
@@ -54,6 +61,9 @@ export default function SavingsList() {
               <Text style={styles.emptySub}>
                 Create your first depot to start tracking savings.
               </Text>
+              <TouchableOpacity onPress={() => setInfoOpen(true)} activeOpacity={0.7}>
+                <Text style={{ color: '#93c5fd', fontWeight: '700' }}>What is this?</Text>
+              </TouchableOpacity>
               <RoundedButton
                 title="Create Depot"
                 onPress={openCreateDepotModal}
@@ -105,7 +115,7 @@ export default function SavingsList() {
                   }}
                   style={{ marginLeft: 12, padding: 6 }}
                 >
-                  <Trash2 color="#ef4444" size={20} />
+                  <Trash2 color="#ef4444" size={20} style={{ opacity: 0.8 }} />
                 </TouchableOpacity>
               </View>
             </TouchableOpacity>
@@ -131,6 +141,12 @@ export default function SavingsList() {
       <CreateDepotModal
         visible={isCreateDepotModalOpen}
         onClose={closeCreateDepotModal}
+      />
+      <InfoModal
+        visible={infoOpen}
+        title="Saving depots"
+        content="Saving buckets help you track money set aside for goals (e.g., Vacation, Emergency fund). Add transactions when you save or withdraw. Optionally set a currency and a goal to visualize progress."
+        onClose={() => setInfoOpen(false)}
       />
     </View>
     </ScreenWrapper>

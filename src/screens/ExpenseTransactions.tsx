@@ -19,6 +19,8 @@ import { apolloClient } from '../apollo/client';
 import { gql } from '@apollo/client';
 import RoundedButton from '../components/atoms/RoundedButton';
 import HorizontalBar from '../components/atoms/HorizontalBar';
+import { Info } from 'lucide-react-native';
+import InfoModal from '../components/atoms/InfoModal';
 
 const DELETE_EXPENSE_TRANSACTION = gql`
   mutation DELETEEXPANSETRANSACTION($id: String!) {
@@ -65,6 +67,7 @@ export default function ExpenseTransactions() {
   const [selectedTransaction, setSelectedTransaction] = useState<any>(null);
   const [isSpeedDialOpen, setIsSpeedDialOpen] = useState(false);
   const [editExpenseOpen, setEditExpenseOpen] = useState(false);
+  const [infoOpen, setInfoOpen] = useState(false);
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const expenseId: string = route.params?.expenseId ?? '';
@@ -110,7 +113,9 @@ export default function ExpenseTransactions() {
               <Text style={styles.headerHint}>Tap to edit</Text>
             </View>
           </TouchableOpacity>
-          <View style={styles.headerSpacer} />
+          <TouchableOpacity onPress={() => setInfoOpen(true)} accessibilityLabel="About expense detail" activeOpacity={0.7}>
+            <Info color="#94a3b8" size={20} />
+          </TouchableOpacity>
         </View>
 
         <Text style={styles.total}>
@@ -144,6 +149,9 @@ export default function ExpenseTransactions() {
               <Text style={styles.emptySub}>
                 Add your first transaction to this expense.
               </Text>
+              <TouchableOpacity onPress={() => setInfoOpen(true)} activeOpacity={0.7}>
+                <Text style={{ color: '#93c5fd', fontWeight: '700' }}>What is this?</Text>
+              </TouchableOpacity>
               <RoundedButton
                 title="Add Transaction"
                 onPress={() => setCreateOpen(true)}
@@ -248,6 +256,13 @@ export default function ExpenseTransactions() {
           onUpdate={async () => {
             await loadAll();
           }}
+        />
+
+        <InfoModal
+          visible={infoOpen}
+          title="Expense detail"
+          content="This view shows all transactions for the selected expense. Track spending over time, and compare it to the optional monthly spending limit. Use the + button to add new transactions."
+          onClose={() => setInfoOpen(false)}
         />
       </View>
     </ScreenWrapper>

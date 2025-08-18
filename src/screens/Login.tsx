@@ -9,7 +9,7 @@ import { useNavigation } from '@react-navigation/native';
 import ScreenWrapper from '../components/layout/ScreenWrapper';
 
 const LoginSchema = Yup.object().shape({
-  username: Yup.string().required('Username is required'),
+  username: Yup.string().trim().required('Username is required'),
   password: Yup.string().min(4, 'Too short').required('Password is required'),
 });
 
@@ -40,9 +40,10 @@ export default function LoginScreen() {
         onSubmit={async (values, { setSubmitting }) => {
           setError(null);
           try {
-            await login(values.username, values.password);
+            await login(values.username.trim(), values.password);
           } catch (e: any) {
-            setError(e?.message || 'Login failed');
+            // Show generic error message without revealing whether username or password was incorrect
+            setError('Invalid username or password');
           } finally {
             setSubmitting(false);
           }

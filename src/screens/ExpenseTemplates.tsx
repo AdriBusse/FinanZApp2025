@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { ArrowLeft, Edit, Trash2, Plus } from 'lucide-react-native';
+import { ArrowLeft, Edit, Trash2, Plus, Info } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import ScreenWrapper from '../components/layout/ScreenWrapper';
 import FormBottomSheet, { formStyles as commonFormStyles } from '../components/FormBottomSheet';
@@ -9,6 +9,7 @@ import Input from '../components/atoms/Input';
 import Dropdown from '../components/atoms/Dropdown';
 import RoundedButton from '../components/atoms/RoundedButton';
 import FloatingActionButton from '../components/atoms/FloatingActionButton';
+import InfoModal from '../components/atoms/InfoModal';
 import { apolloClient } from '../apollo/client';
 import { gql } from '@apollo/client';
 import { useCategoriesStore } from '../store/categories';
@@ -55,6 +56,7 @@ export default function ExpenseTemplates() {
   const [loading, setLoading] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [editOpen, setEditOpen] = useState<TemplateItem | null>(null);
+  const [infoOpen, setInfoOpen] = useState(false);
 
   const load = async () => {
     try {
@@ -81,7 +83,9 @@ export default function ExpenseTemplates() {
             <ArrowLeft color="#cbd5e1" size={22} />
           </TouchableOpacity>
           <Text style={styles.title}>Expense Templates</Text>
-          <View style={{ width: 32 }} />
+          <TouchableOpacity onPress={() => setInfoOpen(true)} accessibilityLabel="About templates" activeOpacity={0.7}>
+            <Info color="#94a3b8" size={20} />
+          </TouchableOpacity>
         </View>
 
         <FlatList
@@ -93,6 +97,9 @@ export default function ExpenseTemplates() {
             <View style={styles.emptyWrap}>
               <Text style={styles.emptyTitle}>No templates yet</Text>
               <Text style={styles.emptySub}>Create templates to speed up recurring entries.</Text>
+              <TouchableOpacity onPress={() => setInfoOpen(true)} activeOpacity={0.7}>
+                <Text style={{ color: '#93c5fd', fontWeight: '700' }}>What is this?</Text>
+              </TouchableOpacity>
               <RoundedButton title="Create Template" onPress={() => setCreateOpen(true)} fullWidth style={{ marginTop: 12 }} />
             </View>
           )}
@@ -120,7 +127,7 @@ export default function ExpenseTemplates() {
                   }}
                   accessibilityLabel="Delete template"
                 >
-                  <Trash2 color="#ef4444" size={20} />
+                  <Trash2 color="#ef4444" size={20} style={{ opacity: 0.8 }} />
                 </TouchableOpacity>
               </View>
             </View>
@@ -159,7 +166,13 @@ export default function ExpenseTemplates() {
             await load();
           }}
         />
-      </View>
+      <InfoModal
+        visible={infoOpen}
+        title="Expense Templates"
+        content="Templates store frequently used transaction details (description, amount, optional category). Use them to add recurring expenses faster from any expense screen."
+        onClose={() => setInfoOpen(false)}
+      />
+    </View>
     </ScreenWrapper>
   );
 }
