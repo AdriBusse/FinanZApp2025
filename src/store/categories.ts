@@ -14,14 +14,14 @@ interface CategoriesState {
   loading: boolean;
   error: string | null;
   lastFetched: number | null;
-  
+
   // Actions
   fetchCategories: () => Promise<void>;
   addCategory: (category: Category) => void;
   updateCategory: (id: string, updates: Partial<Category>) => void;
   deleteCategory: (id: string) => void;
   clearCategories: () => void;
-  
+
   // Computed
   getCategoryById: (id: string) => Category | undefined;
   getCategoryByName: (name: string) => Category | undefined;
@@ -38,9 +38,13 @@ export const useCategoriesStore = create<CategoriesState>((set, get) => ({
   fetchCategories: async () => {
     const state = get();
     const now = Date.now();
-    
+
     // Check if we have recent data
-    if (state.lastFetched && (now - state.lastFetched) < CACHE_DURATION && state.categories.length > 0) {
+    if (
+      state.lastFetched &&
+      now - state.lastFetched < CACHE_DURATION &&
+      state.categories.length > 0
+    ) {
       return; // Use cached data
     }
 
@@ -62,7 +66,8 @@ export const useCategoriesStore = create<CategoriesState>((set, get) => ({
       console.error('Error fetching categories:', error);
       set({
         loading: false,
-        error: error instanceof Error ? error.message : 'Failed to fetch categories',
+        error:
+          error instanceof Error ? error.message : 'Failed to fetch categories',
       });
     }
   },
@@ -76,7 +81,7 @@ export const useCategoriesStore = create<CategoriesState>((set, get) => ({
   updateCategory: (id: string, updates: Partial<Category>) => {
     set(state => ({
       categories: state.categories.map(cat =>
-        cat.id === id ? { ...cat, ...updates } : cat
+        cat.id === id ? { ...cat, ...updates } : cat,
       ),
     }));
   },
@@ -99,6 +104,8 @@ export const useCategoriesStore = create<CategoriesState>((set, get) => ({
   },
 
   getCategoryByName: (name: string) => {
-    return get().categories.find(cat => cat.name.toLowerCase() === name.toLowerCase());
+    return get().categories.find(
+      cat => cat.name.toLowerCase() === name.toLowerCase(),
+    );
   },
 }));

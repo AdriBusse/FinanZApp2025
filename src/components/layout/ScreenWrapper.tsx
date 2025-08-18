@@ -1,5 +1,14 @@
 import React from 'react';
-import { Platform, SafeAreaView, ScrollView, StyleProp, StyleSheet, View, ViewStyle, KeyboardAvoidingView } from 'react-native';
+import {
+  Platform,
+  SafeAreaView,
+  ScrollView,
+  StyleProp,
+  StyleSheet,
+  View,
+  ViewStyle,
+  KeyboardAvoidingView,
+} from 'react-native';
 
 export type ScreenWrapperProps = {
   children: React.ReactNode;
@@ -19,7 +28,7 @@ export default function ScreenWrapper({
   const Container = scrollable ? ScrollView : View;
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor }]}> 
+    <SafeAreaView style={[styles.safeArea, { backgroundColor }]}>
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.select({ ios: 'padding', android: undefined })}
@@ -29,7 +38,10 @@ export default function ScreenWrapper({
           style={scrollable ? undefined : styles.flex}
           {...(scrollable
             ? {
-                contentContainerStyle: [styles.scrollContent, contentContainerStyle],
+                contentContainerStyle: [
+                  styles.scrollContent,
+                  contentContainerStyle,
+                ],
                 keyboardShouldPersistTaps: 'handled' as const,
               }
             : {})}

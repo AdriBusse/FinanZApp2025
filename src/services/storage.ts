@@ -79,7 +79,10 @@ export const storage = {
     await storage.setString(key, value ? '1' : '0');
   },
 
-  async getJSON<T>(key: string, defaultValue: T | null = null): Promise<T | null> {
+  async getJSON<T>(
+    key: string,
+    defaultValue: T | null = null,
+  ): Promise<T | null> {
     const s = await storage.getString(key);
     if (!s) return defaultValue;
     try {
@@ -139,7 +142,10 @@ export const userStorage = {
   async setBoolean(key: string, value: boolean): Promise<void> {
     await userStorage.setString(key, value ? '1' : '0');
   },
-  async getJSON<T>(key: string, defaultValue: T | null = null): Promise<T | null> {
+  async getJSON<T>(
+    key: string,
+    defaultValue: T | null = null,
+  ): Promise<T | null> {
     const s = await userStorage.getString(key);
     if (!s) return defaultValue;
     try {

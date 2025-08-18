@@ -1,9 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-} from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import { useMutation } from '@apollo/client';
 import FormBottomSheet, {
   formStyles as commonFormStyles,
@@ -36,7 +32,7 @@ export default function EditSavingDepotSheet({
   const [savingGoal, setSavingGoal] = useState('');
 
   const [updateDepot, { loading: updating }] = useMutation(UPDATESAVINGDEPOT);
-  
+
   // Initialize form with depot data when modal opens
   useEffect(() => {
     if (open && depot) {
@@ -46,7 +42,7 @@ export default function EditSavingDepotSheet({
       setSavingGoal(
         typeof depot.savinggoal === 'number' && !Number.isNaN(depot.savinggoal)
           ? String(depot.savinggoal)
-          : ''
+          : '',
       );
     }
   }, [open, depot]);
@@ -55,7 +51,7 @@ export default function EditSavingDepotSheet({
 
   const handleSubmit = async () => {
     if (!isValid || !depot) return;
-    
+
     try {
       await updateDepot({
         variables: {
@@ -69,16 +65,16 @@ export default function EditSavingDepotSheet({
               : null,
         },
       });
-      
+
       // Call the onUpdate callback for any additional logic
       await onUpdate();
-      
+
       // Reset form
       setName('');
       setShort('');
       setCurrency('');
       setSavingGoal('');
-      
+
       onClose();
     } catch (error) {
       console.error('Error updating depot:', error);
@@ -101,9 +97,13 @@ export default function EditSavingDepotSheet({
           onChangeText={setName}
           placeholder="e.g. Vacation"
           returnKeyType="next"
-          onFocus={(e) => e.target.setNativeProps({ selection: { start: 0, end: name.length } })}
+          onFocus={e =>
+            e.target.setNativeProps({
+              selection: { start: 0, end: name.length },
+            })
+          }
         />
-        
+
         <Text style={commonFormStyles.modalLabel}>Short</Text>
         <Input
           value={short}
@@ -111,7 +111,11 @@ export default function EditSavingDepotSheet({
           placeholder="e.g. VAC"
           maxLength={6}
           returnKeyType="done"
-          onFocus={(e) => e.target.setNativeProps({ selection: { start: 0, end: short.length } })}
+          onFocus={e =>
+            e.target.setNativeProps({
+              selection: { start: 0, end: short.length },
+            })
+          }
           onSubmitEditing={() => {
             // Focus next input or submit if valid
             if (isValid) {

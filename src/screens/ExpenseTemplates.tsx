@@ -1,10 +1,19 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  TouchableOpacity,
+  Alert,
+} from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { ArrowLeft, Edit, Trash2, Plus, Info } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import ScreenWrapper from '../components/layout/ScreenWrapper';
-import FormBottomSheet, { formStyles as commonFormStyles } from '../components/FormBottomSheet';
+import FormBottomSheet, {
+  formStyles as commonFormStyles,
+} from '../components/FormBottomSheet';
 import Input from '../components/atoms/Input';
 import Dropdown from '../components/atoms/Dropdown';
 import RoundedButton from '../components/atoms/RoundedButton';
@@ -16,21 +25,49 @@ import { useCategoriesStore } from '../store/categories';
 
 const GET_TEMPLATES = gql`
   query GET_EXPENSE_TEMPLATES {
-    getExpenseTransactionTemplates { id describtion amount category { id name icon color } }
+    getExpenseTransactionTemplates {
+      id
+      describtion
+      amount
+      category {
+        id
+        name
+        icon
+        color
+      }
+    }
   }
 `;
 
 const CREATE_TEMPLATE = gql`
-  mutation CREATE_EXPENSE_TEMPLATE($describtion: String!, $amount: Float!, $categoryId: String) {
-    createExpenseTransactionTemplate(describtion: $describtion, amount: $amount, categoryId: $categoryId) {
+  mutation CREATE_EXPENSE_TEMPLATE(
+    $describtion: String!
+    $amount: Float!
+    $categoryId: String
+  ) {
+    createExpenseTransactionTemplate(
+      describtion: $describtion
+      amount: $amount
+      categoryId: $categoryId
+    ) {
       id
     }
   }
 `;
 
 const UPDATE_TEMPLATE = gql`
-  mutation UPDATE_EXPENSE_TEMPLATE($id: String!, $describtion: String, $amount: Float, $categoryId: String) {
-    updateExpenseTransactionTemplate(id: $id, describtion: $describtion, amount: $amount, categoryId: $categoryId) {
+  mutation UPDATE_EXPENSE_TEMPLATE(
+    $id: String!
+    $describtion: String
+    $amount: Float
+    $categoryId: String
+  ) {
+    updateExpenseTransactionTemplate(
+      id: $id
+      describtion: $describtion
+      amount: $amount
+      categoryId: $categoryId
+    ) {
       id
     }
   }
@@ -46,7 +83,12 @@ interface TemplateItem {
   id: string;
   describtion: string;
   amount: number;
-  category?: { id: string; name: string; icon?: string | null; color?: string | null } | null;
+  category?: {
+    id: string;
+    name: string;
+    icon?: string | null;
+    color?: string | null;
+  } | null;
 }
 
 export default function ExpenseTemplates() {
@@ -61,14 +103,19 @@ export default function ExpenseTemplates() {
   const load = async () => {
     try {
       setLoading(true);
-      const { data } = await apolloClient.query({ query: GET_TEMPLATES, fetchPolicy: 'network-only' });
+      const { data } = await apolloClient.query({
+        query: GET_TEMPLATES,
+        fetchPolicy: 'network-only',
+      });
       setTemplates(data?.getExpenseTransactionTemplates ?? []);
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => { void load(); }, []);
+  useEffect(() => {
+    void load();
+  }, []);
 
   return (
     <ScreenWrapper scrollable={false}>
@@ -83,7 +130,11 @@ export default function ExpenseTemplates() {
             <ArrowLeft color="#cbd5e1" size={22} />
           </TouchableOpacity>
           <Text style={styles.title}>Expense Templates</Text>
-          <TouchableOpacity onPress={() => setInfoOpen(true)} accessibilityLabel="About templates" activeOpacity={0.7}>
+          <TouchableOpacity
+            onPress={() => setInfoOpen(true)}
+            accessibilityLabel="About templates"
+            activeOpacity={0.7}
+          >
             <Info color="#94a3b8" size={20} />
           </TouchableOpacity>
         </View>
@@ -96,18 +147,33 @@ export default function ExpenseTemplates() {
           ListEmptyComponent={() => (
             <View style={styles.emptyWrap}>
               <Text style={styles.emptyTitle}>No templates yet</Text>
-              <Text style={styles.emptySub}>Create templates to speed up recurring entries.</Text>
-              <TouchableOpacity onPress={() => setInfoOpen(true)} activeOpacity={0.7}>
-                <Text style={{ color: '#93c5fd', fontWeight: '700' }}>What is this?</Text>
+              <Text style={styles.emptySub}>
+                Create templates to speed up recurring entries.
+              </Text>
+              <TouchableOpacity
+                onPress={() => setInfoOpen(true)}
+                activeOpacity={0.7}
+              >
+                <Text style={{ color: '#93c5fd', fontWeight: '700' }}>
+                  What is this?
+                </Text>
               </TouchableOpacity>
-              <RoundedButton title="Create Template" onPress={() => setCreateOpen(true)} fullWidth style={{ marginTop: 12 }} />
+              <RoundedButton
+                title="Create Template"
+                onPress={() => setCreateOpen(true)}
+                fullWidth
+                style={{ marginTop: 12 }}
+              />
             </View>
           )}
           renderItem={({ item }) => (
             <View style={styles.itemRow}>
               <View style={{ flex: 1 }}>
                 <Text style={styles.itemTitle}>{item.describtion}</Text>
-                <Text style={styles.itemSub}>{`${Math.round(item.amount).toLocaleString()}`}{item.category ? ` • ${item.category.name}` : ''}</Text>
+                <Text style={styles.itemSub}>
+                  {`${Math.round(item.amount).toLocaleString()}`}
+                  {item.category ? ` • ${item.category.name}` : ''}
+                </Text>
               </View>
               <View style={{ flexDirection: 'row' }}>
                 <TouchableOpacity
@@ -122,7 +188,17 @@ export default function ExpenseTemplates() {
                   onPress={() => {
                     Alert.alert('Delete Template', 'Are you sure?', [
                       { text: 'Cancel', style: 'cancel' },
-                      { text: 'Delete', style: 'destructive', onPress: async () => { await apolloClient.mutate({ mutation: DELETE_TEMPLATE, variables: { id: item.id } }); await load(); } },
+                      {
+                        text: 'Delete',
+                        style: 'destructive',
+                        onPress: async () => {
+                          await apolloClient.mutate({
+                            mutation: DELETE_TEMPLATE,
+                            variables: { id: item.id },
+                          });
+                          await load();
+                        },
+                      },
                     ]);
                   }}
                   accessibilityLabel="Delete template"
@@ -137,9 +213,17 @@ export default function ExpenseTemplates() {
         {/* Floating action button for creating new templates */}
         <View
           pointerEvents="box-none"
-          style={{ position: 'absolute', right: 16, bottom: 16 + (insets.bottom || 0) }}
+          style={{
+            position: 'absolute',
+            right: 16,
+            bottom: 16 + (insets.bottom || 0),
+          }}
         >
-          <FloatingActionButton onPress={() => setCreateOpen(true)} color="#22c55e" accessibilityLabel="New template">
+          <FloatingActionButton
+            onPress={() => setCreateOpen(true)}
+            color="#22c55e"
+            accessibilityLabel="New template"
+          >
             <Plus color="#ffffff" size={24} />
           </FloatingActionButton>
         </View>
@@ -148,8 +232,11 @@ export default function ExpenseTemplates() {
           title="Create Template"
           open={createOpen}
           onClose={() => setCreateOpen(false)}
-          onSubmit={async (data) => {
-            await apolloClient.mutate({ mutation: CREATE_TEMPLATE, variables: data });
+          onSubmit={async data => {
+            await apolloClient.mutate({
+              mutation: CREATE_TEMPLATE,
+              variables: data,
+            });
             setCreateOpen(false);
             await load();
           }}
@@ -160,19 +247,22 @@ export default function ExpenseTemplates() {
           open={!!editOpen}
           initial={editOpen ?? undefined}
           onClose={() => setEditOpen(null)}
-          onSubmit={async (data) => {
-            await apolloClient.mutate({ mutation: UPDATE_TEMPLATE, variables: { id: editOpen?.id, ...data } });
+          onSubmit={async data => {
+            await apolloClient.mutate({
+              mutation: UPDATE_TEMPLATE,
+              variables: { id: editOpen?.id, ...data },
+            });
             setEditOpen(null);
             await load();
           }}
         />
-      <InfoModal
-        visible={infoOpen}
-        title="Expense Templates"
-        content="Templates store frequently used transaction details (description, amount, optional category). Use them to add recurring expenses faster from any expense screen."
-        onClose={() => setInfoOpen(false)}
-      />
-    </View>
+        <InfoModal
+          visible={infoOpen}
+          title="Expense Templates"
+          content="Templates store frequently used transaction details (description, amount, optional category). Use them to add recurring expenses faster from any expense screen."
+          onClose={() => setInfoOpen(false)}
+        />
+      </View>
     </ScreenWrapper>
   );
 }
@@ -186,14 +276,20 @@ function TemplateFormSheet({
 }: {
   open: boolean;
   onClose: () => void;
-  onSubmit: (vars: { describtion: string; amount: number; categoryId?: string | null }) => Promise<void>;
+  onSubmit: (vars: {
+    describtion: string;
+    amount: number;
+    categoryId?: string | null;
+  }) => Promise<void>;
   title: string;
   initial?: TemplateItem;
 }) {
   const { categories, fetchCategories } = useCategoriesStore();
   const [describtion, setDescribtion] = useState('');
   const [amount, setAmount] = useState('');
-  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(
+    null,
+  );
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -214,11 +310,19 @@ function TemplateFormSheet({
   const options = useMemo(() => {
     return [
       { id: '', label: 'No category' },
-      ...categories.map(c => ({ id: c.id, label: c.name, icon: c.icon || undefined, color: c.color || undefined })),
+      ...categories.map(c => ({
+        id: c.id,
+        label: c.name,
+        icon: c.icon || undefined,
+        color: c.color || undefined,
+      })),
     ];
   }, [categories]);
 
-  const isValid = describtion.trim().length > 0 && amount.trim().length > 0 && !Number.isNaN(Number(amount));
+  const isValid =
+    describtion.trim().length > 0 &&
+    amount.trim().length > 0 &&
+    !Number.isNaN(Number(amount));
 
   return (
     <FormBottomSheet
@@ -242,16 +346,25 @@ function TemplateFormSheet({
     >
       <View style={{ paddingBottom: 16 }}>
         <Text style={commonFormStyles.modalLabel}>Describtion</Text>
-        <Input value={describtion} onChangeText={setDescribtion} placeholder="e.g. Monthly rent" />
+        <Input
+          value={describtion}
+          onChangeText={setDescribtion}
+          placeholder="e.g. Monthly rent"
+        />
 
         <Text style={commonFormStyles.modalLabel}>Amount</Text>
-        <Input value={amount} onChangeText={setAmount} placeholder="e.g. 900" keyboardType="numeric" />
+        <Input
+          value={amount}
+          onChangeText={setAmount}
+          placeholder="e.g. 900"
+          keyboardType="numeric"
+        />
 
         <Dropdown
           label="Category"
           value={selectedCategoryId}
           options={options}
-          onSelect={(opt) => setSelectedCategoryId(opt.id || null)}
+          onSelect={opt => setSelectedCategoryId(opt.id || null)}
           placeholder="Select a category (optional)"
         />
       </View>
@@ -261,16 +374,52 @@ function TemplateFormSheet({
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 16, backgroundColor: '#0e0f14' },
-  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
-  backBtn: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(148,163,184,0.15)' },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  backBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(148,163,184,0.15)',
+  },
   title: { color: '#fff', fontSize: 20, fontWeight: '800' },
-  itemRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#1e212b', padding: 12, borderRadius: 12 },
+  itemRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#1e212b',
+    padding: 12,
+    borderRadius: 12,
+  },
   itemTitle: { color: '#f8fafc', fontSize: 16, fontWeight: '700' },
   itemSub: { color: '#94a3b8', marginTop: 2 },
-  iconBtn: { padding: 6, borderRadius: 8, backgroundColor: 'rgba(148,163,184,0.08)' },
-  itemBtn: { paddingVertical: 6, paddingHorizontal: 10, backgroundColor: 'rgba(37,99,235,0.15)', borderWidth: 1, borderColor: '#2563eb', borderRadius: 8, marginLeft: 8 },
+  iconBtn: {
+    padding: 6,
+    borderRadius: 8,
+    backgroundColor: 'rgba(148,163,184,0.08)',
+  },
+  itemBtn: {
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    backgroundColor: 'rgba(37,99,235,0.15)',
+    borderWidth: 1,
+    borderColor: '#2563eb',
+    borderRadius: 8,
+    marginLeft: 8,
+  },
   itemBtnText: { color: '#93c5fd', fontWeight: '700' },
   emptyWrap: { alignItems: 'center', justifyContent: 'center', marginTop: 48 },
   emptyTitle: { color: '#fff', fontSize: 18, fontWeight: '800' },
-  emptySub: { color: '#94a3b8', marginTop: 6, marginBottom: 12, textAlign: 'center' },
+  emptySub: {
+    color: '#94a3b8',
+    marginTop: 6,
+    marginBottom: 12,
+    textAlign: 'center',
+  },
 });

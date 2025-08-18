@@ -1,6 +1,8 @@
 import React, { memo } from 'react';
 import { View, FlatList, useWindowDimensions } from 'react-native';
-import DraggableFlatList, { RenderItemParams } from 'react-native-draggable-flatlist';
+import DraggableFlatList, {
+  RenderItemParams,
+} from 'react-native-draggable-flatlist';
 
 export type Identifiable = { id: string };
 
@@ -12,10 +14,17 @@ export type DashboardGridProps<T extends Identifiable> = {
   keyExtractor?: (item: T, index: number) => string;
   onDragBegin?: (index: number) => void;
   onDragEnd?: (data: T[]) => void;
-  renderTile: (args: { item: T; index: number; isActive: boolean; drag: () => void }) => React.ReactElement | null;
+  renderTile: (args: {
+    item: T;
+    index: number;
+    isActive: boolean;
+    drag: () => void;
+  }) => React.ReactElement | null;
 };
 
-function DashboardGridInner<T extends Identifiable>(props: DashboardGridProps<T>) {
+function DashboardGridInner<T extends Identifiable>(
+  props: DashboardGridProps<T>,
+) {
   const { width: screenW } = useWindowDimensions();
   const {
     data,
@@ -38,7 +47,10 @@ function DashboardGridInner<T extends Identifiable>(props: DashboardGridProps<T>
         data={data}
         keyExtractor={keyExtractor ?? defaultKey}
         numColumns={2}
-        contentContainerStyle={{ paddingHorizontal: horizontalPadding, paddingBottom: 12 }}
+        contentContainerStyle={{
+          paddingHorizontal: horizontalPadding,
+          paddingBottom: 12,
+        }}
         removeClippedSubviews={false}
         onDragBegin={onDragBegin}
         onDragEnd={({ data: d }) => onDragEnd?.(d as T[])}
@@ -54,14 +66,25 @@ function DashboardGridInner<T extends Identifiable>(props: DashboardGridProps<T>
               borderWidth: 2,
               borderStyle: 'dashed',
               borderColor: '#60a5fa',
-              backgroundColor: 'rgba(59,130,246,0.08)'
+              backgroundColor: 'rgba(59,130,246,0.08)',
             }}
           />
         )}
-        renderItem={({ item, getIndex, drag, isActive }: RenderItemParams<T>) => {
+        renderItem={({
+          item,
+          getIndex,
+          drag,
+          isActive,
+        }: RenderItemParams<T>) => {
           const idx = getIndex?.() ?? 0;
           return (
-            <View style={{ width: tileW, marginRight: idx % 2 === 0 ? gutter : 0, marginBottom: 12 }}>
+            <View
+              style={{
+                width: tileW,
+                marginRight: idx % 2 === 0 ? gutter : 0,
+                marginBottom: 12,
+              }}
+            >
               {renderTile({ item, index: idx, isActive, drag })}
             </View>
           );
@@ -75,7 +98,10 @@ function DashboardGridInner<T extends Identifiable>(props: DashboardGridProps<T>
       data={data}
       keyExtractor={keyExtractor ?? defaultKey}
       numColumns={2}
-      contentContainerStyle={{ paddingHorizontal: horizontalPadding, paddingBottom: 12 }}
+      contentContainerStyle={{
+        paddingHorizontal: horizontalPadding,
+        paddingBottom: 12,
+      }}
       columnWrapperStyle={{ justifyContent: 'space-between' }}
       renderItem={({ item, index }) => (
         <View style={{ width: '48%' }}>

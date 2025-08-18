@@ -49,9 +49,11 @@ export default function CreateExpenseTransactionSheet({
   const [day, setDay] = useState(now.getDate());
 
   const { categories, loading, fetchCategories } = useCategoriesStore();
-  const [createTransaction, { loading: creating }] = useMutation(CREATEEXPANSETRANSACTION);
+  const [createTransaction, { loading: creating }] = useMutation(
+    CREATEEXPANSETRANSACTION,
+  );
   const [calendarOpen, setCalendarOpen] = useState(false);
-  
+
   // Fetch categories when modal opens
   useEffect(() => {
     if (open) {
@@ -88,7 +90,7 @@ export default function CreateExpenseTransactionSheet({
     if (day > max) setDay(max);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [year, month]);
-  
+
   // Transform categories for dropdown
   const dropdownOptions = useMemo(() => {
     const categoryOptions = categories.map(cat => ({
@@ -97,7 +99,7 @@ export default function CreateExpenseTransactionSheet({
       icon: cat.icon || undefined,
       color: cat.color || undefined,
     }));
-    
+
     // Add "Create New Category" option if no categories exist
     if (categories.length === 0 && !loading) {
       categoryOptions.push({
@@ -107,7 +109,7 @@ export default function CreateExpenseTransactionSheet({
         color: '#2e7d32',
       });
     }
-    
+
     return categoryOptions;
   }, [categories, loading]);
 
@@ -116,7 +118,10 @@ export default function CreateExpenseTransactionSheet({
     describtion.trim().length > 0 &&
     !isNaN(Number(amount));
 
-  const selectedDate = useMemo(() => new Date(year, month, day, 12, 0, 0), [year, month, day]);
+  const selectedDate = useMemo(
+    () => new Date(year, month, day, 12, 0, 0),
+    [year, month, day],
+  );
 
   const handleSubmit = async () => {
     if (!isValid) return;
@@ -155,9 +160,7 @@ export default function CreateExpenseTransactionSheet({
       heightPercent={0.7}
       onSubmit={handleSubmit}
     >
-      <View 
-        style={styles.scrollContainer}
-      >
+      <View style={styles.scrollContainer}>
         <Text style={commonFormStyles.modalLabel}>Description</Text>
         <Input
           value={describtion}
@@ -165,7 +168,7 @@ export default function CreateExpenseTransactionSheet({
           placeholder="What is this?"
           returnKeyType="next"
         />
-        
+
         <Text style={commonFormStyles.modalLabel}>Amount</Text>
         <Input
           value={amount}
@@ -180,7 +183,7 @@ export default function CreateExpenseTransactionSheet({
           label="Category (Optional)"
           value={selectedCategoryId}
           options={dropdownOptions}
-          onSelect={(option) => {
+          onSelect={option => {
             if (option.id === 'create_new') {
               // Navigate to create category screen
               onClose();
@@ -194,13 +197,22 @@ export default function CreateExpenseTransactionSheet({
           disabled={loading}
         />
 
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 }}>
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            marginTop: 8,
+          }}
+        >
           <Text style={commonFormStyles.modalLabel}>Autocategorize</Text>
           <Switch
             value={autoCategorize}
-            onValueChange={async (v) => {
+            onValueChange={async v => {
               setAutoCategorize(v);
-              try { await preferences.setTxAutoCategorizeDefault(v); } catch {}
+              try {
+                await preferences.setTxAutoCategorizeDefault(v);
+              } catch {}
             }}
           />
         </View>
@@ -211,7 +223,9 @@ export default function CreateExpenseTransactionSheet({
         <Text style={commonFormStyles.modalLabel}>Date</Text>
         <View style={styles.pressWrapper}>
           <Input
-            value={`${String(selectedDate.getDate()).padStart(2,'0')}.${String(selectedDate.getMonth()+1).padStart(2,'0')}.${selectedDate.getFullYear()}`}
+            value={`${String(selectedDate.getDate()).padStart(2, '0')}.${String(
+              selectedDate.getMonth() + 1,
+            ).padStart(2, '0')}.${selectedDate.getFullYear()}`}
             editable={false}
             placeholder="Select a date"
           />
@@ -235,7 +249,7 @@ export default function CreateExpenseTransactionSheet({
             <View style={styles.modalContent}>
               <Calendar
                 value={selectedDate}
-                onChange={(d) => {
+                onChange={d => {
                   setYear(d.getFullYear());
                   setMonth(d.getMonth());
                   setDay(d.getDate());

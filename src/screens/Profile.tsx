@@ -1,5 +1,13 @@
 import React from 'react';
-import { View, Text, StyleSheet, Button, TextInput, TouchableOpacity, Alert } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  Button,
+  TextInput,
+  TouchableOpacity,
+  Alert,
+} from 'react-native';
 import { useAuthStore } from '../store/auth';
 import ScreenWrapper from '../components/layout/ScreenWrapper';
 import { useQuery, useMutation } from '@apollo/client';
@@ -26,11 +34,16 @@ export default function Profile() {
       return;
     }
     if (newPassword !== confirmNewPassword) {
-      Alert.alert('Passwords do not match', 'New password and confirmation must match.');
+      Alert.alert(
+        'Passwords do not match',
+        'New password and confirmation must match.',
+      );
       return;
     }
     try {
-      const res = await changePassword({ variables: { currentPassword, newPassword } });
+      const res = await changePassword({
+        variables: { currentPassword, newPassword },
+      });
       if (res?.data?.changePassword) {
         Alert.alert('Success', 'Password changed successfully.');
         setCurrentPassword('');
@@ -53,13 +66,24 @@ export default function Profile() {
         {/* User Info Box */}
         <View style={styles.box}>
           <Text style={styles.boxTitle}>Account</Text>
-          <Text style={styles.boxRow}>Username: <Text style={styles.boxRowValue}>{user?.username ?? 'Unknown'}</Text></Text>
-          <Text style={[styles.boxRow, { marginTop: 6 }]}>Email: <Text style={styles.boxRowValue}>{email}</Text></Text>
+          <Text style={styles.boxRow}>
+            Username:{' '}
+            <Text style={styles.boxRowValue}>
+              {user?.username ?? 'Unknown'}
+            </Text>
+          </Text>
+          <Text style={[styles.boxRow, { marginTop: 6 }]}>
+            Email: <Text style={styles.boxRowValue}>{email}</Text>
+          </Text>
         </View>
 
         {/* Change Password Box with Accordion */}
         <View style={styles.box}>
-          <TouchableOpacity onPress={() => setExpanded(e => !e)} style={styles.accordionHeader} accessibilityRole="button">
+          <TouchableOpacity
+            onPress={() => setExpanded(e => !e)}
+            style={styles.accordionHeader}
+            accessibilityRole="button"
+          >
             <Text style={styles.accordionTitle}>Change Password</Text>
             <Text style={styles.accordionChevron}>{expanded ? '▲' : '▼'}</Text>
           </TouchableOpacity>
@@ -93,7 +117,11 @@ export default function Profile() {
                 autoCapitalize="none"
               />
               <View style={{ height: 8 }} />
-              <Button title={loading ? 'Updating...' : 'Update Password'} onPress={onSubmit} disabled={loading} />
+              <Button
+                title={loading ? 'Updating...' : 'Update Password'}
+                onPress={onSubmit}
+                disabled={loading}
+              />
             </View>
           )}
         </View>
@@ -120,7 +148,12 @@ const styles = StyleSheet.create({
     padding: 14,
     marginBottom: 12,
   },
-  boxTitle: { color: '#cbd5e1', fontSize: 12, fontWeight: '700', marginBottom: 8 },
+  boxTitle: {
+    color: '#cbd5e1',
+    fontSize: 12,
+    fontWeight: '700',
+    marginBottom: 8,
+  },
   boxRow: { color: '#94a3b8' },
   boxRowValue: { color: '#f8fafc', fontWeight: '700' },
   accordionHeader: {

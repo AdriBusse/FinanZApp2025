@@ -44,7 +44,9 @@ export default function EditExpenseTransactionSheet({
   const navigation = useNavigation<any>();
   const [amount, setAmount] = useState('');
   const [describtion, setDescribtion] = useState('');
-  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(
+    null,
+  );
   // Date state
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
@@ -53,8 +55,10 @@ export default function EditExpenseTransactionSheet({
   const [calendarOpen, setCalendarOpen] = useState(false);
 
   const { categories, loading, fetchCategories } = useCategoriesStore();
-  const [updateTransaction, { loading: updating }] = useMutation(UPDATEEXPENSETRANSACTION);
-  
+  const [updateTransaction, { loading: updating }] = useMutation(
+    UPDATEEXPENSETRANSACTION,
+  );
+
   // Initialize form with transaction data when modal opens
   useEffect(() => {
     if (open && transaction) {
@@ -62,10 +66,14 @@ export default function EditExpenseTransactionSheet({
       setDescribtion(transaction.describtion || '');
       // Prefer nested category.id (present in ExpenseTransaction), fallback to categoryId if provided
       setSelectedCategoryId(
-        (transaction.category && transaction.category.id) || transaction.categoryId || null,
+        (transaction.category && transaction.category.id) ||
+          transaction.categoryId ||
+          null,
       );
       fetchCategories();
-      const base = transaction?.createdAt ? new Date(transaction.createdAt) : new Date();
+      const base = transaction?.createdAt
+        ? new Date(transaction.createdAt)
+        : new Date();
       setYear(base.getFullYear());
       setMonth(base.getMonth());
       setDay(base.getDate());
@@ -78,7 +86,7 @@ export default function EditExpenseTransactionSheet({
     if (day > max) setDay(max);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [year, month]);
-  
+
   // Transform categories for dropdown
   const dropdownOptions = useMemo(() => {
     const categoryOptions = categories.map(cat => ({
@@ -87,7 +95,7 @@ export default function EditExpenseTransactionSheet({
       icon: cat.icon || undefined,
       color: cat.color || undefined,
     }));
-    
+
     // Add "Create New Category" option if no categories exist
     if (categories.length === 0 && !loading) {
       categoryOptions.push({
@@ -97,7 +105,7 @@ export default function EditExpenseTransactionSheet({
         color: '#2e7d32',
       });
     }
-    
+
     return categoryOptions;
   }, [categories, loading]);
 
@@ -106,11 +114,14 @@ export default function EditExpenseTransactionSheet({
     describtion.trim().length > 0 &&
     !isNaN(Number(amount));
 
-  const selectedDate = useMemo(() => new Date(year, month, day, 12, 0, 0), [year, month, day]);
+  const selectedDate = useMemo(
+    () => new Date(year, month, day, 12, 0, 0),
+    [year, month, day],
+  );
 
   const handleSubmit = async () => {
     if (!isValid || !transaction) return;
-    
+
     try {
       await updateTransaction({
         variables: {
@@ -122,10 +133,10 @@ export default function EditExpenseTransactionSheet({
           date: selectedDate.toISOString(),
         },
       });
-      
+
       // Call the onUpdate callback for any additional logic
       await onUpdate();
-      
+
       // Reset form
       setAmount('');
       setDescribtion('');
@@ -134,7 +145,7 @@ export default function EditExpenseTransactionSheet({
       setYear(t.getFullYear());
       setMonth(t.getMonth());
       setDay(t.getDate());
-      
+
       onClose();
     } catch (error) {
       console.error('Error updating transaction:', error);
@@ -157,9 +168,13 @@ export default function EditExpenseTransactionSheet({
           onChangeText={setDescribtion}
           placeholder="What is this?"
           returnKeyType="next"
-          onFocus={(e) => e.target.setNativeProps({ selection: { start: 0, end: describtion.length } })}
+          onFocus={e =>
+            e.target.setNativeProps({
+              selection: { start: 0, end: describtion.length },
+            })
+          }
         />
-        
+
         <Text style={commonFormStyles.modalLabel}>Amount</Text>
         <Input
           value={amount}
@@ -167,7 +182,11 @@ export default function EditExpenseTransactionSheet({
           keyboardType="numeric"
           placeholder="e.g. 12.50"
           returnKeyType="done"
-          onFocus={(e) => e.target.setNativeProps({ selection: { start: 0, end: amount.length } })}
+          onFocus={e =>
+            e.target.setNativeProps({
+              selection: { start: 0, end: amount.length },
+            })
+          }
           onSubmitEditing={() => {
             // Focus next input or submit if valid
             if (isValid) {
@@ -180,7 +199,7 @@ export default function EditExpenseTransactionSheet({
           label="Category (Optional)"
           value={selectedCategoryId}
           options={dropdownOptions}
-          onSelect={(option) => {
+          onSelect={option => {
             if (option.id === 'create_new') {
               // Navigate to create category screen
               onClose();
@@ -200,7 +219,9 @@ export default function EditExpenseTransactionSheet({
         <Text style={commonFormStyles.modalLabel}>Date</Text>
         <View style={styles.pressWrapper}>
           <Input
-            value={`${String(selectedDate.getDate()).padStart(2,'0')}.${String(selectedDate.getMonth()+1).padStart(2,'0')}.${selectedDate.getFullYear()}`}
+            value={`${String(selectedDate.getDate()).padStart(2, '0')}.${String(
+              selectedDate.getMonth() + 1,
+            ).padStart(2, '0')}.${selectedDate.getFullYear()}`}
             editable={false}
             placeholder="Select a date"
           />
@@ -224,7 +245,7 @@ export default function EditExpenseTransactionSheet({
             <View style={styles.modalContent}>
               <Calendar
                 value={selectedDate}
-                onChange={(d) => {
+                onChange={d => {
                   setYear(d.getFullYear());
                   setMonth(d.getMonth());
                   setDay(d.getDate());

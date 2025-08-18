@@ -1,9 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-} from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import { useMutation } from '@apollo/client';
 import FormBottomSheet, {
   formStyles as commonFormStyles,
@@ -32,8 +28,10 @@ export default function EditSavingTransactionSheet({
   const [amount, setAmount] = useState('');
   const [describtion, setDescribtion] = useState('');
 
-  const [updateTransaction, { loading: updating }] = useMutation(UPDATESAVINGTRANSACTION);
-  
+  const [updateTransaction, { loading: updating }] = useMutation(
+    UPDATESAVINGTRANSACTION,
+  );
+
   // Initialize form with transaction data when modal opens
   useEffect(() => {
     if (open && transaction) {
@@ -49,7 +47,7 @@ export default function EditSavingTransactionSheet({
 
   const handleSubmit = async () => {
     if (!isValid || !transaction) return;
-    
+
     try {
       await updateTransaction({
         variables: {
@@ -58,14 +56,14 @@ export default function EditSavingTransactionSheet({
           describtion,
         },
       });
-      
+
       // Call the onUpdate callback for any additional logic
       await onUpdate();
-      
+
       // Reset form
       setAmount('');
       setDescribtion('');
-      
+
       onClose();
     } catch (error) {
       console.error('Error updating transaction:', error);
@@ -88,9 +86,13 @@ export default function EditSavingTransactionSheet({
           onChangeText={setDescribtion}
           placeholder="What is this?"
           returnKeyType="next"
-          onFocus={(e) => e.target.setNativeProps({ selection: { start: 0, end: describtion.length } })}
+          onFocus={e =>
+            e.target.setNativeProps({
+              selection: { start: 0, end: describtion.length },
+            })
+          }
         />
-        
+
         <Text style={commonFormStyles.modalLabel}>Amount</Text>
         <Input
           value={amount}
@@ -98,7 +100,11 @@ export default function EditSavingTransactionSheet({
           keyboardType="numeric"
           placeholder="e.g. 12.50"
           returnKeyType="done"
-          onFocus={(e) => e.target.setNativeProps({ selection: { start: 0, end: amount.length } })}
+          onFocus={e =>
+            e.target.setNativeProps({
+              selection: { start: 0, end: amount.length },
+            })
+          }
           onSubmitEditing={() => {
             // Focus next input or submit if valid
             if (isValid) {

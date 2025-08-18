@@ -64,7 +64,8 @@ export default function SavingTransactions() {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const depotId: string = route.params?.depotId ?? '';
-  const { depots, createSavingTx, deleteSavingTransaction, loadAll } = useFinanceStore();
+  const { depots, createSavingTx, deleteSavingTransaction, loadAll } =
+    useFinanceStore();
   const depot = depots.find(d => d.id === depotId);
 
   const grouped = useMemo(
@@ -79,173 +80,186 @@ export default function SavingTransactions() {
   return (
     <ScreenWrapper scrollable={false}>
       <View style={styles.container}>
-      <View style={styles.headerRow}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={styles.headerAction}>{'‹'}</Text>
-        </TouchableOpacity>
-        <TouchableOpacity 
-          onPress={() => setEditDepotOpen(true)}
-          style={styles.headerTitleContainer}
+        <View style={styles.headerRow}>
+          <TouchableOpacity onPress={() => navigation.goBack()}>
+            <Text style={styles.headerAction}>{'‹'}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => setEditDepotOpen(true)}
+            style={styles.headerTitleContainer}
+          >
+            <Text style={styles.headerTitle}>{depot?.name ?? 'Saving'}</Text>
+            <Text style={styles.editHint}>tap to edit</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => setInfoOpen(true)}
+            accessibilityLabel="About saving detail"
+            activeOpacity={0.7}
+          >
+            <Info color="#94a3b8" size={20} />
+          </TouchableOpacity>
+        </View>
+
+        <Text style={styles.periodTitle}>
+          {new Date().toLocaleString(undefined, {
+            month: 'long',
+            day: '2-digit',
+          })}
+          :
+        </Text>
+        <Text
+          style={[styles.total, { color: total >= 0 ? '#16a34a' : '#ef4444' }]}
         >
-          <Text style={styles.headerTitle}>{depot?.name ?? 'Saving'}</Text>
-          <Text style={styles.editHint}>tap to edit</Text>
-        </TouchableOpacity>
-        <TouchableOpacity onPress={() => setInfoOpen(true)} accessibilityLabel="About saving detail" activeOpacity={0.7}>
-          <Info color="#94a3b8" size={20} />
-        </TouchableOpacity>
-      </View>
+          {`${total.toLocaleString()}${
+            depot?.currency ? ` ${depot.currency}` : ''
+          }`}
+        </Text>
 
-      <Text style={styles.periodTitle}>
-        {new Date().toLocaleString(undefined, {
-          month: 'long',
-          day: '2-digit',
-        })}
-        :
-      </Text>
-      <Text
-        style={[
-          styles.total,
-          { color: total >= 0 ? '#16a34a' : '#ef4444' },
-        ]}
-      >
-        {`${total.toLocaleString()}${depot?.currency ? ` ${depot.currency}` : ''}`}
-      </Text>
-
-      {/* Saving goal progress bar */}
-      {typeof depot?.savinggoal === 'number' && (depot?.savinggoal ?? 0) > 0 ? (
-        <>
-          <Text style={styles.diagCaption}>Goal:</Text>
-          <HorizontalBar
-            value={total}
-            max={depot!.savinggoal as number}
-            height={12}
-            fillColor="#60a5fa"
-            trackColor="#1f2937"
-            labelColor="#cbd5e1"
-            labelText={`${Number(total ?? 0).toLocaleString()}${depot?.currency ? ` ${depot.currency}` : ''} / ${Number(depot!.savinggoal as number).toLocaleString()}${depot?.currency ? ` ${depot.currency}` : ''}`}
-            style={{ marginTop: 4 }}
-          />
-        </>
-      ) : null}
-
-      <FlatList
-        contentContainerStyle={{ paddingBottom: 160 }}
-        data={grouped}
-        keyExtractor={([day]) => day}
-        ListEmptyComponent={() => (
-          <View style={styles.emptyWrap}>
-            <Text style={styles.emptyTitle}>No transactions yet</Text>
-            <Text style={styles.emptySub}>
-              Add your first transaction to this saving depot.
-            </Text>
-            <TouchableOpacity onPress={() => setInfoOpen(true)} activeOpacity={0.7}>
-              <Text style={{ color: '#93c5fd', fontWeight: '700' }}>What is this?</Text>
-            </TouchableOpacity>
-            <RoundedButton
-              title="Add Transaction"
-              onPress={() => setCreateOpen(true)}
-              fullWidth
-              style={{ marginTop: 12 }}
+        {/* Saving goal progress bar */}
+        {typeof depot?.savinggoal === 'number' &&
+        (depot?.savinggoal ?? 0) > 0 ? (
+          <>
+            <Text style={styles.diagCaption}>Goal:</Text>
+            <HorizontalBar
+              value={total}
+              max={depot!.savinggoal as number}
+              height={12}
+              fillColor="#60a5fa"
+              trackColor="#1f2937"
+              labelColor="#cbd5e1"
+              labelText={`${Number(total ?? 0).toLocaleString()}${
+                depot?.currency ? ` ${depot.currency}` : ''
+              } / ${Number(depot!.savinggoal as number).toLocaleString()}${
+                depot?.currency ? ` ${depot.currency}` : ''
+              }`}
+              style={{ marginTop: 4 }}
             />
-          </View>
-        )}
-        renderItem={({ item: [day, list] }) => (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>{formatDate(day)}</Text>
-            {list.map(t => (
-              <TransactionListItem
-                key={t.id}
-                id={t.id}
-                title={t.describtion || 'Transaction'}
-                subtitle={formatDate(t.createdAt)}
-                amount={t.amount}
-                currency={depot?.currency || undefined}
-                onPress={() => {
-                  setSelectedTransaction(t);
-                  setEditOpen(true);
-                }}
-                onDelete={id => {
-                  Alert.alert(
-                    'Delete Transaction',
-                    'Are you sure you want to delete this transaction?',
-                    [
-                      { text: 'Cancel', style: 'cancel' },
-                      {
-                        text: 'Delete',
-                        style: 'destructive',
-                        onPress: async () => {
-                          try {
-                            await deleteSavingTransaction(id);
-                          } catch {}
-                        },
-                      },
-                    ],
-                  );
-                }}
+          </>
+        ) : null}
+
+        <FlatList
+          contentContainerStyle={{ paddingBottom: 160 }}
+          data={grouped}
+          keyExtractor={([day]) => day}
+          ListEmptyComponent={() => (
+            <View style={styles.emptyWrap}>
+              <Text style={styles.emptyTitle}>No transactions yet</Text>
+              <Text style={styles.emptySub}>
+                Add your first transaction to this saving depot.
+              </Text>
+              <TouchableOpacity
+                onPress={() => setInfoOpen(true)}
+                activeOpacity={0.7}
+              >
+                <Text style={{ color: '#93c5fd', fontWeight: '700' }}>
+                  What is this?
+                </Text>
+              </TouchableOpacity>
+              <RoundedButton
+                title="Add Transaction"
+                onPress={() => setCreateOpen(true)}
+                fullWidth
+                style={{ marginTop: 12 }}
               />
-            ))}
-          </View>
-        )}
-      />
+            </View>
+          )}
+          renderItem={({ item: [day, list] }) => (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>{formatDate(day)}</Text>
+              {list.map(t => (
+                <TransactionListItem
+                  key={t.id}
+                  id={t.id}
+                  title={t.describtion || 'Transaction'}
+                  subtitle={formatDate(t.createdAt)}
+                  amount={t.amount}
+                  currency={depot?.currency || undefined}
+                  onPress={() => {
+                    setSelectedTransaction(t);
+                    setEditOpen(true);
+                  }}
+                  onDelete={id => {
+                    Alert.alert(
+                      'Delete Transaction',
+                      'Are you sure you want to delete this transaction?',
+                      [
+                        { text: 'Cancel', style: 'cancel' },
+                        {
+                          text: 'Delete',
+                          style: 'destructive',
+                          onPress: async () => {
+                            try {
+                              await deleteSavingTransaction(id);
+                            } catch {}
+                          },
+                        },
+                      ],
+                    );
+                  }}
+                />
+              ))}
+            </View>
+          )}
+        />
 
-      {/* FAB (unified) */}
-      <FABSpeedDial
-        isOpen={isSpeedDialOpen}
-        onToggle={() => setIsSpeedDialOpen(v => !v)}
-        position="right"
-        actions={[
-          {
-            label: 'New Transaction',
-            onPress: () => {
-              setIsSpeedDialOpen(false);
-              setCreateOpen(true);
+        {/* FAB (unified) */}
+        <FABSpeedDial
+          isOpen={isSpeedDialOpen}
+          onToggle={() => setIsSpeedDialOpen(v => !v)}
+          position="right"
+          actions={[
+            {
+              label: 'New Transaction',
+              onPress: () => {
+                setIsSpeedDialOpen(false);
+                setCreateOpen(true);
+              },
             },
-          },
-        ]}
-      />
+          ]}
+        />
 
-      {/* Create Transaction Bottom Sheet */}
-      <CreateTransactionSheet
-        open={createOpen}
-        onClose={() => setCreateOpen(false)}
-        onCreate={async (amount, describtion) => {
-          await createSavingTx(depotId, amount, describtion);
-          setCreateOpen(false);
-        }}
-      />
+        {/* Create Transaction Bottom Sheet */}
+        <CreateTransactionSheet
+          open={createOpen}
+          onClose={() => setCreateOpen(false)}
+          onCreate={async (amount, describtion) => {
+            await createSavingTx(depotId, amount, describtion);
+            setCreateOpen(false);
+          }}
+        />
 
-      {/* Edit Transaction Bottom Sheet */}
-      <EditSavingTransactionSheet
-        open={editOpen}
-        onClose={() => {
-          setEditOpen(false);
-          setSelectedTransaction(null);
-        }}
-        transaction={selectedTransaction}
-        onUpdate={async () => {
-          await loadAll();
-        }}
-      />
+        {/* Edit Transaction Bottom Sheet */}
+        <EditSavingTransactionSheet
+          open={editOpen}
+          onClose={() => {
+            setEditOpen(false);
+            setSelectedTransaction(null);
+          }}
+          transaction={selectedTransaction}
+          onUpdate={async () => {
+            await loadAll();
+          }}
+        />
 
-      {/* Edit Depot Bottom Sheet */}
-      <EditSavingDepotSheet
-        open={editDepotOpen}
-        onClose={() => {
-          setEditDepotOpen(false);
-        }}
-        depot={depot || null}
-        onUpdate={async () => {
-          await loadAll();
-        }}
-      />
+        {/* Edit Depot Bottom Sheet */}
+        <EditSavingDepotSheet
+          open={editDepotOpen}
+          onClose={() => {
+            setEditDepotOpen(false);
+          }}
+          depot={depot || null}
+          onUpdate={async () => {
+            await loadAll();
+          }}
+        />
 
-      <InfoModal
-        visible={infoOpen}
-        title="Saving detail"
-        content="This view lists all transactions for the selected saving depot. Track progress toward your goal and add deposits or withdrawals with the + button."
-        onClose={() => setInfoOpen(false)}
-      />
-    </View>
+        <InfoModal
+          visible={infoOpen}
+          title="Saving detail"
+          content="This view lists all transactions for the selected saving depot. Track progress toward your goal and add deposits or withdrawals with the + button."
+          onClose={() => setInfoOpen(false)}
+        />
+      </View>
     </ScreenWrapper>
   );
 }
@@ -309,5 +323,10 @@ const styles = StyleSheet.create({
     marginTop: 48,
   },
   emptyTitle: { color: '#fff', fontSize: 18, fontWeight: '800' },
-  emptySub: { color: '#94a3b8', marginTop: 6, marginBottom: 12, textAlign: 'center' },
+  emptySub: {
+    color: '#94a3b8',
+    marginTop: 6,
+    marginBottom: 12,
+    textAlign: 'center',
+  },
 });

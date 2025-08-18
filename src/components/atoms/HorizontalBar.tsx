@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, ViewStyle } from 'react-native';
 
 export interface HorizontalBarProps {
   value: number; // current amount
-  max: number;   // goal / limit
+  max: number; // goal / limit
   height?: number;
   fillColor?: string; // default light blue
   trackColor?: string; // default slate/dark gray
@@ -29,12 +29,29 @@ export default function HorizontalBar({
   const ratio = Math.max(0, Math.min(1, (Number(value) || 0) / max));
   const percent = `${Math.round(ratio * 100)}%`;
   const label =
-    labelText ?? `${Math.round(Number(value) || 0).toLocaleString()} / ${Math.round(max).toLocaleString()}`;
+    labelText ??
+    `${Math.round(Number(value) || 0).toLocaleString()} / ${Math.round(
+      max,
+    ).toLocaleString()}`;
 
   return (
     <View style={[styles.container, { height }, style]}>
-      <View style={[styles.track, { backgroundColor: trackColor, borderRadius: height / 2 }]} />
-      <View style={[styles.fill, { width: percent as any, backgroundColor: fillColor, borderRadius: height / 2 }]} />
+      <View
+        style={[
+          styles.track,
+          { backgroundColor: trackColor, borderRadius: height / 2 },
+        ]}
+      />
+      <View
+        style={[
+          styles.fill,
+          {
+            width: percent as any,
+            backgroundColor: fillColor,
+            borderRadius: height / 2,
+          },
+        ]}
+      />
       {showLabel && (
         <View pointerEvents="none" style={styles.labelWrap}>
           <Text style={[styles.label, { color: labelColor }]} numberOfLines={1}>

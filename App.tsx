@@ -6,7 +6,10 @@ import {
   View,
   Pressable,
 } from 'react-native';
-import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
+import {
+  SafeAreaProvider,
+  useSafeAreaInsets,
+} from 'react-native-safe-area-context';
 import { Platform } from 'react-native';
 import { ApolloProvider } from '@apollo/client';
 import { apolloClient } from './src/apollo/client';
@@ -68,12 +71,36 @@ function SavingsStackScreen() {
 function ExpensesStackScreen() {
   return (
     <ExpensesStack.Navigator screenOptions={{ headerShown: false }}>
-      <ExpensesStack.Screen name="ExpensesList" component={Expenses} options={{ title: 'Expenses' }} />
-      <ExpensesStack.Screen name="ExpenseTransactions" component={ExpenseTransactions} options={{ title: 'Transactions' }} />
-      <ExpensesStack.Screen name="Categories" component={Categories} options={{ title: 'Categories' }} />
-      <ExpensesStack.Screen name="CreateCategory" component={CreateCategory} options={{ title: 'Create Category' }} />
-      <ExpensesStack.Screen name="ExpenseStats" component={ExpenseStats} options={{ title: 'Statistics' }} />
-      <ExpensesStack.Screen name="ExpenseTemplates" component={ExpenseTemplates} options={{ title: 'Templates' }} />
+      <ExpensesStack.Screen
+        name="ExpensesList"
+        component={Expenses}
+        options={{ title: 'Expenses' }}
+      />
+      <ExpensesStack.Screen
+        name="ExpenseTransactions"
+        component={ExpenseTransactions}
+        options={{ title: 'Transactions' }}
+      />
+      <ExpensesStack.Screen
+        name="Categories"
+        component={Categories}
+        options={{ title: 'Categories' }}
+      />
+      <ExpensesStack.Screen
+        name="CreateCategory"
+        component={CreateCategory}
+        options={{ title: 'Create Category' }}
+      />
+      <ExpensesStack.Screen
+        name="ExpenseStats"
+        component={ExpenseStats}
+        options={{ title: 'Statistics' }}
+      />
+      <ExpensesStack.Screen
+        name="ExpenseTemplates"
+        component={ExpenseTemplates}
+        options={{ title: 'Templates' }}
+      />
     </ExpensesStack.Navigator>
   );
 }
@@ -214,7 +241,12 @@ function AppInner() {
   }, [initFromStorage]);
 
   return (
-    <View style={[styles.container, { paddingTop: Platform.OS === 'android' ? insets.top : 0 }]}>
+    <View
+      style={[
+        styles.container,
+        { paddingTop: Platform.OS === 'android' ? insets.top : 0 },
+      ]}
+    >
       <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
       <NavigationContainer
         key={token ? `auth:${user?.id ?? 'unknown'}` : 'auth:guest'}
@@ -246,13 +278,13 @@ function AppInner() {
 function App() {
   return (
     <GestureHandlerRootView>
-    <ApolloProvider client={apolloClient}>
-      <GestureHandlerRootView style={{ flex: 1 }}>
-        <SafeAreaProvider>
-          <AppInner />
-        </SafeAreaProvider>
-      </GestureHandlerRootView>
-    </ApolloProvider>
+      <ApolloProvider client={apolloClient}>
+        <GestureHandlerRootView style={{ flex: 1 }}>
+          <SafeAreaProvider>
+            <AppInner />
+          </SafeAreaProvider>
+        </GestureHandlerRootView>
+      </ApolloProvider>
     </GestureHandlerRootView>
   );
 }

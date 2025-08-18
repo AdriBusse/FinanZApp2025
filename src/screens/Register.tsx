@@ -12,7 +12,9 @@ import { SIGNUP_MUTATION } from '../graphql/auth';
 const RegisterSchema = Yup.object().shape({
   username: Yup.string().trim().required('Username is required'),
   email: Yup.string().email('Invalid email').required('Email is required'),
-  password: Yup.string().min(6, 'Min 6 characters').required('Password is required'),
+  password: Yup.string()
+    .min(6, 'Min 6 characters')
+    .required('Password is required'),
 });
 
 export default function RegisterScreen() {
@@ -30,7 +32,11 @@ export default function RegisterScreen() {
           onSubmit={async (values, { setSubmitting }) => {
             setError(null);
             try {
-              await signup({ variables: { data: { ...values, username: values.username.trim() } } });
+              await signup({
+                variables: {
+                  data: { ...values, username: values.username.trim() },
+                },
+              });
               // On success, go to Login so user can sign in
               navigation.navigate('Login');
             } catch (e: any) {

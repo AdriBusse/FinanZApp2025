@@ -10,7 +10,13 @@ export interface InfoModalProps {
   markdown?: boolean;
 }
 
-export default function InfoModal({ visible, title, content, onClose, markdown = false }: InfoModalProps) {
+export default function InfoModal({
+  visible,
+  title,
+  content,
+  onClose,
+  markdown = false,
+}: InfoModalProps) {
   // Very small markdown-ish renderer: supports **bold**, bullet/numbered lists, and line breaks
   const renderInline = (text: string) => {
     // Split by **...** to toggle bold
@@ -26,7 +32,11 @@ export default function InfoModal({ visible, title, content, onClose, markdown =
               </Text>
             );
           }
-          return <Text key={idx} style={styles.content}>{part}</Text>;
+          return (
+            <Text key={idx} style={styles.content}>
+              {part}
+            </Text>
+          );
         })}
       </Text>
     );
@@ -63,7 +73,7 @@ export default function InfoModal({ visible, title, content, onClose, markdown =
                 <View style={{ flex: 1 }}>{renderInline(it)}</View>
               </View>
             ))}
-          </View>
+          </View>,
         );
         i = j;
         continue;
@@ -87,7 +97,7 @@ export default function InfoModal({ visible, title, content, onClose, markdown =
                 <View style={{ flex: 1 }}>{renderInline(it.t)}</View>
               </View>
             ))}
-          </View>
+          </View>,
         );
         i = j;
         continue;
@@ -95,14 +105,19 @@ export default function InfoModal({ visible, title, content, onClose, markdown =
       // Paragraph: accumulate until blank line or list start
       const para: string[] = [line];
       let j = i + 1;
-      while (j < lines.length && !/^\s*$/.test(lines[j]) && !/^\s*[\-*•]\s+/.test(lines[j]) && !/^\s*\d+\.\s+/.test(lines[j])) {
+      while (
+        j < lines.length &&
+        !/^\s*$/.test(lines[j]) &&
+        !/^\s*[\-*•]\s+/.test(lines[j]) &&
+        !/^\s*\d+\.\s+/.test(lines[j])
+      ) {
         para.push(lines[j]);
         j += 1;
       }
       elements.push(
         <Text key={`p-${i}`} style={[styles.content, styles.paragraph]}>
           {renderInline(para.join('\n'))}
-        </Text>
+        </Text>,
       );
       i = j;
     }
@@ -110,12 +125,21 @@ export default function InfoModal({ visible, title, content, onClose, markdown =
   };
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      onRequestClose={onClose}
+    >
       <View style={styles.overlay}>
         <View style={styles.card}>
           <Text style={styles.title}>{title}</Text>
           <ScrollView style={{ maxHeight: 280 }}>
-            {markdown ? renderMarkdown(content) : <Text style={styles.content}>{content}</Text>}
+            {markdown ? (
+              renderMarkdown(content)
+            ) : (
+              <Text style={styles.content}>{content}</Text>
+            )}
           </ScrollView>
           <View style={{ height: 12 }} />
           <RoundedButton title="Got it" onPress={onClose} fullWidth />

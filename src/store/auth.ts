@@ -58,7 +58,7 @@ export const useAuthStore = create<AuthState>(set => ({
 
       // If a secure token exists, this will prompt for Face ID/Touch ID on access
       const token = await getSecureTokenWithBiometric(
-        'Unlock to access your account'
+        'Unlock to access your account',
       );
 
       if (!token) {

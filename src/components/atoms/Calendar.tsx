@@ -79,9 +79,22 @@ export default function Calendar({ value, onChange }: CalendarProps) {
             return (
               <TouchableOpacity
                 key={di}
-                style={[styles.dayCell, selected && styles.daySelected, isToday && styles.todayBorder]}
+                style={[
+                  styles.dayCell,
+                  selected && styles.daySelected,
+                  isToday && styles.todayBorder,
+                ]}
                 onPress={() => {
-                  onChange(new Date(d.getFullYear(), d.getMonth(), d.getDate(), 12, 0, 0));
+                  onChange(
+                    new Date(
+                      d.getFullYear(),
+                      d.getMonth(),
+                      d.getDate(),
+                      12,
+                      0,
+                      0,
+                    ),
+                  );
                   setCursor(startOfMonth(d));
                 }}
               >
@@ -126,7 +139,11 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   weekday: { width: 36, textAlign: 'center', color: '#94a3b8', fontSize: 12 },
-  weekRow: { flexDirection: 'row', justifyContent: 'space-between', marginVertical: 2 },
+  weekRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginVertical: 2,
+  },
   dayCell: {
     width: 36,
     height: 36,

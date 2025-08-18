@@ -39,116 +39,140 @@ export default function SavingsList() {
   return (
     <ScreenWrapper scrollable={false}>
       <View style={styles.container}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
-        <Text style={styles.title}>Savings</Text>
-        <TouchableOpacity onPress={() => setInfoOpen(true)} accessibilityLabel="About savings" hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} style={{ marginLeft: 8 }}>
-          <Info color="#94a3b8" size={20} />
-        </TouchableOpacity>
-      </View>
-      {isLoading && depots.length === 0 ? (
-        <View style={styles.center}>
-          <ActivityIndicator />
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            marginBottom: 16,
+          }}
+        >
+          <Text style={styles.title}>Savings</Text>
+          <TouchableOpacity
+            onPress={() => setInfoOpen(true)}
+            accessibilityLabel="About savings"
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            style={{ marginLeft: 8 }}
+          >
+            <Info color="#94a3b8" size={20} />
+          </TouchableOpacity>
         </View>
-      ) : (
-        <FlatList
-          data={depots}
-          keyExtractor={d => d.id}
-          ItemSeparatorComponent={() => <View style={styles.sep} />}
-          contentContainerStyle={styles.listContent}
-          ListEmptyComponent={() => (
-            <View style={styles.emptyWrap}>
-              <Text style={styles.emptyTitle}>No saving depots yet</Text>
-              <Text style={styles.emptySub}>
-                Create your first depot to start tracking savings.
-              </Text>
-              <TouchableOpacity onPress={() => setInfoOpen(true)} activeOpacity={0.7}>
-                <Text style={{ color: '#93c5fd', fontWeight: '700' }}>What is this?</Text>
-              </TouchableOpacity>
-              <RoundedButton
-                title="Create Depot"
-                onPress={openCreateDepotModal}
-                fullWidth
-                style={{ marginTop: 12 }}
-              />
-            </View>
-          )}
-          renderItem={({ item }) => (
-            <TouchableOpacity
-              style={styles.depotItem}
-              onPress={() =>
-                navigation.navigate('SavingTransactions', { depotId: item.id })
-              }
-            >
-              <View>
-                <Text style={styles.depotName}>{item.name}</Text>
-                <Text
-                  style={[
-                    styles.depotSub,
-                    { color: (item.sum ?? 0) >= 0 ? '#16a34a' : '#ef4444' },
-                  ]}
-                >
-                  {`Total: ${(item.sum ?? 0).toLocaleString()}${item.currency ? ` ${item.currency}` : ''}`}
+        {isLoading && depots.length === 0 ? (
+          <View style={styles.center}>
+            <ActivityIndicator />
+          </View>
+        ) : (
+          <FlatList
+            data={depots}
+            keyExtractor={d => d.id}
+            ItemSeparatorComponent={() => <View style={styles.sep} />}
+            contentContainerStyle={styles.listContent}
+            ListEmptyComponent={() => (
+              <View style={styles.emptyWrap}>
+                <Text style={styles.emptyTitle}>No saving depots yet</Text>
+                <Text style={styles.emptySub}>
+                  Create your first depot to start tracking savings.
                 </Text>
-              </View>
-              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                 <TouchableOpacity
-                  accessibilityLabel="Delete depot"
-                  onPress={() => {
-                    Alert.alert(
-                      'Delete Depot',
-                      `Are you sure you want to delete "${item.name}"?`,
-                      [
-                        { text: 'Cancel', style: 'cancel' },
-                        {
-                          text: 'Delete',
-                          style: 'destructive',
-                          onPress: async () => {
-                            try {
-                              await deleteSavingDepot(item.id);
-                            } catch {
-                              /* no-op */
-                            }
-                          },
-                        },
-                      ],
-                    );
-                  }}
-                  style={{ marginLeft: 12, padding: 6 }}
+                  onPress={() => setInfoOpen(true)}
+                  activeOpacity={0.7}
                 >
-                  <Trash2 color="#ef4444" size={20} style={{ opacity: 0.8 }} />
+                  <Text style={{ color: '#93c5fd', fontWeight: '700' }}>
+                    What is this?
+                  </Text>
                 </TouchableOpacity>
+                <RoundedButton
+                  title="Create Depot"
+                  onPress={openCreateDepotModal}
+                  fullWidth
+                  style={{ marginTop: 12 }}
+                />
               </View>
-            </TouchableOpacity>
-          )}
+            )}
+            renderItem={({ item }) => (
+              <TouchableOpacity
+                style={styles.depotItem}
+                onPress={() =>
+                  navigation.navigate('SavingTransactions', {
+                    depotId: item.id,
+                  })
+                }
+              >
+                <View>
+                  <Text style={styles.depotName}>{item.name}</Text>
+                  <Text
+                    style={[
+                      styles.depotSub,
+                      { color: (item.sum ?? 0) >= 0 ? '#16a34a' : '#ef4444' },
+                    ]}
+                  >
+                    {`Total: ${(item.sum ?? 0).toLocaleString()}${
+                      item.currency ? ` ${item.currency}` : ''
+                    }`}
+                  </Text>
+                </View>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <TouchableOpacity
+                    accessibilityLabel="Delete depot"
+                    onPress={() => {
+                      Alert.alert(
+                        'Delete Depot',
+                        `Are you sure you want to delete "${item.name}"?`,
+                        [
+                          { text: 'Cancel', style: 'cancel' },
+                          {
+                            text: 'Delete',
+                            style: 'destructive',
+                            onPress: async () => {
+                              try {
+                                await deleteSavingDepot(item.id);
+                              } catch {
+                                /* no-op */
+                              }
+                            },
+                          },
+                        ],
+                      );
+                    }}
+                    style={{ marginLeft: 12, padding: 6 }}
+                  >
+                    <Trash2
+                      color="#ef4444"
+                      size={20}
+                      style={{ opacity: 0.8 }}
+                    />
+                  </TouchableOpacity>
+                </View>
+              </TouchableOpacity>
+            )}
+          />
+        )}
+
+        {/* Floating Action Button bottom-left */}
+        <FABSpeedDial
+          isOpen={isSpeedDialOpen}
+          onToggle={toggleSpeedDial}
+          position="right"
+          actions={[
+            {
+              label: 'New Depot',
+              onPress: openCreateDepotModal,
+              color: '#2563eb',
+            },
+          ]}
         />
-      )}
 
-      {/* Floating Action Button bottom-left */}
-      <FABSpeedDial
-        isOpen={isSpeedDialOpen}
-        onToggle={toggleSpeedDial}
-        position="right"
-        actions={[
-          {
-            label: 'New Depot',
-            onPress: openCreateDepotModal,
-            color: '#2563eb',
-          },
-        ]}
-      />
-
-      {/* Create Depot Modal */}
-      <CreateDepotModal
-        visible={isCreateDepotModalOpen}
-        onClose={closeCreateDepotModal}
-      />
-      <InfoModal
-        visible={infoOpen}
-        title="Saving depots"
-        content="Saving buckets help you track money set aside for goals (e.g., Vacation, Emergency fund). Add transactions when you save or withdraw. Optionally set a currency and a goal to visualize progress."
-        onClose={() => setInfoOpen(false)}
-      />
-    </View>
+        {/* Create Depot Modal */}
+        <CreateDepotModal
+          visible={isCreateDepotModalOpen}
+          onClose={closeCreateDepotModal}
+        />
+        <InfoModal
+          visible={infoOpen}
+          title="Saving depots"
+          content="Saving buckets help you track money set aside for goals (e.g., Vacation, Emergency fund). Add transactions when you save or withdraw. Optionally set a currency and a goal to visualize progress."
+          onClose={() => setInfoOpen(false)}
+        />
+      </View>
     </ScreenWrapper>
   );
 }
@@ -309,5 +333,10 @@ const styles = StyleSheet.create({
     marginTop: 48,
   },
   emptyTitle: { color: '#fff', fontSize: 18, fontWeight: '800' },
-  emptySub: { color: '#94a3b8', marginTop: 6, marginBottom: 12, textAlign: 'center' },
+  emptySub: {
+    color: '#94a3b8',
+    marginTop: 6,
+    marginBottom: 12,
+    textAlign: 'center',
+  },
 });

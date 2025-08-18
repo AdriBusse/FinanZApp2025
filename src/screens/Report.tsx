@@ -6,11 +6,11 @@ export default function Report() {
   return (
     <ScreenWrapper>
       <View style={styles.container}>
-      <Text style={styles.title}>Report</Text>
-      <Text style={styles.subtitle}>
-        Insights and analytics will appear here.
-      </Text>
-    </View>
+        <Text style={styles.title}>Report</Text>
+        <Text style={styles.subtitle}>
+          Insights and analytics will appear here.
+        </Text>
+      </View>
     </ScreenWrapper>
   );
 }

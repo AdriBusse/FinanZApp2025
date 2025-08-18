@@ -22,7 +22,9 @@ export default function IconPicker({
 }: IconPickerProps) {
   const [isOpen, setIsOpen] = React.useState(false);
 
-  const selectedOption = ICON_MAPPING.find(option => option.icon === selectedIcon);
+  const selectedOption = ICON_MAPPING.find(
+    option => option.icon === selectedIcon,
+  );
 
   return (
     <View style={styles.container}>
@@ -32,9 +34,7 @@ export default function IconPicker({
         onPress={() => setIsOpen(true)}
         activeOpacity={0.7}
       >
-        <Text style={styles.iconPreview}>
-          {selectedIcon || '📌'}
-        </Text>
+        <Text style={styles.iconPreview}>{selectedIcon || '📌'}</Text>
         <Text style={styles.iconLabel}>
           {selectedOption?.label || 'Select Icon'}
         </Text>
@@ -60,7 +60,7 @@ export default function IconPicker({
             </View>
             <FlatList
               data={ICON_MAPPING}
-              keyExtractor={(item) => item.keyword}
+              keyExtractor={item => item.keyword}
               numColumns={4}
               renderItem={({ item }) => (
                 <TouchableOpacity

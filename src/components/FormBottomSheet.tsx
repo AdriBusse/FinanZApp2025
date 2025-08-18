@@ -35,11 +35,9 @@ export default function FormBottomSheet({
           <Text style={styles.closeButtonText}>✕</Text>
         </TouchableOpacity>
       </View>
-      
-      <View style={styles.content}>
-        {children}
-      </View>
-      
+
+      <View style={styles.content}>{children}</View>
+
       <View style={styles.footer}>
         <TouchableOpacity
           style={[
@@ -50,10 +48,12 @@ export default function FormBottomSheet({
           disabled={submitDisabled}
           activeOpacity={0.7}
         >
-          <Text style={[
-            styles.submitButtonText,
-            submitDisabled && styles.submitButtonTextDisabled,
-          ]}>
+          <Text
+            style={[
+              styles.submitButtonText,
+              submitDisabled && styles.submitButtonTextDisabled,
+            ]}
+          >
             {submitLabel}
           </Text>
         </TouchableOpacity>
@@ -111,10 +111,10 @@ export const formStyles = StyleSheet.create({
   submitButtonTextDisabled: {
     color: '#94a3b8',
   },
-  modalLabel: { 
-    color: '#cbd5e1', 
-    fontSize: 12, 
-    marginBottom: 6 
+  modalLabel: {
+    color: '#cbd5e1',
+    fontSize: 12,
+    marginBottom: 6,
   },
   modalInput: {
     borderWidth: 1,

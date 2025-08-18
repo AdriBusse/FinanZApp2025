@@ -7,8 +7,8 @@ module.exports = {
     'prettier/prettier': [
       'warn',
       {
-        endOfLine: 'auto' // helps avoid CRLF/LF issues across OSes
-      }
-    ]
-  }
+        endOfLine: 'auto', // helps avoid CRLF/LF issues across OSes
+      },
+    ],
+  },
 };
