@@ -1,13 +1,31 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Modal, ScrollView, useWindowDimensions, Alert } from 'react-native';
-import DraggableFlatList from 'react-native-draggable-flatlist';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Modal,
+  ScrollView,
+  Alert,
+  Animated,
+} from 'react-native';
 import { useFinanceStore } from '../store/finance';
 import { useNavigation } from '@react-navigation/native';
 import RoundedButton from '../components/atoms/RoundedButton';
 import ScreenWrapper from '../components/layout/ScreenWrapper';
 import { preferences } from '../services/preferences';
 import { useAuthStore } from '../store/auth';
-import { Plus, Lock, Unlock, Trash2, ExternalLink } from 'lucide-react-native';
+import {
+  Plus,
+  Lock,
+  Unlock,
+  Trash2,
+  ExternalLink,
+  GripVertical,
+  Info,
+} from 'lucide-react-native';
+import DashboardGrid from '../components/dashboard/DashboardGrid';
+import InfoModal from '../components/atoms/InfoModal';
 
 type WidgetType =
   | 'saving_sum'
@@ -29,7 +47,6 @@ type Widget = {
 };
 
 export default function Dashboard() {
-  const { width: screenW } = useWindowDimensions();
   const { summary, depots, expenses, loadAll } = useFinanceStore();
   const navigation = useNavigation<any>();
   const userId = useAuthStore(s => s.user?.id);
@@ -40,13 +57,8 @@ export default function Dashboard() {
   const [addType, setAddType] = useState<WidgetType | null>(null);
   const [selecting, setSelecting] = useState<'depot' | 'expense' | null>(null);
   const [layoutReady, setLayoutReady] = useState(false);
-  const [isDragging, setIsDragging] = useState(false);
-  const [draggingIndex, setDraggingIndex] = useState<number | null>(null);
-
-  const editData = React.useMemo(() => {
-    const base = [...layout, ({ id: '__plus__' } as any)];
-    return isDragging ? [...base, ({ id: '__trash__' } as any)] : base;
-  }, [layout, isDragging]);
+  const saveTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [infoOpen, setInfoOpen] = useState(false);
 
   useEffect(() => {
     loadAll().catch(() => {});
@@ -77,11 +89,16 @@ export default function Dashboard() {
     };
   }, [userId]);
 
-  // Persist layout
+  // Persist layout (debounced)
   useEffect(() => {
-    // Avoid writing during user switch until the user's layout has been loaded
     if (!userId || !layoutReady) return;
-    void preferences.setDashboardLayout(layout);
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => {
+      void preferences.setDashboardLayout(layout);
+    }, 400);
+    return () => {
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    };
   }, [layout, userId, layoutReady]);
 
   function addWidget(w: Widget) {
@@ -93,9 +110,12 @@ export default function Dashboard() {
       const d = depots.find(x => x.id === w.depotId);
       return (
         <>
-          <Text style={styles.widgetTitle}>{w.title ?? d?.name ?? 'Savings'}</Text>
+          <Text style={styles.widgetTitle}>
+            {w.title ?? d?.name ?? 'Savings'}
+          </Text>
           <Text style={styles.widgetValue}>
-            {(d?.sum ?? 0).toLocaleString()}{d?.currency ? ` ${d.currency}` : ''}
+            {(d?.sum ?? 0).toLocaleString()}
+            {d?.currency ? ` ${d.currency}` : ''}
           </Text>
         </>
       );
@@ -104,9 +124,12 @@ export default function Dashboard() {
       const e = expenses.find(x => x.id === w.expenseId);
       return (
         <>
-          <Text style={styles.widgetTitle}>{w.title ?? e?.title ?? 'Expense Total'}</Text>
+          <Text style={styles.widgetTitle}>
+            {w.title ?? e?.title ?? 'Expense Total'}
+          </Text>
           <Text style={styles.widgetValue}>
-            {(e?.sum ?? 0).toLocaleString()}{e?.currency ? ` ${e.currency}` : ''}
+            {(e?.sum ?? 0).toLocaleString()}
+            {e?.currency ? ` ${e.currency}` : ''}
           </Text>
         </>
       );
@@ -118,7 +141,9 @@ export default function Dashboard() {
           <Text style={styles.widgetTitle}>Open Expense</Text>
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
             <ExternalLink color="#94a3b8" size={16} />
-            <Text style={[styles.widgetValue, { marginLeft: 6, fontSize: 16 }]}>{e?.title ?? 'Expense'}</Text>
+            <Text style={[styles.widgetValue, { marginLeft: 6, fontSize: 16 }]}>
+              {e?.title ?? 'Expense'}
+            </Text>
           </View>
         </>
       );
@@ -130,7 +155,9 @@ export default function Dashboard() {
           <Text style={styles.widgetTitle}>Open Saving Depot</Text>
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
             <ExternalLink color="#94a3b8" size={16} />
-            <Text style={[styles.widgetValue, { marginLeft: 6, fontSize: 16 }]}>{d?.name ?? 'Saving'}</Text>
+            <Text style={[styles.widgetValue, { marginLeft: 6, fontSize: 16 }]}>
+              {d?.name ?? 'Saving'}
+            </Text>
           </View>
         </>
       );
@@ -150,17 +177,24 @@ export default function Dashboard() {
       return (
         <>
           <Text style={styles.widgetTitle}>Net Worth (Savings)</Text>
-          <Text style={styles.widgetValue}>{(summary?.savingValue ?? 0).toLocaleString()}</Text>
+          <Text style={styles.widgetValue}>
+            {(summary?.savingValue ?? 0).toLocaleString()}
+          </Text>
         </>
       );
     }
     if (w.type === 'spend_today') {
       const todaySpentCount = summary?.todaySpent?.length ?? 0;
-      const todaySpentSum = (summary?.todaySpent ?? []).reduce((acc, t) => acc + (t?.amount ?? 0), 0);
+      const todaySpentSum = (summary?.todaySpent ?? []).reduce(
+        (acc, t) => acc + (t?.amount ?? 0),
+        0,
+      );
       return (
         <>
           <Text style={styles.widgetTitle}>Spend Today</Text>
-          <Text style={styles.widgetValue}>{todaySpentSum.toLocaleString()}</Text>
+          <Text style={styles.widgetValue}>
+            {todaySpentSum.toLocaleString()}
+          </Text>
           <Text style={styles.widgetSub}>{todaySpentCount} tx</Text>
         </>
       );
@@ -169,8 +203,14 @@ export default function Dashboard() {
       return (
         <>
           <Text style={styles.widgetTitle}>Latest Expense</Text>
-          <Text style={styles.widgetValue}>{summary?.latestExpense?.sum?.toLocaleString?.() ?? (summary?.latestExpense?.sum ?? 0)}</Text>
-          <Text style={styles.widgetSub}>{summary?.latestExpense?.title ?? '—'}</Text>
+          <Text style={styles.widgetValue}>
+            {summary?.latestExpense?.sum?.toLocaleString?.() ??
+              summary?.latestExpense?.sum ??
+              0}
+          </Text>
+          <Text style={styles.widgetSub}>
+            {summary?.latestExpense?.title ?? '—'}
+          </Text>
         </>
       );
     }
@@ -180,15 +220,27 @@ export default function Dashboard() {
   function onWidgetPress(w: Widget) {
     if (editMode) return;
     if (w.type === 'link_expense' && w.expenseId) {
-      navigation.navigate('ExpensesTab', { screen: 'ExpenseTransactions', params: { expenseId: w.expenseId } });
+      navigation.navigate('ExpensesTab', {
+        screen: 'ExpenseTransactions',
+        params: { expenseId: w.expenseId },
+      });
     } else if (w.type === 'link_saving' && w.depotId) {
-      navigation.navigate('SavingsTab', { screen: 'SavingTransactions', params: { depotId: w.depotId } });
+      navigation.navigate('SavingsTab', {
+        screen: 'SavingTransactions',
+        params: { depotId: w.depotId },
+      });
     } else if (w.type === 'quick_expense') {
       if (w.expenseId) {
-        navigation.navigate('ExpensesTab', { screen: 'ExpenseTransactions', params: { expenseId: w.expenseId, openCreate: true } });
+        navigation.navigate('ExpensesTab', {
+          screen: 'ExpenseTransactions',
+          params: { expenseId: w.expenseId, openCreate: true },
+        });
       } else {
         // Fallback: open generic create if no expense selected (legacy widgets)
-        navigation.navigate('ExpensesTab', { screen: 'ExpensesList', params: { openCreate: true } });
+        navigation.navigate('ExpensesTab', {
+          screen: 'ExpensesList',
+          params: { openCreate: true },
+        });
       }
     }
   }
@@ -208,139 +260,140 @@ export default function Dashboard() {
     );
   }
 
+  // Edit-mode tile with clear drag affordance and hold progress
+  const HOLD_MS = 220;
+  const EditDraggableTile: React.FC<{
+    item: Widget;
+    isActive: boolean;
+    drag: () => void;
+    onPress: () => void;
+  }> = ({ item, isActive, drag, onPress }) => {
+    const widthAnim = React.useRef(new Animated.Value(0)).current;
+    const startHold = () => {
+      widthAnim.setValue(0);
+      Animated.timing(widthAnim, {
+        toValue: 1,
+        duration: HOLD_MS,
+        useNativeDriver: false,
+      }).start();
+    };
+    const resetHold = () => {
+      widthAnim.stopAnimation();
+      widthAnim.setValue(0);
+    };
+    const progressStyle = {
+      width: widthAnim.interpolate({
+        inputRange: [0, 1],
+        outputRange: ['0%', '100%'],
+      }),
+    } as const;
+
+    return (
+      <TouchableOpacity
+        activeOpacity={0.9}
+        onPressIn={startHold}
+        onPressOut={resetHold}
+        onLongPress={() => {
+          resetHold();
+          drag();
+        }}
+        delayLongPress={HOLD_MS}
+        disabled={!editMode}
+        onPress={onPress}
+        style={[styles.widgetTile, isActive ? styles.activeLift : null]}
+      >
+        {/* Hold-to-drag progress bar */}
+        <View style={styles.holdBarTrack}>
+          <Animated.View style={[styles.holdBarProgress, progressStyle]} />
+        </View>
+        {/* Drag handle indicator */}
+        <View style={styles.dragHandle}>
+          <GripVertical color="#94a3b8" size={14} />
+        </View>
+        {renderWidgetContent(item)}
+      </TouchableOpacity>
+    );
+  };
+
   // All dynamic content is rendered via widgets above.
 
   return (
     <ScreenWrapper scrollable={false}>
       <View style={styles.container}>
-      <View style={styles.headerRow}>
-        <Text style={styles.title}>Dashboard</Text>
-      </View>
+        <View style={styles.headerRow}>
+          <Text style={styles.title}>Dashboard</Text>
+          <TouchableOpacity
+            onPress={() => setInfoOpen(true)}
+            accessibilityLabel="About dashboard"
+            activeOpacity={0.7}
+          >
+            <Info color="#94a3b8" size={20} />
+          </TouchableOpacity>
+        </View>
 
-      {/* Customizable dashboard grid */}
-      <View style={styles.gridHeader}>
-        <TouchableOpacity disabled onPress={() => setEditMode(e => !e)} style={[styles.lockBtn, { opacity: 0.5 }]} accessibilityRole="button" accessibilityLabel="Toggle dashboard edit mode (disabled)">
-          {editMode ? <Unlock color="#cbd5e1" size={18} /> : <Lock color="#cbd5e1" size={18} />}
-        </TouchableOpacity>
-      </View>
-      {editMode && (
-        <>
-          <Text style={{ color: '#94a3b8', marginBottom: 8 }}>Long-press a tile to drag. Drop on the red box to delete.</Text>
-          <Text style={{ color: '#f59e0b', marginBottom: 8 }}>Debug: layout={layout.length} editData={editData.length}</Text>
-        </>
-      )}
+        {/* Customizable dashboard grid */}
+        <View style={styles.gridHeader}>
+          <TouchableOpacity
+            disabled={true}
+            onPress={() => setEditMode(e => !e)}
+            style={styles.lockBtn}
+            accessibilityRole="button"
+            accessibilityLabel="Toggle dashboard edit mode"
+          >
+            {editMode ? (
+              <Unlock color="#cbd5e1" size={18} />
+            ) : (
+              <Lock color="#cbd5e1" size={18} />
+            )}
+          </TouchableOpacity>
+        </View>
 
-      {editMode ? (
-        <>
-        <DraggableFlatList
-          key="edit"
-          data={editData}
-          keyExtractor={(w, i) => `${w.id}-${i}`}
-          numColumns={2}
-          style={{ flex: 1 }}
-          contentContainerStyle={{ paddingBottom: 12, flexGrow: 1 }}
-          removeClippedSubviews={false}
-          extraData={editData.length}
-          onDragBegin={(index) => { setIsDragging(true); setDraggingIndex(index); }}
-          onDragEnd={({ data, from, to }) => {
-            const trashIndex = data.findIndex(x => (x as any).id === '__trash__');
-            setIsDragging(false);
-            if (trashIndex >= 0 && to === trashIndex && draggingIndex != null) {
-              // Dropped on trash: remove original item
-              setLayout(prev => prev.filter((_, i) => i !== draggingIndex));
-              setDraggingIndex(null);
-              return;
-            }
-            // Reorder: ignore sentinels (trash & plus)
-            const clean = data.filter(x => (x as any).id !== '__trash__' && (x as any).id !== '__plus__') as Widget[];
-            setLayout(clean);
-            setDraggingIndex(null);
-          }}
-          activationDistance={8}
-          renderItem={({ item, getIndex, drag, isActive }) => {
-            // Debug log to confirm render on device
-            try { console.log('Dashboard edit render item', (item as any).id); } catch {}
-            const idx = getIndex?.() ?? 0;
-            const tileW = Math.floor((screenW - 16 * 2 - 12) / 2);
-            try { console.log('Dashboard edit tileW', tileW); } catch {}
-            if ((item as any).id === '__plus__') {
-              return (
-                <View style={{ width: tileW, marginRight: idx % 2 === 0 ? 12 : 0, minHeight: 120, backgroundColor: 'rgba(255,255,0,0.06)' }}>
-                  <TouchableOpacity style={[styles.widgetTile, styles.plusTile, styles.debugBorder]} onPress={() => { setAddOpen(true); setAddType(null); setSelecting(null); }}>
+        {editMode ? (
+          <DashboardGrid
+            data={layout}
+            editMode
+            horizontalPadding={16}
+            keyExtractor={w => w.id}
+            onDragEnd={data => {
+              setLayout(data as Widget[]);
+            }}
+            renderTile={({ item, isActive, drag }) => (
+              <EditDraggableTile
+                item={item as Widget}
+                isActive={isActive}
+                drag={drag}
+                onPress={() => onWidgetPress(item as Widget)}
+              />
+            )}
+          />
+        ) : (
+          <DashboardGrid
+            data={[...layout, { id: '__plus__' } as any]}
+            editMode={false}
+            horizontalPadding={16}
+            keyExtractor={w => `${(w as any).id}`}
+            renderTile={({ item }) => {
+              if ((item as any).id === '__plus__') {
+                return (
+                  <TouchableOpacity
+                    style={[styles.widgetTile, styles.plusTile]}
+                    onPress={() => {
+                      setAddOpen(true);
+                      setAddType(null);
+                      setSelecting(null);
+                    }}
+                  >
                     <Plus color="#60a5fa" size={28} />
                     <Text style={{ color: '#94a3b8', marginTop: 6 }}>Add</Text>
                   </TouchableOpacity>
-                </View>
-              );
-            }
-            if ((item as any).id === '__trash__') {
+                );
+              }
               return (
-                <View style={{ width: tileW, marginRight: idx % 2 === 0 ? 12 : 0, minHeight: 120, backgroundColor: 'rgba(255,255,0,0.06)' }}>
-                  <View style={[styles.widgetTile, styles.trashTile, styles.debugBorder]}> 
-                    <Trash2 color="#ef4444" size={24} />
-                    <Text style={{ color: '#ef4444', marginTop: 6 }}>Drop to delete</Text>
-                  </View>
-                </View>
-              );
-            }
-            return (
-              <View style={{ width: tileW, marginRight: idx % 2 === 0 ? 12 : 0, minHeight: 120, backgroundColor: 'rgba(255,255,0,0.06)' }}>
                 <TouchableOpacity
                   activeOpacity={0.8}
-                  onLongPress={drag}
-                  delayLongPress={80}
-                  disabled={!editMode}
                   onPress={() => onWidgetPress(item as Widget)}
-                  style={[
-                    styles.widgetTile,
-                    styles.debugBorder,
-                    { flex: 0 },
-                    isActive ? { borderWidth: 1, borderColor: '#60a5fa' } : null,
-                  ]}
+                  style={styles.widgetTile}
                 >
-                  {renderWidgetContent(item as Widget)}
-                </TouchableOpacity>
-              </View>
-            );
-          }}
-        />
-        {/* DEBUG: Mirror non-draggable FlatList to verify visibility */}
-        <Text style={{ color: '#ef4444', marginTop: 12 }}>DEBUG: Mirror list (should show same tiles)</Text>
-        <FlatList
-          data={editData}
-          keyExtractor={(w, i) => `${w.id}-mirror-${i}`}
-          numColumns={1}
-          style={{ flex: 1 }}
-          contentContainerStyle={{ paddingBottom: 12 }}
-          renderItem={({ item }) => (
-            <View style={{ width: '100%', height: 80, backgroundColor: '#22c55e', borderRadius: 8, marginBottom: 8, alignItems: 'center', justifyContent: 'center' }}>
-              <Text style={{ color: '#0b1a0f', fontWeight: '700' }}>{(item as any).id}</Text>
-            </View>
-          )}
-        />
-        </>
-      ) : (
-        <FlatList
-          key="view"
-          data={[...layout, { id: '__plus__', type: 'quick_expense' } as any]}
-          keyExtractor={(w, i) => `${w.id}-${i}`}
-          numColumns={2}
-          columnWrapperStyle={{ justifyContent: 'space-between' }}
-          contentContainerStyle={{ paddingBottom: 12 }}
-          renderItem={({ item }) => {
-            if ((item as any).id === '__plus__') {
-              return (
-                <View style={styles.gridItem}>
-                  <TouchableOpacity style={[styles.widgetTile, styles.plusTile]} onPress={() => { setAddOpen(true); setAddType(null); setSelecting(null); }}>
-                    <Plus color="#60a5fa" size={28} />
-                    <Text style={{ color: '#94a3b8', marginTop: 6 }}>Add</Text>
-                  </TouchableOpacity>
-                </View>
-              );
-            }
-            return (
-              <View style={styles.gridItem}>
-                <TouchableOpacity activeOpacity={0.8} onPress={() => onWidgetPress(item as Widget)} style={styles.widgetTile}>
                   <TouchableOpacity
                     onPress={() => confirmDeleteWidget((item as Widget).id)}
                     style={styles.deleteBtn}
@@ -351,71 +404,197 @@ export default function Dashboard() {
                   </TouchableOpacity>
                   {renderWidgetContent(item as Widget)}
                 </TouchableOpacity>
-              </View>
-            );
-          }}
-        />
-      )}
+              );
+            }}
+          />
+        )}
 
-      {/* Add widget modal */}
-      <Modal visible={addOpen} transparent animationType="fade" onRequestClose={() => setAddOpen(false)}>
-        <View style={styles.modalOverlay}>
-          <View style={styles.addModal}>
-            <Text style={styles.modalTitle}>Add Element</Text>
-            {!addType && (
-              <ScrollView>
-                <TouchableOpacity style={styles.addItem} onPress={() => { setAddType('saving_sum'); setSelecting('depot'); }}><Text style={styles.addItemText}>Savings Sum (choose depot)</Text></TouchableOpacity>
-                <TouchableOpacity style={styles.addItem} onPress={() => { setAddType('expense_total'); setSelecting('expense'); }}><Text style={styles.addItemText}>Expense Total (choose expense)</Text></TouchableOpacity>
-                <TouchableOpacity style={styles.addItem} onPress={() => { setAddType('link_expense'); setSelecting('expense'); }}><Text style={styles.addItemText}>Link to Expense</Text></TouchableOpacity>
-                <TouchableOpacity style={styles.addItem} onPress={() => { setAddType('link_saving'); setSelecting('depot'); }}><Text style={styles.addItemText}>Link to Saving</Text></TouchableOpacity>
-                <TouchableOpacity style={styles.addItem} onPress={() => { setAddType('quick_expense'); setSelecting('expense'); }}><Text style={styles.addItemText}>Quick: Create Expense Tx (choose expense)</Text></TouchableOpacity>
-                <TouchableOpacity style={styles.addItem} onPress={() => { setAddType('net_worth'); setSelecting(null); addWidget({ id: `${Date.now()}`, type: 'net_worth' }); setAddOpen(false); }}><Text style={styles.addItemText}>Net Worth (Savings)</Text></TouchableOpacity>
-                <TouchableOpacity style={styles.addItem} onPress={() => { setAddType('spend_today'); setSelecting(null); addWidget({ id: `${Date.now()}`, type: 'spend_today' }); setAddOpen(false); }}><Text style={styles.addItemText}>Spend Today</Text></TouchableOpacity>
-                <TouchableOpacity style={styles.addItem} onPress={() => { setAddType('latest_expense'); setSelecting(null); addWidget({ id: `${Date.now()}`, type: 'latest_expense' }); setAddOpen(false); }}><Text style={styles.addItemText}>Latest Expense</Text></TouchableOpacity>
-              </ScrollView>
-            )}
-            {!!addType && selecting === 'depot' && (
-              <ScrollView>
-                {depots.map(d => (
-                  <TouchableOpacity key={d.id} style={styles.addItem} onPress={() => {
-                    if (addType === 'saving_sum' || addType === 'link_saving') {
-                      addWidget({ id: `${Date.now()}`, type: addType, depotId: d.id, title: d.name });
-                      setAddOpen(false);
-                    }
-                  }}>
-                    <Text style={styles.addItemText}>{d.name} ({d.short})</Text>
+        {/* Add widget modal */}
+        <Modal
+          visible={addOpen}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setAddOpen(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.addModal}>
+              <Text style={styles.modalTitle}>Add Element</Text>
+              {!addType && (
+                <ScrollView>
+                  <TouchableOpacity
+                    style={styles.addItem}
+                    onPress={() => {
+                      setAddType('saving_sum');
+                      setSelecting('depot');
+                    }}
+                  >
+                    <Text style={styles.addItemText}>
+                      Savings Sum (choose depot)
+                    </Text>
                   </TouchableOpacity>
-                ))}
-              </ScrollView>
-            )}
-            {!!addType && selecting === 'expense' && (
-              <ScrollView>
-                {expenses.map(e => (
-                  <TouchableOpacity key={e.id} style={styles.addItem} onPress={() => {
-                    if (addType === 'expense_total' || addType === 'link_expense' || addType === 'quick_expense') {
-                      addWidget({ id: `${Date.now()}`, type: addType, expenseId: e.id, title: e.title });
-                      setAddOpen(false);
-                    }
-                  }}>
-                    <Text style={styles.addItemText}>{e.title}</Text>
+                  <TouchableOpacity
+                    style={styles.addItem}
+                    onPress={() => {
+                      setAddType('expense_total');
+                      setSelecting('expense');
+                    }}
+                  >
+                    <Text style={styles.addItemText}>
+                      Expense Total (choose expense)
+                    </Text>
                   </TouchableOpacity>
-                ))}
-              </ScrollView>
-            )}
-            <View style={[styles.row, { marginTop: 12 }]}> 
-              <View style={{ flex: 1 }} />
-              <RoundedButton title="Close" variant="outline" size="sm" onPress={() => setAddOpen(false)} />
+                  <TouchableOpacity
+                    style={styles.addItem}
+                    onPress={() => {
+                      setAddType('link_expense');
+                      setSelecting('expense');
+                    }}
+                  >
+                    <Text style={styles.addItemText}>Link to Expense</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.addItem}
+                    onPress={() => {
+                      setAddType('link_saving');
+                      setSelecting('depot');
+                    }}
+                  >
+                    <Text style={styles.addItemText}>Link to Saving</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.addItem}
+                    onPress={() => {
+                      setAddType('quick_expense');
+                      setSelecting('expense');
+                    }}
+                  >
+                    <Text style={styles.addItemText}>
+                      Quick: Create Expense Tx (choose expense)
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.addItem}
+                    onPress={() => {
+                      setAddType('net_worth');
+                      setSelecting(null);
+                      addWidget({ id: `${Date.now()}`, type: 'net_worth' });
+                      setAddOpen(false);
+                    }}
+                  >
+                    <Text style={styles.addItemText}>Net Worth (Savings)</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.addItem}
+                    onPress={() => {
+                      setAddType('spend_today');
+                      setSelecting(null);
+                      addWidget({ id: `${Date.now()}`, type: 'spend_today' });
+                      setAddOpen(false);
+                    }}
+                  >
+                    <Text style={styles.addItemText}>Spend Today</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.addItem}
+                    onPress={() => {
+                      setAddType('latest_expense');
+                      setSelecting(null);
+                      addWidget({
+                        id: `${Date.now()}`,
+                        type: 'latest_expense',
+                      });
+                      setAddOpen(false);
+                    }}
+                  >
+                    <Text style={styles.addItemText}>Latest Expense</Text>
+                  </TouchableOpacity>
+                </ScrollView>
+              )}
+              {!!addType && selecting === 'depot' && (
+                <ScrollView>
+                  {depots.map(d => (
+                    <TouchableOpacity
+                      key={d.id}
+                      style={styles.addItem}
+                      onPress={() => {
+                        if (
+                          addType === 'saving_sum' ||
+                          addType === 'link_saving'
+                        ) {
+                          addWidget({
+                            id: `${Date.now()}`,
+                            type: addType,
+                            depotId: d.id,
+                            title: d.name,
+                          });
+                          setAddOpen(false);
+                        }
+                      }}
+                    >
+                      <Text style={styles.addItemText}>
+                        {d.name} ({d.short})
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              )}
+              {!!addType && selecting === 'expense' && (
+                <ScrollView>
+                  {expenses.map(e => (
+                    <TouchableOpacity
+                      key={e.id}
+                      style={styles.addItem}
+                      onPress={() => {
+                        if (
+                          addType === 'expense_total' ||
+                          addType === 'link_expense' ||
+                          addType === 'quick_expense'
+                        ) {
+                          addWidget({
+                            id: `${Date.now()}`,
+                            type: addType,
+                            expenseId: e.id,
+                            title: e.title,
+                          });
+                          setAddOpen(false);
+                        }
+                      }}
+                    >
+                      <Text style={styles.addItemText}>{e.title}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              )}
+              <View style={[styles.row, { marginTop: 12 }]}>
+                <View style={{ flex: 1 }} />
+                <RoundedButton
+                  title="Close"
+                  variant="outline"
+                  size="sm"
+                  onPress={() => setAddOpen(false)}
+                />
+              </View>
             </View>
           </View>
-        </View>
-      </Modal>
-    </View>
+        </Modal>
+        <InfoModal
+          visible={infoOpen}
+          title="Dashboard"
+          content="Customize your dashboard with tiles: totals, quick links and more. Tap the lock icon to enable edit mode, then long-press a tile to drag and reorder. Use the + tile to add new widgets."
+          onClose={() => setInfoOpen(false)}
+        />
+      </View>
     </ScreenWrapper>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16, paddingTop: 20, backgroundColor: '#0e0f14' },
+  container: {
+    flex: 1,
+    padding: 16,
+    paddingTop: 20,
+    backgroundColor: '#0e0f14',
+  },
   headerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -424,9 +603,19 @@ const styles = StyleSheet.create({
   },
   title: { fontSize: 22, fontWeight: '800', marginBottom: 4, color: '#fff' },
   subtitle: { fontSize: 14, color: '#94a3b8', marginBottom: 12 },
-  gridHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', marginBottom: 8 },
+  gridHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    marginBottom: 8,
+  },
   lockBtn: { padding: 8, borderRadius: 8, backgroundColor: '#1e212b' },
-  tilesGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', marginBottom: 12 },
+  tilesGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
   tile: {
     width: '48%',
     backgroundColor: '#1e212b',
@@ -435,7 +624,12 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   tileTitle: { color: '#94a3b8', fontSize: 12, fontWeight: '700' },
-  tileValue: { color: '#f8fafc', fontSize: 18, fontWeight: '800', marginTop: 4 },
+  tileValue: {
+    color: '#f8fafc',
+    fontSize: 18,
+    fontWeight: '800',
+    marginTop: 4,
+  },
   tileSub: { color: '#cbd5e1', fontSize: 12, marginTop: 4 },
   gridItem: {
     width: '48%',
@@ -457,12 +651,51 @@ const styles = StyleSheet.create({
     width: '48%',
     flex: 0,
   },
-  plusTile: { alignItems: 'center', justifyContent: 'center', paddingVertical: 28 },
+  plusTile: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 28,
+  },
   widgetTitle: { color: '#94a3b8', fontSize: 12, fontWeight: '700' },
-  widgetValue: { color: '#f8fafc', fontSize: 18, fontWeight: '800', marginTop: 4 },
+  widgetValue: {
+    color: '#f8fafc',
+    fontSize: 18,
+    fontWeight: '800',
+    marginTop: 4,
+  },
   widgetSub: { color: '#cbd5e1', fontSize: 12, marginTop: 4 },
   widgetActions: { flexDirection: 'row', alignItems: 'center', marginTop: 10 },
   iconBtn: { padding: 6 },
+  activeLift: {
+    transform: [{ scale: 1.03 }],
+    elevation: 6,
+    shadowColor: '#000',
+    shadowOpacity: 0.18,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+  },
+  holdBarTrack: {
+    position: 'absolute',
+    top: 8,
+    left: 12,
+    right: 12,
+    height: 3,
+    backgroundColor: '#0b1220',
+    borderRadius: 2,
+    overflow: 'hidden',
+  },
+  holdBarProgress: {
+    height: 3,
+    backgroundColor: '#60a5fa',
+  },
+  dragHandle: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    padding: 4,
+    borderRadius: 6,
+    backgroundColor: 'rgba(148,163,184,0.08)',
+  },
   deleteBtn: {
     position: 'absolute',
     top: 8,
@@ -488,7 +721,12 @@ const styles = StyleSheet.create({
   },
   row: { flexDirection: 'row', alignItems: 'center', marginBottom: 16 },
   section: { marginTop: 8 },
-  sectionTitle: { fontSize: 16, fontWeight: '700', marginBottom: 8, color: '#fff' },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    marginBottom: 8,
+    color: '#fff',
+  },
   listItem: {
     padding: 14,
     backgroundColor: '#1e212b',
@@ -496,8 +734,18 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   bold: { fontWeight: '700', color: '#f8fafc' },
-  modalContainer: { flex: 1, padding: 16, paddingTop: 56, backgroundColor: '#111827' },
-  modalTitle: { fontSize: 20, fontWeight: '700', marginBottom: 16, color: '#fff' },
+  modalContainer: {
+    flex: 1,
+    padding: 16,
+    paddingTop: 56,
+    backgroundColor: '#111827',
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    marginBottom: 16,
+    color: '#fff',
+  },
   modalLabel: { color: '#cbd5e1', fontSize: 12, marginBottom: 6 },
   input: {
     borderWidth: 1,
@@ -508,8 +756,22 @@ const styles = StyleSheet.create({
     color: '#fff',
     backgroundColor: '#0f172a',
   },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 16 },
-  addModal: { backgroundColor: '#0e0f14', borderRadius: 12, padding: 16, maxHeight: '80%' },
-  addItem: { paddingVertical: 12, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#1f2937' },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    padding: 16,
+  },
+  addModal: {
+    backgroundColor: '#0e0f14',
+    borderRadius: 12,
+    padding: 16,
+    maxHeight: '80%',
+  },
+  addItem: {
+    paddingVertical: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#1f2937',
+  },
   addItemText: { color: '#e5e7eb', fontSize: 16 },
 });

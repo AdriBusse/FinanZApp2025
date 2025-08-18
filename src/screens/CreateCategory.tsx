@@ -22,7 +22,7 @@ export default function CreateCategory() {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const categoryToEdit = route.params?.category;
-  
+
   const [name, setName] = useState('');
   const [selectedColor, setSelectedColor] = useState('#3b82f6'); // Default blue
   const [selectedIcon, setSelectedIcon] = useState('📌'); // Default icon
@@ -38,50 +38,66 @@ export default function CreateCategory() {
     }
   }, [categoryToEdit]);
 
-  const [createCategory, { loading: creating }] = useMutation(CREATEEXPANSECATEGORY, {
-    update: (cache, { data }) => {
-      if (data?.createExpenseCategory) {
-        // Update Apollo cache
-        const existingCategories = cache.readQuery({ query: GETEXPENSECATEGORIES }) as any;
-        if (existingCategories?.getExpenseCategories) {
-          cache.writeQuery({
+  const [createCategory, { loading: creating }] = useMutation(
+    CREATEEXPANSECATEGORY,
+    {
+      update: (cache, { data }) => {
+        if (data?.createExpenseCategory) {
+          // Update Apollo cache
+          const existingCategories = cache.readQuery({
             query: GETEXPENSECATEGORIES,
-            data: {
-              getExpenseCategories: [
-                ...existingCategories.getExpenseCategories,
-                data.createExpenseCategory,
-              ],
-            },
-          });
-        }
-        
-        // Update Zustand store
-        addCategory(data.createExpenseCategory);
-      }
-    },
-  });
+          }) as any;
+          if (existingCategories?.getExpenseCategories) {
+            cache.writeQuery({
+              query: GETEXPENSECATEGORIES,
+              data: {
+                getExpenseCategories: [
+                  ...existingCategories.getExpenseCategories,
+                  data.createExpenseCategory,
+                ],
+              },
+            });
+          }
 
-  const [updateCategoryMutation, { loading: updating }] = useMutation(UPDATEEXPENSECATEGORY, {
-    update: (cache, { data }) => {
-      if (data?.updateExpenseCategory) {
-        // Update Apollo cache
-        const existingCategories = cache.readQuery({ query: GETEXPENSECATEGORIES }) as any;
-        if (existingCategories?.getExpenseCategories) {
-          cache.writeQuery({
-            query: GETEXPENSECATEGORIES,
-            data: {
-              getExpenseCategories: existingCategories.getExpenseCategories.map((cat: any) =>
-                cat.id === data.updateExpenseCategory.id ? data.updateExpenseCategory : cat
-              ),
-            },
-          });
+          // Update Zustand store
+          addCategory(data.createExpenseCategory);
         }
-        
-        // Update Zustand store
-        updateCategory(data.updateExpenseCategory.id, data.updateExpenseCategory);
-      }
+      },
     },
-  });
+  );
+
+  const [updateCategoryMutation, { loading: updating }] = useMutation(
+    UPDATEEXPENSECATEGORY,
+    {
+      update: (cache, { data }) => {
+        if (data?.updateExpenseCategory) {
+          // Update Apollo cache
+          const existingCategories = cache.readQuery({
+            query: GETEXPENSECATEGORIES,
+          }) as any;
+          if (existingCategories?.getExpenseCategories) {
+            cache.writeQuery({
+              query: GETEXPENSECATEGORIES,
+              data: {
+                getExpenseCategories:
+                  existingCategories.getExpenseCategories.map((cat: any) =>
+                    cat.id === data.updateExpenseCategory.id
+                      ? data.updateExpenseCategory
+                      : cat,
+                  ),
+              },
+            });
+          }
+
+          // Update Zustand store
+          updateCategory(
+            data.updateExpenseCategory.id,
+            data.updateExpenseCategory,
+          );
+        }
+      },
+    },
+  );
 
   const isValid = name.trim().length > 0;
   const isEditing = !!categoryToEdit;
@@ -101,16 +117,12 @@ export default function CreateCategory() {
           },
         });
 
-        Alert.alert(
-          'Success',
-          'Category updated successfully!',
-          [
-            {
-              text: 'OK',
-              onPress: () => navigation.goBack(),
-            },
-          ]
-        );
+        Alert.alert('Success', 'Category updated successfully!', [
+          {
+            text: 'OK',
+            onPress: () => navigation.goBack(),
+          },
+        ]);
       } else {
         await createCategory({
           variables: {
@@ -120,23 +132,21 @@ export default function CreateCategory() {
           },
         });
 
-        Alert.alert(
-          'Success',
-          'Category created successfully!',
-          [
-            {
-              text: 'OK',
-              onPress: () => navigation.goBack(),
-            },
-          ]
-        );
+        Alert.alert('Success', 'Category created successfully!', [
+          {
+            text: 'OK',
+            onPress: () => navigation.goBack(),
+          },
+        ]);
       }
     } catch (error) {
       console.error('Error saving category:', error);
       Alert.alert(
         'Error',
-        `Failed to ${isEditing ? 'update' : 'create'} category. Please try again.`,
-        [{ text: 'OK' }]
+        `Failed to ${
+          isEditing ? 'update' : 'create'
+        } category. Please try again.`,
+        [{ text: 'OK' }],
       );
     }
   };
@@ -156,7 +166,7 @@ export default function CreateCategory() {
 
         <View style={styles.form}>
           <Text style={styles.sectionTitle}>Category Details</Text>
-          
+
           <Text style={styles.label}>Name</Text>
           <Input
             value={name}

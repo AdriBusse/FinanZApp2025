@@ -19,6 +19,8 @@ import { apolloClient } from '../apollo/client';
 import { gql } from '@apollo/client';
 import RoundedButton from '../components/atoms/RoundedButton';
 import HorizontalBar from '../components/atoms/HorizontalBar';
+import { Info } from 'lucide-react-native';
+import InfoModal from '../components/atoms/InfoModal';
 
 const DELETE_EXPENSE_TRANSACTION = gql`
   mutation DELETEEXPANSETRANSACTION($id: String!) {
@@ -65,6 +67,7 @@ export default function ExpenseTransactions() {
   const [selectedTransaction, setSelectedTransaction] = useState<any>(null);
   const [isSpeedDialOpen, setIsSpeedDialOpen] = useState(false);
   const [editExpenseOpen, setEditExpenseOpen] = useState(false);
+  const [infoOpen, setInfoOpen] = useState(false);
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const expenseId: string = route.params?.expenseId ?? '';
@@ -104,21 +107,35 @@ export default function ExpenseTransactions() {
           <TouchableOpacity onPress={() => navigation.goBack()}>
             <Text style={styles.headerAction}>{'‹'}</Text>
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => setEditExpenseOpen(true)} activeOpacity={0.7}>
+          <TouchableOpacity
+            onPress={() => setEditExpenseOpen(true)}
+            activeOpacity={0.7}
+          >
             <View style={styles.headerTitleWrap}>
-              <Text style={styles.headerTitle}>{expense?.title ?? 'Expense'}</Text>
+              <Text style={styles.headerTitle}>
+                {expense?.title ?? 'Expense'}
+              </Text>
               <Text style={styles.headerHint}>Tap to edit</Text>
             </View>
           </TouchableOpacity>
-          <View style={styles.headerSpacer} />
+          <TouchableOpacity
+            onPress={() => setInfoOpen(true)}
+            accessibilityLabel="About expense detail"
+            activeOpacity={0.7}
+          >
+            <Info color="#94a3b8" size={20} />
+          </TouchableOpacity>
         </View>
 
         <Text style={styles.total}>
-          {`${Number(total ?? 0).toLocaleString()}${expense?.currency ? ` ${expense.currency}` : ''}`}
+          {`${Number(total ?? 0).toLocaleString()}${
+            expense?.currency ? ` ${expense.currency}` : ''
+          }`}
         </Text>
 
         {/* Spending limit progress bar */}
-        {typeof expense?.spendingLimit === 'number' && (expense?.spendingLimit ?? 0) > 0 ? (
+        {typeof expense?.spendingLimit === 'number' &&
+        (expense?.spendingLimit ?? 0) > 0 ? (
           <>
             <Text style={styles.diagCaption}>Limit:</Text>
             <HorizontalBar
@@ -128,7 +145,11 @@ export default function ExpenseTransactions() {
               fillColor={barColor}
               trackColor="#1f2937"
               labelColor="#cbd5e1"
-              labelText={`${Number(spent).toLocaleString()}${expense?.currency ? ` ${expense.currency}` : ''} / ${Number(spendingLimit).toLocaleString()}${expense?.currency ? ` ${expense.currency}` : ''}`}
+              labelText={`${Number(spent).toLocaleString()}${
+                expense?.currency ? ` ${expense.currency}` : ''
+              } / ${Number(spendingLimit).toLocaleString()}${
+                expense?.currency ? ` ${expense.currency}` : ''
+              }`}
               style={{ marginTop: 4 }}
             />
           </>
@@ -144,6 +165,14 @@ export default function ExpenseTransactions() {
               <Text style={styles.emptySub}>
                 Add your first transaction to this expense.
               </Text>
+              <TouchableOpacity
+                onPress={() => setInfoOpen(true)}
+                activeOpacity={0.7}
+              >
+                <Text style={{ color: '#93c5fd', fontWeight: '700' }}>
+                  What is this?
+                </Text>
+              </TouchableOpacity>
               <RoundedButton
                 title="Add Transaction"
                 onPress={() => setCreateOpen(true)}
@@ -249,6 +278,13 @@ export default function ExpenseTransactions() {
             await loadAll();
           }}
         />
+
+        <InfoModal
+          visible={infoOpen}
+          title="Expense detail"
+          content="This view shows all transactions for the selected expense. Track spending over time, and compare it to the optional monthly spending limit. Use the + button to add new transactions."
+          onClose={() => setInfoOpen(false)}
+        />
       </View>
     </ScreenWrapper>
   );
@@ -300,5 +336,10 @@ const styles = StyleSheet.create({
     marginTop: 48,
   },
   emptyTitle: { color: '#fff', fontSize: 18, fontWeight: '800' },
-  emptySub: { color: '#94a3b8', marginTop: 6, marginBottom: 12, textAlign: 'center' },
+  emptySub: {
+    color: '#94a3b8',
+    marginTop: 6,
+    marginBottom: 12,
+    textAlign: 'center',
+  },
 });

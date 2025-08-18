@@ -68,10 +68,12 @@ export default function Dropdown({
             )}
             <Text style={styles.selectedText}>{selectedOption.label}</Text>
             {selectedOption.color && (
-              <View style={[
-                styles.colorIndicator,
-                { backgroundColor: selectedOption.color }
-              ]} />
+              <View
+                style={[
+                  styles.colorIndicator,
+                  { backgroundColor: selectedOption.color },
+                ]}
+              />
             )}
           </View>
         ) : (
@@ -114,17 +116,22 @@ export default function Dropdown({
                     {item.icon && (
                       <Text style={styles.optionIcon}>{item.icon}</Text>
                     )}
-                    <Text style={[
-                      styles.optionText,
-                      selectedOption?.id === item.id && styles.optionTextSelected,
-                    ]}>
+                    <Text
+                      style={[
+                        styles.optionText,
+                        selectedOption?.id === item.id &&
+                          styles.optionTextSelected,
+                      ]}
+                    >
                       {item.label}
                     </Text>
                     {item.color && (
-                      <View style={[
-                        styles.colorIndicator,
-                        { backgroundColor: item.color }
-                      ]} />
+                      <View
+                        style={[
+                          styles.colorIndicator,
+                          { backgroundColor: item.color },
+                        ]}
+                      />
                     )}
                   </View>
                   {selectedOption?.id === item.id && (
@@ -136,7 +143,7 @@ export default function Dropdown({
               )}
               ItemSeparatorComponent={() => <View style={styles.separator} />}
               showsVerticalScrollIndicator={false}
-              ListFooterComponent={() => 
+              ListFooterComponent={() =>
                 selectedOption ? (
                   <TouchableOpacity
                     style={[styles.option, styles.clearOption]}

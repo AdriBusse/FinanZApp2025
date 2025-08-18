@@ -15,7 +15,8 @@ import FABSpeedDial from '../components/FABSpeedDial';
 import FormBottomSheet from '../components/FormBottomSheet';
 import Input from '../components/atoms/Input';
 import RoundedButton from '../components/atoms/RoundedButton';
-import { Trash2 } from 'lucide-react-native';
+import { Trash2, Info } from 'lucide-react-native';
+import InfoModal from '../components/atoms/InfoModal';
 import { useFinanceStore } from '../store/finance';
 import { apolloClient } from '../apollo/client';
 import { gql } from '@apollo/client';
@@ -54,6 +55,7 @@ export default function Expenses() {
   const [isSpeedDialOpen, setIsSpeedDialOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
+  const [infoOpen, setInfoOpen] = useState(false);
 
   const displayedExpenses = useMemo(
     () => (showArchived ? expenses : (expenses || []).filter(e => !e.archived)),
@@ -90,7 +92,18 @@ export default function Expenses() {
     <ScreenWrapper scrollable={false}>
       <View style={styles.container}>
         <View style={styles.titleRow}>
-          <Text style={styles.title}>Expenses</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Text style={styles.title}>Expenses</Text>
+            <TouchableOpacity
+              onPress={() => setInfoOpen(true)}
+              accessibilityLabel="About expenses"
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              style={{ marginLeft: 8 }}
+              activeOpacity={0.7}
+            >
+              <Info color="#94a3b8" size={20} />
+            </TouchableOpacity>
+          </View>
           <TouchableOpacity
             onPress={async () => {
               const next = !showArchived;
@@ -127,6 +140,14 @@ export default function Expenses() {
                     ? 'You have no expenses yet. Create your first one.'
                     : 'Archived expenses are hidden. Create a new one to get started.'}
                 </Text>
+                <TouchableOpacity
+                  onPress={() => setInfoOpen(true)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={{ color: '#93c5fd', fontWeight: '700' }}>
+                    What is this?
+                  </Text>
+                </TouchableOpacity>
                 <RoundedButton
                   title="Create Expense"
                   onPress={() => setIsCreateModalOpen(true)}
@@ -142,7 +163,9 @@ export default function Expenses() {
                   showArchived && item.archived ? styles.archivedItem : null,
                 ]}
                 onPress={() =>
-                  navigation.navigate('ExpenseTransactions', { expenseId: item.id })
+                  navigation.navigate('ExpenseTransactions', {
+                    expenseId: item.id,
+                  })
                 }
               >
                 <View>
@@ -152,7 +175,11 @@ export default function Expenses() {
                   </Text>
                 </View>
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <Text style={styles.expenseSum}>{(item.sum ?? 0).toLocaleString()}</Text>
+                  <Text style={styles.expenseSum}>{`${(
+                    item.sum ?? 0
+                  ).toLocaleString()}${
+                    item.currency ? ` ${item.currency}` : ''
+                  }`}</Text>
                   <TouchableOpacity
                     accessibilityLabel="Delete expense"
                     onPress={() => {
@@ -181,7 +208,11 @@ export default function Expenses() {
                     }}
                     style={{ marginLeft: 12, padding: 6 }}
                   >
-                    <Trash2 color="#ef4444" size={20} />
+                    <Trash2
+                      color="#ef4444"
+                      size={20}
+                      style={{ opacity: 0.8 }}
+                    />
                   </TouchableOpacity>
                 </View>
               </TouchableOpacity>
@@ -235,6 +266,38 @@ export default function Expenses() {
             await loadAll();
           }}
         />
+
+        <InfoModal
+          visible={infoOpen}
+          title="Expenses"
+          content={`
+Expenses let you group your spending into a single bucket for a time period (typically a month) or a specific topic (e.g., **Vacation**, **Home Renovation**). Each bucket contains all the transactions for that period/topic so you can see where your money goes.
+
+**What you can do:**
+- Create a bucket for a month or a custom topic.
+- Set a spending limit for the bucket to keep yourself on budget.
+- Add transactions to the bucket as you spend.
+- Categorize each transaction (e.g., Groceries, Dining, Transport) to get a detailed breakdown.
+- Make expenses recurring and pre-load recurring transactions (like rent or subscriptions) each time a new recurring bucket is created.
+- Archive older Expenses that should not occour primarly in the list.
+
+**How it works (step by step):**
+1. Create a new Expense bucket
+Choose Month (e.g., "August 2025") or Topic (e.g., "Ski Trip").
+2. Set a spending limit (optional)
+Add a target budget for the bucket.
+3. Add transactions as you go
+Enter the amount, date, and assign a category.
+4. Use recurring items (optional)
+Mark common charges (rent, phone bill, gym) as recurring transactions.
+When you create the next recurring bucket (e.g., next month), these transactions are auto-added so you don’t have to re-enter them.
+5. Review your spending
+See totals vs. limit and a category breakdown for that bucket to understand where your money went during that time/topic.
+
+That’s it — Buckets organize your spending, limits keep you on track, categories show where the money goes, and recurring items save you time every month.`}
+          markdown
+          onClose={() => setInfoOpen(false)}
+        />
       </View>
     </ScreenWrapper>
   );
@@ -257,25 +320,37 @@ function CreateExpenseModal({
   const isValid = title.trim().length > 0;
 
   // Templates handling
-  const [templates, setTemplates] = useState<Array<{ id: string; describtion: string }>>([]);
+  const [templates, setTemplates] = useState<
+    Array<{ id: string; describtion: string; amount?: number }>
+  >([]);
   const [selectedTemplateIds, setSelectedTemplateIds] = useState<string[]>([]);
 
   const GET_TEMPLATES = gql`
     query GET_EXPENSE_TEMPLATES {
-      getExpenseTransactionTemplates { id describtion }
+      getExpenseTransactionTemplates {
+        id
+        describtion
+        amount
+      }
     }
   `;
 
   const loadTemplates = async () => {
     try {
-      const { data } = await apolloClient.query({ query: GET_TEMPLATES, fetchPolicy: 'network-only' });
-      const list: Array<{ id: string; describtion: string }> = data?.getExpenseTransactionTemplates ?? [];
+      const { data } = await apolloClient.query({
+        query: GET_TEMPLATES,
+        fetchPolicy: 'network-only',
+      });
+      const list: Array<{ id: string; describtion: string; amount?: number }> =
+        data?.getExpenseTransactionTemplates ?? [];
       setTemplates(list);
       // Initialize selection: use saved prefs intersecting with current list; default to all
       const saved = (await preferences.getSelectedExpenseTemplateIds()) ?? null;
       if (saved && saved.length > 0) {
         const existing = list.filter(t => saved.includes(t.id)).map(t => t.id);
-        setSelectedTemplateIds(existing.length > 0 ? existing : list.map(t => t.id));
+        setSelectedTemplateIds(
+          existing.length > 0 ? existing : list.map(t => t.id),
+        );
       } else {
         setSelectedTemplateIds(list.map(t => t.id));
       }
@@ -316,24 +391,30 @@ function CreateExpenseModal({
         if (!isValid) return;
         try {
           setIsSubmitting(true);
-          const skipTemplateIds = monthlyRecurring && templates.length > 0
-            ? templates.filter(t => !selectedTemplateIds.includes(t.id)).map(t => t.id)
-            : undefined;
+          const skipTemplateIds =
+            monthlyRecurring && templates.length > 0
+              ? templates
+                  .filter(t => !selectedTemplateIds.includes(t.id))
+                  .map(t => t.id)
+              : undefined;
           await apolloClient.mutate({
             mutation: CREATE_EXPENSE,
             variables: {
               title: title.trim(),
               currency: currency.trim() || null,
               monthlyRecurring,
-              spendingLimit: spendingLimit.trim() && !Number.isNaN(Number(spendingLimit))
-                ? parseInt(spendingLimit, 10)
-                : null,
+              spendingLimit:
+                spendingLimit.trim() && !Number.isNaN(Number(spendingLimit))
+                  ? parseInt(spendingLimit, 10)
+                  : null,
               skipTemplateIds,
             },
           });
           // Persist template selection for next time
           if (monthlyRecurring) {
-            await preferences.setSelectedExpenseTemplateIds(selectedTemplateIds);
+            await preferences.setSelectedExpenseTemplateIds(
+              selectedTemplateIds,
+            );
           }
           setTitle('');
           setCurrency('');
@@ -346,9 +427,18 @@ function CreateExpenseModal({
       }}
     >
       <Text style={styles.modalLabel}>Title</Text>
-      <Input value={title} onChangeText={setTitle} placeholder="e.g. Groceries" />
+      <Input
+        value={title}
+        onChangeText={setTitle}
+        placeholder="e.g. Groceries"
+      />
       <Text style={styles.modalLabel}>Currency</Text>
-      <Input value={currency} onChangeText={setCurrency} placeholder="e.g. EUR" maxLength={6} />
+      <Input
+        value={currency}
+        onChangeText={setCurrency}
+        placeholder="e.g. EUR"
+        maxLength={6}
+      />
       <Text style={styles.modalLabel}>Spending Limit</Text>
       <Input
         value={spendingLimit}
@@ -357,7 +447,14 @@ function CreateExpenseModal({
         keyboardType="numeric"
       />
 
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 }}>
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          marginTop: 8,
+        }}
+      >
         <Text style={styles.modalLabel}>Monthly recurring</Text>
         <Switch value={monthlyRecurring} onValueChange={setMonthlyRecurring} />
       </View>
@@ -373,19 +470,33 @@ function CreateExpenseModal({
               return (
                 <TouchableOpacity
                   key={t.id}
-                  style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 6 }}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    paddingVertical: 6,
+                  }}
                   onPress={() => {
                     setSelectedTemplateIds(prev =>
-                      checked ? prev.filter(id => id !== t.id) : [...prev, t.id]
+                      checked
+                        ? prev.filter(id => id !== t.id)
+                        : [...prev, t.id],
                     );
                   }}
                 >
-                  <Text style={{ color: '#f8fafc' }}>{t.describtion}</Text>
+                  <Text style={{ color: '#f8fafc' }}>
+                    {t.describtion}
+                    {typeof t.amount === 'number' ? (
+                      <Text style={{ color: '#94a3b8' }}>{`  ${Math.round(
+                        t.amount,
+                      ).toLocaleString()}`}</Text>
+                    ) : null}
+                  </Text>
                   <Switch
                     value={checked}
-                    onValueChange={(v) => {
+                    onValueChange={v => {
                       setSelectedTemplateIds(prev =>
-                        v ? [...prev, t.id] : prev.filter(id => id !== t.id)
+                        v ? [...prev, t.id] : prev.filter(id => id !== t.id),
                       );
                     }}
                   />
@@ -431,5 +542,10 @@ const styles = StyleSheet.create({
     marginTop: 48,
   },
   emptyTitle: { color: '#fff', fontSize: 18, fontWeight: '800' },
-  emptySub: { color: '#94a3b8', marginTop: 6, marginBottom: 12, textAlign: 'center' },
+  emptySub: {
+    color: '#94a3b8',
+    marginTop: 6,
+    marginBottom: 12,
+    textAlign: 'center',
+  },
 });

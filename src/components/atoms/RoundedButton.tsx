@@ -1,5 +1,13 @@
 import React from 'react';
-import { TouchableOpacity, Text, StyleSheet, ViewStyle, TextStyle, GestureResponderEvent, ActivityIndicator } from 'react-native';
+import {
+  TouchableOpacity,
+  Text,
+  StyleSheet,
+  ViewStyle,
+  TextStyle,
+  GestureResponderEvent,
+  ActivityIndicator,
+} from 'react-native';
 
 export type RoundedButtonProps = {
   title: string;
@@ -35,7 +43,12 @@ export default function RoundedButton({
   textStyle,
 }: RoundedButtonProps) {
   const isDisabled = !!(disabled || loading);
-  const { container, label } = getStyles(variant, size, !!fullWidth, isDisabled);
+  const { container, label } = getStyles(
+    variant,
+    size,
+    !!fullWidth,
+    isDisabled,
+  );
 
   return (
     <TouchableOpacity
@@ -46,7 +59,9 @@ export default function RoundedButton({
       accessibilityRole="button"
     >
       {loading ? (
-        <ActivityIndicator color={variant === 'outline' ? COLORS.textOnDark : '#fff'} />
+        <ActivityIndicator
+          color={variant === 'outline' ? COLORS.textOnDark : '#fff'}
+        />
       ) : (
         <Text style={[label, textStyle]}>{title}</Text>
       )}
@@ -65,16 +80,22 @@ function getStyles(
     alignItems: 'center',
     justifyContent: 'center',
   };
-  const paddings: Record<NonNullable<RoundedButtonProps['size']>, { paddingVertical: number; paddingHorizontal: number; fontSize: number }>
-    = {
-      sm: { paddingVertical: 8, paddingHorizontal: 14, fontSize: 13 },
-      md: { paddingVertical: 12, paddingHorizontal: 18, fontSize: 15 },
-      lg: { paddingVertical: 14, paddingHorizontal: 22, fontSize: 17 },
-    };
+  const paddings: Record<
+    NonNullable<RoundedButtonProps['size']>,
+    { paddingVertical: number; paddingHorizontal: number; fontSize: number }
+  > = {
+    sm: { paddingVertical: 8, paddingHorizontal: 14, fontSize: 13 },
+    md: { paddingVertical: 12, paddingHorizontal: 18, fontSize: 15 },
+    lg: { paddingVertical: 14, paddingHorizontal: 22, fontSize: 17 },
+  };
 
   const pal = (() => {
     if (disabled) {
-      return { bg: COLORS.disabledBg, text: COLORS.disabledText, border: COLORS.outlineBorder };
+      return {
+        bg: COLORS.disabledBg,
+        text: COLORS.disabledText,
+        border: COLORS.outlineBorder,
+      };
     }
     switch (variant) {
       case 'primary':
@@ -84,7 +105,11 @@ function getStyles(
       case 'danger':
         return { bg: COLORS.danger, text: COLORS.textOnDark };
       case 'outline':
-        return { bg: 'transparent', text: COLORS.textOnDark, border: COLORS.outlineBorder };
+        return {
+          bg: 'transparent',
+          text: COLORS.textOnDark,
+          border: COLORS.outlineBorder,
+        };
       default:
         return { bg: COLORS.primary, text: COLORS.textOnDark };
     }

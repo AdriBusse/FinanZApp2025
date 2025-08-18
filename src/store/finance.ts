@@ -94,7 +94,12 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
     });
     await get().loadAll();
   },
-  createSavingDepot: async (name, short, currency = null, savinggoal = null) => {
+  createSavingDepot: async (
+    name,
+    short,
+    currency = null,
+    savinggoal = null,
+  ) => {
     await apolloClient.mutate({
       mutation: CREATE_SAVING_DEPOT,
       variables: { name, short, currency, savinggoal },

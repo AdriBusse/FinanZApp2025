@@ -29,23 +29,24 @@ export default function BottomSheetModal({
   const insets = useSafeAreaInsets();
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const screenHeight = Dimensions.get('window').height;
-  const targetHeight = Math.max(0.3, Math.min(0.95, heightPercent)) * screenHeight;
+  const targetHeight =
+    Math.max(0.3, Math.min(0.95, heightPercent)) * screenHeight;
   const translateY = useRef(new Animated.Value(targetHeight)).current;
   const backdrop = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     const keyboardWillShow = Keyboard.addListener(
       Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
-      (e) => {
+      e => {
         setKeyboardHeight(e.endCoordinates.height);
-      }
+      },
     );
 
     const keyboardWillHide = Keyboard.addListener(
       Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
       () => {
         setKeyboardHeight(0);
-      }
+      },
     );
 
     return () => {
@@ -84,9 +85,10 @@ export default function BottomSheetModal({
     }
   }, [visible, translateY, targetHeight, backdrop]);
 
-  const modalHeight = keyboardHeight > 0 
-    ? Math.min(targetHeight, screenHeight - keyboardHeight - 50) // Leave 50px margin
-    : targetHeight;
+  const modalHeight =
+    keyboardHeight > 0
+      ? Math.min(targetHeight, screenHeight - keyboardHeight - 50) // Leave 50px margin
+      : targetHeight;
 
   return (
     <Modal
@@ -96,10 +98,12 @@ export default function BottomSheetModal({
       onRequestClose={onClose}
     >
       <View style={styles.overlay}>
-        <TouchableWithoutFeedback onPress={() => {
-          Keyboard.dismiss();
-          onClose();
-        }}>
+        <TouchableWithoutFeedback
+          onPress={() => {
+            Keyboard.dismiss();
+            onClose();
+          }}
+        >
           <Animated.View
             style={[
               styles.backdrop,
@@ -115,7 +119,7 @@ export default function BottomSheetModal({
         <Animated.View
           style={[
             styles.sheet,
-            { 
+            {
               height: modalHeight,
               transform: [{ translateY }],
               paddingBottom: Math.max(0, insets.bottom || 0),
@@ -125,7 +129,7 @@ export default function BottomSheetModal({
           <View style={styles.handleContainer}>
             <View style={styles.handle} />
           </View>
-          <ScrollView 
+          <ScrollView
             style={styles.content}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
@@ -144,14 +148,14 @@ export default function BottomSheetModal({
 }
 
 const styles = StyleSheet.create({
-  overlay: { 
-    flex: 1, 
+  overlay: {
+    flex: 1,
     justifyContent: 'flex-end',
     backgroundColor: 'transparent',
   },
-  backdrop: { 
-    ...StyleSheet.absoluteFillObject, 
-    backgroundColor: '#000' 
+  backdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: '#000',
   },
   sheet: {
     backgroundColor: '#111827',
@@ -159,22 +163,22 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 16,
     overflow: 'hidden',
   },
-  handleContainer: { 
-    alignItems: 'center', 
+  handleContainer: {
+    alignItems: 'center',
     paddingTop: 8,
     paddingBottom: 8,
   },
-  handle: { 
-    width: 48, 
-    height: 4, 
-    backgroundColor: '#374151', 
-    borderRadius: 2 
+  handle: {
+    width: 48,
+    height: 4,
+    backgroundColor: '#374151',
+    borderRadius: 2,
   },
-  content: { 
+  content: {
     flex: 1,
   },
-  contentContainer: { 
-    padding: 16, 
+  contentContainer: {
+    padding: 16,
     paddingBottom: 32,
     flexGrow: 1,
   },

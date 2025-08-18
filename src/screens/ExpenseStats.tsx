@@ -1,5 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+} from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import ScreenWrapper from '../components/layout/ScreenWrapper';
 import { useFinanceStore } from '../store/finance';
@@ -22,29 +28,54 @@ export default function ExpenseStats() {
     void fetchCategories();
   }, [fetchCategories]);
 
-  const transactions = expense?.transactions ?? [] as any[];
-  const total = transactions.reduce((s: number, t: any) => s + Number(t.amount || 0), 0);
+  const transactions = expense?.transactions ?? ([] as any[]);
+  const total = transactions.reduce(
+    (s: number, t: any) => s + Number(t.amount || 0),
+    0,
+  );
 
   // Ring (pie) by category: sums amounts per category, including 'Uncategorized'
   const [selectedSlice, setSelectedSlice] = useState<number | null>(null);
   const pieSlices = useMemo(() => {
-    if (!transactions.length) return [] as { value: number; color: string; name?: string; percent?: number }[];
+    if (!transactions.length)
+      return [] as {
+        value: number;
+        color: string;
+        name?: string;
+        percent?: number;
+      }[];
 
     const byCat = new Map<string, number>();
     for (const t of transactions) {
-      const key = (t.categoryId as string | undefined) || (t.category?.id as string | undefined) || 'uncategorized';
+      const key =
+        (t.categoryId as string | undefined) ||
+        (t.category?.id as string | undefined) ||
+        'uncategorized';
       byCat.set(key, (byCat.get(key) || 0) + Number(t.amount || 0));
     }
     const raw = Array.from(byCat.entries()).map(([catId, sum]) => {
       const cat = categories.find(c => c.id === catId);
       return {
         id: catId,
-        name: cat?.name || (catId === 'uncategorized' ? 'Uncategorized' : 'Category'),
+        name:
+          cat?.name ||
+          (catId === 'uncategorized' ? 'Uncategorized' : 'Category'),
         sum,
         color: cat?.color || undefined,
       };
     });
-    const palette = ['#2e7d32', '#10b981', '#06b6d4', '#0ea5e9', '#6366f1', '#a78bfa', '#f59e0b', '#ef4444', '#f472b6', '#22c55e'];
+    const palette = [
+      '#2e7d32',
+      '#10b981',
+      '#06b6d4',
+      '#0ea5e9',
+      '#6366f1',
+      '#a78bfa',
+      '#f59e0b',
+      '#ef4444',
+      '#f472b6',
+      '#22c55e',
+    ];
     let slices = raw
       .map((m, i) => ({
         value: Number(m.sum) > 0 ? Number(m.sum) : 0,
@@ -71,7 +102,8 @@ export default function ExpenseStats() {
 
   // Bar chart: sum by day (for BarChart)
   const barSeries = useMemo(() => {
-    if (!transactions.length) return [] as { value: number; label: string; frontColor?: string }[];
+    if (!transactions.length)
+      return [] as { value: number; label: string; frontColor?: string }[];
     const map = new Map<string, number>();
     for (const t of transactions) {
       const d = t.createdAt ? new Date(t.createdAt) : new Date();
@@ -80,7 +112,15 @@ export default function ExpenseStats() {
     }
     const arr = Array.from(map.entries())
       .sort((a, b) => (a[0] < b[0] ? -1 : 1))
-      .map(([k, v]) => ({ label: k.slice(5).replace('-', '/'), value: v, frontColor: '#2e7d32', dateKey: k } as any));
+      .map(
+        ([k, v]) =>
+          ({
+            label: k.slice(5).replace('-', '/'),
+            value: v,
+            frontColor: '#2e7d32',
+            dateKey: k,
+          } as any),
+      );
     return arr;
   }, [transactions]);
 
@@ -89,16 +129,32 @@ export default function ExpenseStats() {
     if (!transactions.length) return [] as any[];
     const map = new Map<string, number>();
     for (const t of transactions) {
-      const key = (t.categoryId as string | undefined) || (t.category?.id as string | undefined) || 'uncategorized';
+      const key =
+        (t.categoryId as string | undefined) ||
+        (t.category?.id as string | undefined) ||
+        'uncategorized';
       map.set(key, (map.get(key) || 0) + (t.amount || 0));
     }
-    const palette = ['#2e7d32', '#10b981', '#06b6d4', '#0ea5e9', '#6366f1', '#a78bfa', '#f59e0b', '#ef4444', '#f472b6', '#22c55e'];
+    const palette = [
+      '#2e7d32',
+      '#10b981',
+      '#06b6d4',
+      '#0ea5e9',
+      '#6366f1',
+      '#a78bfa',
+      '#f59e0b',
+      '#ef4444',
+      '#f472b6',
+      '#22c55e',
+    ];
     const entries = Array.from(map.entries());
     const arr = entries.map(([catId, sum], i) => {
       const cat = categories.find(c => c.id === catId);
       return {
         label: '', // hide labels visually too
-        name: cat?.name || (catId === 'uncategorized' ? 'Uncategorized' : 'Category'),
+        name:
+          cat?.name ||
+          (catId === 'uncategorized' ? 'Uncategorized' : 'Category'),
         value: sum,
         frontColor: cat?.color || palette[i % palette.length],
       };
@@ -108,12 +164,17 @@ export default function ExpenseStats() {
 
   return (
     <ScreenWrapper scrollable={false}>
-      <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 48 }}>
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={{ paddingBottom: 48 }}
+      >
         <View style={styles.headerRow}>
           <TouchableOpacity onPress={() => navigation.goBack()}>
             <Text style={styles.headerAction}>{'‹'}</Text>
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>{expense?.title ?? 'Expense'} · Stats</Text>
+          <Text style={styles.headerTitle}>
+            {expense?.title ?? 'Expense'} · Stats
+          </Text>
           <View style={styles.headerSpacer} />
         </View>
 
@@ -132,11 +193,15 @@ export default function ExpenseStats() {
                 centerLabelComponent={() => (
                   <View style={{ alignItems: 'center' }}>
                     <Text style={{ color: '#cbd5e1', fontWeight: '700' }}>
-                      {selectedSlice != null ? (pieSlices[selectedSlice]?.name ?? 'Total') : 'Total'}
+                      {selectedSlice != null
+                        ? pieSlices[selectedSlice]?.name ?? 'Total'
+                        : 'Total'}
                     </Text>
                     <Text style={{ color: '#94a3b8', fontSize: 12 }}>
                       {selectedSlice != null
-                        ? (pieSlices[selectedSlice]?.value ?? 0).toLocaleString()
+                        ? (
+                            pieSlices[selectedSlice]?.value ?? 0
+                          ).toLocaleString()
                         : total.toLocaleString()}
                     </Text>
                   </View>
@@ -145,10 +210,19 @@ export default function ExpenseStats() {
               {/* Legend */}
               <View style={styles.legendWrap}>
                 {pieSlices.map((s, idx) => (
-                  <View key={`${s.name ?? 'cat'}-${idx}`} style={styles.legendItem}>
-                    <View style={[styles.legendDot, { backgroundColor: s.color }]} />
+                  <View
+                    key={`${s.name ?? 'cat'}-${idx}`}
+                    style={styles.legendItem}
+                  >
+                    <View
+                      style={[styles.legendDot, { backgroundColor: s.color }]}
+                    />
                     <Text style={styles.legendText} numberOfLines={1}>
-                      {(s.name ?? 'Category') + ' · ' + (s.value != null ? Number(s.value).toLocaleString() : '')}
+                      {(s.name ?? 'Category') +
+                        ' · ' +
+                        (s.value != null
+                          ? Number(s.value).toLocaleString()
+                          : '')}
                     </Text>
                   </View>
                 ))}
@@ -178,11 +252,20 @@ export default function ExpenseStats() {
                 yAxisTextStyle={{ color: 'transparent', fontSize: 1 }}
                 renderTooltip={(item: any, index: number) => {
                   const len = (barByCategory as any[]).length;
-                  const shiftStyle = index >= len - 1 ? { marginLeft: -30 } : index <= 0 ? { marginLeft: 30 } : null;
+                  const shiftStyle =
+                    index >= len - 1
+                      ? { marginLeft: -30 }
+                      : index <= 0
+                      ? { marginLeft: 30 }
+                      : null;
                   return (
                     <View style={[styles.tooltip, shiftStyle]}>
-                      <Text style={styles.tooltipText}>{item?.name ?? 'Category'}</Text>
-                      <Text style={styles.tooltipValue}>{item?.value?.toLocaleString?.() ?? item?.value}</Text>
+                      <Text style={styles.tooltipText}>
+                        {item?.name ?? 'Category'}
+                      </Text>
+                      <Text style={styles.tooltipValue}>
+                        {item?.value?.toLocaleString?.() ?? item?.value}
+                      </Text>
                     </View>
                   );
                 }}
@@ -212,11 +295,20 @@ export default function ExpenseStats() {
                 yAxisTextStyle={{ color: 'transparent', fontSize: 1 }}
                 renderTooltip={(item: any, index: number) => {
                   const len = (barSeries as any[]).length;
-                  const shiftStyle = index >= len - 1 ? { marginLeft: -30 } : index <= 0 ? { marginLeft: 30 } : null;
+                  const shiftStyle =
+                    index >= len - 1
+                      ? { marginLeft: -30 }
+                      : index <= 0
+                      ? { marginLeft: 30 }
+                      : null;
                   return (
                     <View style={[styles.tooltip, shiftStyle]}>
-                      <Text style={styles.tooltipText}>{item?.dateKey ?? item?.label}</Text>
-                      <Text style={styles.tooltipValue}>{item?.value?.toLocaleString?.() ?? item?.value}</Text>
+                      <Text style={styles.tooltipText}>
+                        {item?.dateKey ?? item?.label}
+                      </Text>
+                      <Text style={styles.tooltipValue}>
+                        {item?.value?.toLocaleString?.() ?? item?.value}
+                      </Text>
                     </View>
                   );
                 }}
@@ -242,7 +334,12 @@ const styles = StyleSheet.create({
   headerAction: { color: '#cbd5e1', fontSize: 24, padding: 4 },
   headerTitle: { color: '#fff', fontSize: 18, fontWeight: '700' },
   headerSpacer: { width: 24 },
-  sectionTitle: { color: '#cbd5e1', fontSize: 14, fontWeight: '700', marginVertical: 8 },
+  sectionTitle: {
+    color: '#cbd5e1',
+    fontSize: 14,
+    fontWeight: '700',
+    marginVertical: 8,
+  },
   card: {
     backgroundColor: '#1e212b',
     borderRadius: 12,

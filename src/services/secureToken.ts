@@ -22,13 +22,16 @@ export async function setSecureToken(token: string): Promise<void> {
 
   if (supportsBio) {
     // Require current enrolled biometrics to access the token
-    (options as any).accessControl = Keychain.ACCESS_CONTROL.BIOMETRY_CURRENT_SET;
+    (options as any).accessControl =
+      Keychain.ACCESS_CONTROL.BIOMETRY_CURRENT_SET;
   }
 
   await Keychain.setGenericPassword('auth', token, options);
 }
 
-export async function getSecureTokenWithBiometric(prompt?: string): Promise<string | null> {
+export async function getSecureTokenWithBiometric(
+  prompt?: string,
+): Promise<string | null> {
   try {
     const supportsBio = await isBiometryAvailable();
     if (!supportsBio) return null; // Do not retrieve without biometric capability

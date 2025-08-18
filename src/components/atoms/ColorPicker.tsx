@@ -48,10 +48,7 @@ export default function ColorPicker({
     <View style={styles.container}>
       <Text style={styles.label}>{label}</Text>
       <TouchableOpacity
-        style={[
-          styles.colorButton,
-          { backgroundColor: selectedColor },
-        ]}
+        style={[styles.colorButton, { backgroundColor: selectedColor }]}
         onPress={() => setIsOpen(true)}
         activeOpacity={0.7}
       >
@@ -78,7 +75,7 @@ export default function ColorPicker({
             </View>
             <FlatList
               data={COLORS}
-              keyExtractor={(item) => item}
+              keyExtractor={item => item}
               numColumns={5}
               renderItem={({ item }) => (
                 <TouchableOpacity

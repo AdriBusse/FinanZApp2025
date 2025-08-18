@@ -22,7 +22,7 @@ export default function TransactionListItem({
   onDelete,
 }: TransactionListItemProps) {
   return (
-    <TouchableOpacity 
+    <TouchableOpacity
       style={styles.row}
       onPress={onPress}
       activeOpacity={onPress ? 0.7 : 1}
@@ -33,7 +33,9 @@ export default function TransactionListItem({
       </View>
       {typeof amount === 'number' && (
         <Text style={styles.rowAmount}>
-          {`${Math.round(amount).toLocaleString()}${currency ? ` ${currency}` : ''}`}
+          {`${Math.round(amount).toLocaleString()}${
+            currency ? ` ${currency}` : ''
+          }`}
         </Text>
       )}
       {!!onDelete && (
@@ -44,7 +46,7 @@ export default function TransactionListItem({
           style={{ marginLeft: 8, padding: 4 }}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
-          <Trash2 color="#ef4444" size={20} />
+          <Trash2 color="#ef4444" size={20} style={{ opacity: 0.8 }} />
         </TouchableOpacity>
       )}
     </TouchableOpacity>

@@ -1,5 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ActivityIndicator,
+  TouchableOpacity,
+} from 'react-native';
 import Input from '../components/atoms/Input';
 import { Formik } from 'formik';
 import * as Yup from 'yup';
@@ -9,7 +15,7 @@ import { useNavigation } from '@react-navigation/native';
 import ScreenWrapper from '../components/layout/ScreenWrapper';
 
 const LoginSchema = Yup.object().shape({
-  username: Yup.string().required('Username is required'),
+  username: Yup.string().trim().required('Username is required'),
   password: Yup.string().min(4, 'Too short').required('Password is required'),
 });
 
@@ -33,73 +39,76 @@ export default function LoginScreen() {
   return (
     <ScreenWrapper>
       <View style={styles.container}>
-      <Text style={styles.title}>FinanZ Login</Text>
-      <Formik
-        initialValues={{ username: '', password: '' }}
-        validationSchema={LoginSchema}
-        onSubmit={async (values, { setSubmitting }) => {
-          setError(null);
-          try {
-            await login(values.username, values.password);
-          } catch (e: any) {
-            setError(e?.message || 'Login failed');
-          } finally {
-            setSubmitting(false);
-          }
-        }}
-      >
-        {({
-          handleChange,
-          handleBlur,
-          handleSubmit,
-          values,
-          errors,
-          touched,
-          isSubmitting,
-        }) => (
-          <>
-            <Input
-              placeholder="Username"
-              autoCapitalize="none"
-              onChangeText={handleChange('username')}
-              onBlur={handleBlur('username')}
-              value={values.username}
-            />
-            {touched.username && errors.username ? (
-              <Text style={styles.error}>{errors.username}</Text>
-            ) : null}
+        <Text style={styles.title}>FinanZ Login</Text>
+        <Formik
+          initialValues={{ username: '', password: '' }}
+          validationSchema={LoginSchema}
+          onSubmit={async (values, { setSubmitting }) => {
+            setError(null);
+            try {
+              await login(values.username.trim(), values.password);
+            } catch (e: any) {
+              // Show generic error message without revealing whether username or password was incorrect
+              setError('Invalid username or password');
+            } finally {
+              setSubmitting(false);
+            }
+          }}
+        >
+          {({
+            handleChange,
+            handleBlur,
+            handleSubmit,
+            values,
+            errors,
+            touched,
+            isSubmitting,
+          }) => (
+            <>
+              <Input
+                placeholder="Username"
+                autoCapitalize="none"
+                onChangeText={handleChange('username')}
+                onBlur={handleBlur('username')}
+                value={values.username}
+              />
+              {touched.username && errors.username ? (
+                <Text style={styles.error}>{errors.username}</Text>
+              ) : null}
 
-            <Input
-              placeholder="Password"
-              secureTextEntry
-              onChangeText={handleChange('password')}
-              onBlur={handleBlur('password')}
-              value={values.password}
-            />
-            {touched.password && errors.password ? (
-              <Text style={styles.error}>{errors.password}</Text>
-            ) : null}
+              <Input
+                placeholder="Password"
+                secureTextEntry
+                onChangeText={handleChange('password')}
+                onBlur={handleBlur('password')}
+                value={values.password}
+              />
+              {touched.password && errors.password ? (
+                <Text style={styles.error}>{errors.password}</Text>
+              ) : null}
 
-            {error ? <Text style={styles.error}>{error}</Text> : null}
+              {error ? <Text style={styles.error}>{error}</Text> : null}
 
-            <RoundedButton
-              title={isSubmitting ? 'Logging in...' : 'Login'}
-              onPress={() => handleSubmit()}
-              loading={isSubmitting}
-              fullWidth
-              style={{ marginTop: 8 }}
-            />
+              <RoundedButton
+                title={isSubmitting ? 'Logging in...' : 'Login'}
+                onPress={() => handleSubmit()}
+                loading={isSubmitting}
+                fullWidth
+                style={{ marginTop: 8 }}
+              />
 
-            <View style={styles.linkRow}>
-              <Text style={styles.linkHint}>Don't have an account?</Text>
-              <TouchableOpacity onPress={() => navigation.navigate('Register')}>
-                <Text style={styles.link}> Sign up</Text>
-              </TouchableOpacity>
-            </View>
-          </>
-        )}
-      </Formik>
-    </View>
+              <View style={styles.linkRow}>
+                <Text style={styles.linkHint}>Don't have an account?</Text>
+                <TouchableOpacity
+                  onPress={() => navigation.navigate('Register')}
+                >
+                  <Text style={styles.link}> Sign up</Text>
+                </TouchableOpacity>
+              </View>
+            </>
+          )}
+        </Formik>
+      </View>
     </ScreenWrapper>
   );
 }

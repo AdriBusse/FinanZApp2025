@@ -58,7 +58,7 @@ export const useAuthStore = create<AuthState>(set => ({
 
       // If a secure token exists, this will prompt for Face ID/Touch ID on access
       const token = await getSecureTokenWithBiometric(
-        'Unlock to access your account'
+        'Unlock to access your account',
       );
 
       if (!token) {
@@ -94,7 +94,9 @@ export const useAuthStore = create<AuthState>(set => ({
   },
   login: async (username: string, password: string) => {
     const storage = getStorage();
-    if (!username || !password) throw new Error('Missing credentials');
+    const uname = (username ?? '').trim();
+    const pwd = password ?? '';
+    if (!uname || !pwd) throw new Error('Invalid username or password');
 
     // Execute GraphQL LOGIN mutation against backend
     try {
@@ -104,7 +106,7 @@ export const useAuthStore = create<AuthState>(set => ({
 
       const result = await apolloClient.mutate({
         mutation: LOGIN_MUTATION,
-        variables: { username, password },
+        variables: { username: uname, password: pwd },
         fetchPolicy: 'no-cache',
       });
 
@@ -139,16 +141,24 @@ export const useAuthStore = create<AuthState>(set => ({
         // Swallow prefetch errors to not block login; Dashboard can retry on mount
       }
     } catch (err: any) {
-      // Normalize Apollo/GraphQL errors
-      const msg = err?.message || 'Login failed';
-      throw new Error(msg);
+      // Always return a generic error to avoid leaking whether username or password was incorrect
+      throw new Error('Invalid username or password');
     }
   },
   logout: async () => {
     const storage = getStorage();
     await resetSecureToken();
     await storage.multiRemove([USER_KEY]);
+    // Clear in-memory auth first so subsequent operations don't use a stale token
     set({ token: null, user: null });
+
+    // Also clear Apollo cache to wipe user-specific cached data
+    try {
+      const { apolloClient } = require('../apollo/client');
+      await apolloClient.clearStore();
+    } catch {
+      // Ignore cache clear errors; app will refetch as needed on next login
+    }
   },
 }));
 

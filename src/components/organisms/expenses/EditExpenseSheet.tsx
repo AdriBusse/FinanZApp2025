@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, Switch } from 'react-native';
 import { useMutation } from '@apollo/client';
-import FormBottomSheet, { formStyles as commonFormStyles } from '../../FormBottomSheet';
+import FormBottomSheet, {
+  formStyles as commonFormStyles,
+} from '../../FormBottomSheet';
 import Input from '../../atoms/Input';
 import { UPDATEEXPENSE } from '../../../queries/mutations/Expenses/UpdateExpense';
 
@@ -41,9 +43,10 @@ export default function EditExpenseSheet({
       setArchived(!!expense.archived);
       setMonthlyRecurring(!!expense.monthlyRecurring);
       setSpendingLimit(
-        typeof expense.spendingLimit === 'number' && !Number.isNaN(expense.spendingLimit)
+        typeof expense.spendingLimit === 'number' &&
+          !Number.isNaN(expense.spendingLimit)
           ? String(expense.spendingLimit)
-          : ''
+          : '',
       );
     }
   }, [open, expense]);
@@ -61,7 +64,8 @@ export default function EditExpenseSheet({
           archived,
           monthlyRecurring,
           spendingLimit:
-            spendingLimit.trim().length > 0 && !Number.isNaN(Number(spendingLimit))
+            spendingLimit.trim().length > 0 &&
+            !Number.isNaN(Number(spendingLimit))
               ? parseInt(spendingLimit, 10)
               : null,
         },
@@ -89,7 +93,11 @@ export default function EditExpenseSheet({
           onChangeText={setTitle}
           placeholder="e.g. Groceries"
           returnKeyType="next"
-          onFocus={(e) => (e.target as any).setNativeProps?.({ selection: { start: 0, end: title.length } })}
+          onFocus={e =>
+            (e.target as any).setNativeProps?.({
+              selection: { start: 0, end: title.length },
+            })
+          }
         />
 
         <Text style={commonFormStyles.modalLabel}>Currency</Text>
@@ -114,7 +122,10 @@ export default function EditExpenseSheet({
 
         <View style={styles.row}>
           <Text style={styles.rowLabel}>Monthly recurring</Text>
-          <Switch value={monthlyRecurring} onValueChange={setMonthlyRecurring} />
+          <Switch
+            value={monthlyRecurring}
+            onValueChange={setMonthlyRecurring}
+          />
         </View>
       </View>
     </FormBottomSheet>
