@@ -262,7 +262,7 @@ export default function Dashboard() {
 
       {/* Customizable dashboard grid */}
       <View style={styles.gridHeader}>
-        <TouchableOpacity onPress={() => setEditMode(e => !e)} style={styles.lockBtn} accessibilityRole="button" accessibilityLabel="Toggle dashboard edit mode">
+        <TouchableOpacity disabled={true} onPress={() => setEditMode(e => !e)} style={styles.lockBtn} accessibilityRole="button" accessibilityLabel="Toggle dashboard edit mode">
           {editMode ? <Unlock color="#cbd5e1" size={18} /> : <Lock color="#cbd5e1" size={18} />}
         </TouchableOpacity>
       </View>
