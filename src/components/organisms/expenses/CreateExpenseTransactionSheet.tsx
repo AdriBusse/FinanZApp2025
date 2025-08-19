@@ -19,6 +19,8 @@ import Calendar from '../../atoms/Calendar';
 import { CREATEEXPANSETRANSACTION } from '../../../queries/mutations/Expenses/CreateExpenseTransaction';
 import { useCategoriesStore } from '../../../store/categories';
 import { preferences } from '../../../services/preferences';
+import { useFinanceStore } from '../../../store/finance';
+import { GET_EXPENSES_QUERY } from '../../../graphql/finance';
 
 export default function CreateExpenseTransactionSheet({
   open,
@@ -28,11 +30,11 @@ export default function CreateExpenseTransactionSheet({
 }: {
   open: boolean;
   onClose: () => void;
-  onCreate: (
+  onCreate?: (
     amount: number,
     describtion: string,
     categoryId: string,
-  ) => Promise<void>;
+  ) => void | Promise<void>;
   expenseId: string;
 }) {
   const navigation = useNavigation<any>();
@@ -129,6 +131,13 @@ export default function CreateExpenseTransactionSheet({
       const createdAmount = Number(amount);
       const createdDesc = describtion;
       const createdCategoryId = selectedCategoryId || '';
+      const tempId = `temp-${Date.now()}`;
+      const createdAtIso = selectedDate.toISOString();
+      const catName =
+        (selectedCategoryId &&
+          categories.find(c => c.id === selectedCategoryId)?.name) ||
+        undefined;
+
       await createTransaction({
         variables: {
           expenseId,
@@ -138,11 +147,79 @@ export default function CreateExpenseTransactionSheet({
           date: Math.floor(selectedDate.getTime()),
           autocategorize: autoCategorize,
         },
+        optimisticResponse: {
+          __typename: 'Mutation',
+          createExpenseTransaction: {
+            __typename: 'ExpenseTransaction',
+            id: tempId,
+            amount: createdAmount,
+            createdAt: createdAtIso,
+            describtion: createdDesc,
+            category: selectedCategoryId
+              ? {
+                  __typename: 'ExpenseCategory',
+                  id: selectedCategoryId,
+                  name: catName || 'Category',
+                }
+              : null,
+          },
+        },
+        update: (cache, { data }) => {
+          const newTx = data?.createExpenseTransaction;
+          try {
+            const existing: any = cache.readQuery({ query: GET_EXPENSES_QUERY });
+            if (existing?.getExpenses) {
+              const updated = existing.getExpenses.map((e: any) => {
+                if (e.id !== expenseId) return e;
+                const txs = Array.isArray(e.transactions)
+                  ? [...e.transactions]
+                  : [];
+                // avoid duplicate if temp replaced by server id
+                const withoutTemp = txs.filter((t: any) => t.id !== newTx?.id);
+                const nextTxs = [newTx, ...withoutTemp];
+                return {
+                  ...e,
+                  transactions: nextTxs,
+                  sum: (e.sum || 0) + (newTx?.amount || 0),
+                };
+              });
+              cache.writeQuery({
+                query: GET_EXPENSES_QUERY,
+                data: { getExpenses: updated },
+              });
+            }
+          } catch {}
+        },
       });
       // Close immediately after positive response to prevent repeated taps
       onClose();
       // Fire and forget any follow-up logic (e.g., refetch, toast)
-      void onCreate(createdAmount, createdDesc, createdCategoryId);
+      void onCreate?.(createdAmount, createdDesc, createdCategoryId);
+
+      // Optimistically update local finance store for immediate UI
+      try {
+        const st = useFinanceStore.getState();
+        const updatedExpenses = (st.expenses || []).map(e => {
+          if (e.id !== expenseId) return e as any;
+          const tx = {
+            id: tempId,
+            amount: createdAmount,
+            createdAt: createdAtIso,
+            describtion: createdDesc,
+            category: selectedCategoryId
+              ? { id: selectedCategoryId, name: catName }
+              : null,
+            __typename: 'ExpenseTransaction',
+          } as any;
+          const txs = Array.isArray(e.transactions) ? e.transactions : [];
+          return {
+            ...e,
+            transactions: [tx, ...txs],
+            sum: (e.sum || 0) + createdAmount,
+          } as any;
+        });
+        useFinanceStore.setState({ expenses: updatedExpenses as any });
+      } catch {}
       // Persist preference for next time
       void preferences.setTxAutoCategorizeDefault(autoCategorize);
       // Do not manually reset; the sheet's close effect resets fields

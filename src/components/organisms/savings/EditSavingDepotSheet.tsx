@@ -6,6 +6,8 @@ import FormBottomSheet, {
 } from '../../FormBottomSheet';
 import Input from '../../atoms/Input';
 import { UPDATESAVINGDEPOT } from '../../../queries/mutations/Savings/UpdateSavingDepot';
+import { GET_SAVING_DEPOTS_QUERY } from '../../../graphql/finance';
+import { useFinanceStore } from '../../../store/finance';
 
 interface Depot {
   id: string;
@@ -53,21 +55,60 @@ export default function EditSavingDepotSheet({
     if (!isValid || !depot) return;
 
     try {
+      const nextName = name.trim();
+      const nextShort = short.trim();
+      const nextCurrency = currency.trim() || null;
+      const nextGoal =
+        savingGoal.trim().length > 0 && !Number.isNaN(Number(savingGoal))
+          ? parseInt(savingGoal, 10)
+          : null;
+
       await updateDepot({
         variables: {
           id: depot.id,
-          name: name.trim(),
-          short: short.trim(),
-          currency: currency.trim() || null,
-          savinggoal:
-            savingGoal.trim().length > 0 && !Number.isNaN(Number(savingGoal))
-              ? parseInt(savingGoal, 10)
-              : null,
+          name: nextName,
+          short: nextShort,
+          currency: nextCurrency,
+          savinggoal: nextGoal,
+        },
+        optimisticResponse: {
+          __typename: 'Mutation',
+          updateSavingDepot: {
+            __typename: 'SavingDepot',
+            id: depot.id,
+            name: nextName,
+            short: nextShort,
+            currency: nextCurrency,
+            savinggoal: nextGoal,
+          },
+        },
+        update: (cache, { data }) => {
+          try {
+            const upd: any = data?.updateSavingDepot;
+            const existing: any = cache.readQuery({ query: GET_SAVING_DEPOTS_QUERY });
+            if (existing?.getSavingDepots) {
+              const updated = existing.getSavingDepots.map((d: any) =>
+                d.id === depot.id ? { ...d, ...upd } : d,
+              );
+              cache.writeQuery({
+                query: GET_SAVING_DEPOTS_QUERY,
+                data: { getSavingDepots: updated },
+              });
+            }
+          } catch {}
         },
       });
 
-      // Call the onUpdate callback for any additional logic
-      await onUpdate();
+      // Mirror in Zustand store immediately
+      try {
+        const st = useFinanceStore.getState();
+        const updated = (st.depots || []).map(d =>
+          d.id === depot.id
+            ? { ...d, name: nextName, short: nextShort, currency: nextCurrency, savinggoal: nextGoal }
+            : (d as any),
+        );
+        useFinanceStore.setState({ depots: updated as any });
+      } catch {}
 
       // Reset form
       setName('');

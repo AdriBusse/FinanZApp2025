@@ -8,7 +8,9 @@ import {
   View,
   ViewStyle,
   KeyboardAvoidingView,
+  ActivityIndicator,
 } from 'react-native';
+import { useFinanceStore } from '../../store/finance';
 
 export type ScreenWrapperProps = {
   children: React.ReactNode;
@@ -26,6 +28,16 @@ export default function ScreenWrapper({
   keyboardOffset = 0,
 }: ScreenWrapperProps) {
   const Container = scrollable ? ScrollView : View;
+  const { bootstrapped, loadAll } = useFinanceStore();
+  const called = React.useRef(false);
+
+  // Kick off initial bootstrap once
+  React.useEffect(() => {
+    if (!bootstrapped && !called.current) {
+      called.current = true;
+      void loadAll();
+    }
+  }, [bootstrapped, loadAll]);
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor }]}>
@@ -48,6 +60,18 @@ export default function ScreenWrapper({
         >
           {children}
         </Container>
+        {!bootstrapped && (
+          <View
+            pointerEvents="auto"
+            style={[
+              StyleSheet.absoluteFillObject,
+              styles.loadingOverlay,
+              { backgroundColor: backgroundColor || '#0e0f14' },
+            ]}
+          >
+            <ActivityIndicator size="large" color="#93c5fd" />
+          </View>
+        )}
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -57,4 +81,8 @@ const styles = StyleSheet.create({
   safeArea: { flex: 1 },
   flex: { flex: 1 },
   scrollContent: { flexGrow: 1 },
+  loadingOverlay: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
 });

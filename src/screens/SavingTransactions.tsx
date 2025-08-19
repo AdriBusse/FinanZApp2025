@@ -64,8 +64,7 @@ export default function SavingTransactions() {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const depotId: string = route.params?.depotId ?? '';
-  const { depots, createSavingTx, deleteSavingTransaction, loadAll } =
-    useFinanceStore();
+  const { depots, createSavingTx, deleteSavingTransaction } = useFinanceStore();
   const depot = depots.find(d => d.id === depotId);
 
   const grouped = useMemo(
@@ -236,9 +235,7 @@ export default function SavingTransactions() {
             setSelectedTransaction(null);
           }}
           transaction={selectedTransaction}
-          onUpdate={async () => {
-            await loadAll();
-          }}
+          onUpdate={async () => {}}
         />
 
         {/* Edit Depot Bottom Sheet */}
@@ -248,9 +245,7 @@ export default function SavingTransactions() {
             setEditDepotOpen(false);
           }}
           depot={depot || null}
-          onUpdate={async () => {
-            await loadAll();
-          }}
+          onUpdate={async () => {}}
         />
 
         <InfoModal

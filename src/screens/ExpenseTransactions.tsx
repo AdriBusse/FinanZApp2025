@@ -21,6 +21,7 @@ import RoundedButton from '../components/atoms/RoundedButton';
 import HorizontalBar from '../components/atoms/HorizontalBar';
 import { Info } from 'lucide-react-native';
 import InfoModal from '../components/atoms/InfoModal';
+import { GET_EXPENSES_QUERY } from '../graphql/finance';
 
 const DELETE_EXPENSE_TRANSACTION = gql`
   mutation DELETEEXPANSETRANSACTION($id: String!) {
@@ -206,13 +207,60 @@ export default function ExpenseTransactions() {
                           text: 'Delete',
                           style: 'destructive',
                           onPress: async () => {
+                            // Optimistically remove from Zustand and Apollo cache; rollback on error
+                            const st = useFinanceStore.getState();
+                            const prev = st.expenses ? [...(st.expenses as any[])] : null;
+                            try {
+                              let removedAmount = 0;
+                              const next = (st.expenses || []).map(e => {
+                                if (e.id !== expenseId) return e as any;
+                                const txs = Array.isArray(e.transactions) ? e.transactions : [];
+                                const found = txs.find((t: any) => t.id === id);
+                                removedAmount = found?.amount || 0;
+                                return {
+                                  ...e,
+                                  transactions: txs.filter((t: any) => t.id !== id),
+                                  sum: (e.sum || 0) - removedAmount,
+                                } as any;
+                              });
+                              useFinanceStore.setState({ expenses: next as any });
+                            } catch {}
+
                             try {
                               await apolloClient.mutate({
                                 mutation: DELETE_EXPENSE_TRANSACTION,
                                 variables: { id },
+                                optimisticResponse: {
+                                  __typename: 'Mutation',
+                                  deleteExpenseTransaction: true,
+                                },
+                                update: cache => {
+                                  try {
+                                    const existing: any = cache.readQuery({ query: GET_EXPENSES_QUERY });
+                                    if (existing?.getExpenses) {
+                                      let removedAmountC = 0;
+                                      const updated = existing.getExpenses.map((e: any) => {
+                                        if (e.id !== expenseId) return e;
+                                        const txs = Array.isArray(e.transactions) ? e.transactions : [];
+                                        const found = txs.find((t: any) => t.id === id);
+                                        removedAmountC = found?.amount || 0;
+                                        return {
+                                          ...e,
+                                          transactions: txs.filter((t: any) => t.id !== id),
+                                          sum: (e.sum || 0) - removedAmountC,
+                                        };
+                                      });
+                                      cache.writeQuery({
+                                        query: GET_EXPENSES_QUERY,
+                                        data: { getExpenses: updated },
+                                      });
+                                    }
+                                  } catch {}
+                                },
                               });
-                              await loadAll();
-                            } catch {}
+                            } catch {
+                              if (prev) useFinanceStore.setState({ expenses: prev as any });
+                            }
                           },
                         },
                       ],
@@ -251,11 +299,7 @@ export default function ExpenseTransactions() {
           open={createOpen}
           onClose={() => setCreateOpen(false)}
           expenseId={expenseId}
-          onCreate={async () => {
-            // The sheet performs the actual mutation to preserve selected date
-            // Only refresh the data here
-            await loadAll();
-          }}
+          onCreate={() => {}}
         />
 
         <EditExpenseTransactionSheet

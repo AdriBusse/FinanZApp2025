@@ -6,6 +6,8 @@ import FormBottomSheet, {
 } from '../../FormBottomSheet';
 import Input from '../../atoms/Input';
 import { UPDATESAVINGTRANSACTION } from '../../../queries/mutations/Savings/UpdateSavingTransaction';
+import { GET_SAVING_DEPOTS_QUERY } from '../../../graphql/finance';
+import { useFinanceStore } from '../../../store/finance';
 
 interface Transaction {
   id: string;
@@ -49,16 +51,72 @@ export default function EditSavingTransactionSheet({
     if (!isValid || !transaction) return;
 
     try {
+      const prevAmount = Number(transaction.amount || 0);
+      const nextAmount = Number(amount);
+      const prevCreatedAt = transaction.createdAt;
       await updateTransaction({
         variables: {
           id: Number(transaction.id),
-          amount: Number(amount),
+          amount: nextAmount,
           describtion,
+        },
+        optimisticResponse: {
+          __typename: 'Mutation',
+          updateSavingTransaction: {
+            __typename: 'SavingTransaction',
+            id: transaction.id,
+            amount: nextAmount,
+            describtion,
+            createdAt: prevCreatedAt || new Date().toISOString(),
+          },
+        },
+        update: (cache, { data }) => {
+          try {
+            const updatedTx: any = data?.updateSavingTransaction;
+            const existing: any = cache.readQuery({
+              query: GET_SAVING_DEPOTS_QUERY,
+            });
+            if (existing?.getSavingDepots) {
+              let found = false;
+              const updatedDepots = existing.getSavingDepots.map((d: any) => {
+                const txs = Array.isArray(d.transactions) ? d.transactions : [];
+                const has = txs.some((t: any) => t.id === transaction.id);
+                if (!has) return d;
+                found = true;
+                const nextTxs = txs.map((t: any) =>
+                  t.id === transaction.id ? { ...t, ...updatedTx } : t,
+                );
+                const delta = (updatedTx?.amount || 0) - prevAmount;
+                return { ...d, transactions: nextTxs, sum: (d.sum || 0) + delta };
+              });
+              if (found) {
+                cache.writeQuery({
+                  query: GET_SAVING_DEPOTS_QUERY,
+                  data: { getSavingDepots: updatedDepots },
+                });
+              }
+            }
+          } catch {}
         },
       });
 
-      // Call the onUpdate callback for any additional logic
-      await onUpdate();
+      // Optimistically mirror in Zustand store
+      try {
+        const st = useFinanceStore.getState();
+        const updatedDepots = (st.depots || []).map(d => {
+          const txs = Array.isArray(d.transactions) ? d.transactions : [];
+          const has = txs.some((t: any) => t.id === transaction.id);
+          if (!has) return d as any;
+          const nextTxs = txs.map((t: any) =>
+            t.id === transaction.id
+              ? { ...t, amount: nextAmount, describtion }
+              : t,
+          );
+          const delta = nextAmount - prevAmount;
+          return { ...d, transactions: nextTxs, sum: (d.sum || 0) + delta } as any;
+        });
+        useFinanceStore.setState({ depots: updatedDepots as any });
+      } catch {}
 
       // Reset form
       setAmount('');

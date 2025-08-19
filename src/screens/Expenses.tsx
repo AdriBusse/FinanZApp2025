@@ -21,6 +21,7 @@ import { useFinanceStore } from '../store/finance';
 import { apolloClient } from '../apollo/client';
 import { gql } from '@apollo/client';
 import { preferences } from '../services/preferences';
+import { GET_EXPENSES_QUERY } from '../graphql/finance';
 
 const CREATE_EXPENSE = gql`
   mutation CreateExpense(
@@ -192,14 +193,36 @@ export default function Expenses() {
                             text: 'Delete',
                             style: 'destructive',
                             onPress: async () => {
+                              // Optimistically remove from Zustand and Apollo cache
+                              const st = useFinanceStore.getState();
+                              const prev = st.expenses ? [...(st.expenses as any[])] : null;
+                              try {
+                                useFinanceStore.setState({
+                                  expenses: (st.expenses || []).filter(e => e.id !== item.id) as any,
+                                });
+                              } catch {}
+
                               try {
                                 await apolloClient.mutate({
                                   mutation: DELETE_EXPENSE,
                                   variables: { id: item.id },
+                                  optimisticResponse: {
+                                    __typename: 'Mutation',
+                                    deleteExpense: true,
+                                  },
+                                  update: cache => {
+                                    try {
+                                      const existing: any = cache.readQuery({ query: GET_EXPENSES_QUERY });
+                                      const list = existing?.getExpenses || [];
+                                      cache.writeQuery({
+                                        query: GET_EXPENSES_QUERY,
+                                        data: { getExpenses: list.filter((e: any) => e.id !== item.id) },
+                                      });
+                                    } catch {}
+                                  },
                                 });
-                                await loadAll();
                               } catch {
-                                /* no-op */
+                                if (prev) useFinanceStore.setState({ expenses: prev as any });
                               }
                             },
                           },
@@ -261,9 +284,8 @@ export default function Expenses() {
         <CreateExpenseModal
           visible={isCreateModalOpen}
           onClose={() => setIsCreateModalOpen(false)}
-          onCreated={async () => {
+          onCreated={() => {
             setIsCreateModalOpen(false);
-            await loadAll();
           }}
         />
 
@@ -310,7 +332,7 @@ function CreateExpenseModal({
 }: {
   visible: boolean;
   onClose: () => void;
-  onCreated: () => Promise<void>;
+  onCreated: () => void;
 }) {
   const [title, setTitle] = useState('');
   const [currency, setCurrency] = useState('');
@@ -397,19 +419,75 @@ function CreateExpenseModal({
                   .filter(t => !selectedTemplateIds.includes(t.id))
                   .map(t => t.id)
               : undefined;
-          await apolloClient.mutate({
+          const parsedLimit =
+            spendingLimit.trim() && !Number.isNaN(Number(spendingLimit))
+              ? parseInt(spendingLimit, 10)
+              : null;
+          const tempId = `temp-${Date.now()}`;
+          const res = await apolloClient.mutate({
             mutation: CREATE_EXPENSE,
             variables: {
               title: title.trim(),
               currency: currency.trim() || null,
               monthlyRecurring,
-              spendingLimit:
-                spendingLimit.trim() && !Number.isNaN(Number(spendingLimit))
-                  ? parseInt(spendingLimit, 10)
-                  : null,
+              spendingLimit: parsedLimit,
               skipTemplateIds,
             },
+            optimisticResponse: {
+              __typename: 'Mutation',
+              createExpense: {
+                __typename: 'Expense',
+                id: tempId,
+              } as any,
+            },
+            update: (cache, { data }) => {
+              try {
+                const createdId = (data as any)?.createExpense?.id ?? tempId;
+                const existing: any = cache.readQuery({ query: GET_EXPENSES_QUERY });
+                const list = existing?.getExpenses || [];
+                const withoutDup = list.filter((e: any) => e.id !== createdId && e.id !== tempId);
+                const newExpense = {
+                  __typename: 'Expense',
+                  id: createdId,
+                  title: title.trim(),
+                  currency: (currency.trim() || null) as any,
+                  archived: false,
+                  monthlyRecurring,
+                  spendingLimit: parsedLimit,
+                  sum: 0,
+                  transactions: [],
+                  expenseByCategory: [],
+                } as any;
+                cache.writeQuery({
+                  query: GET_EXPENSES_QUERY,
+                  data: { getExpenses: [newExpense, ...withoutDup] },
+                });
+              } catch {}
+            },
           });
+          // Update Zustand store after successful response (reconcile temp/server id)
+          try {
+            const serverId = (res as any)?.data?.createExpense?.id || tempId;
+            const st = useFinanceStore.getState();
+            const withoutDupStore = (st.expenses || []).filter(
+              (e: any) => e.id !== serverId && e.id !== tempId,
+            );
+            const newExpenseStore = {
+              __typename: 'Expense',
+              id: serverId,
+              title: title.trim(),
+              currency: (currency.trim() || null) as any,
+              archived: false,
+              monthlyRecurring,
+              spendingLimit: parsedLimit,
+              sum: 0,
+              transactions: [],
+              expenseByCategory: [],
+            } as any;
+            useFinanceStore.setState({
+              expenses: [newExpenseStore, ...withoutDupStore] as any,
+            });
+          } catch {}
           // Persist template selection for next time
           if (monthlyRecurring) {
             await preferences.setSelectedExpenseTemplateIds(
@@ -420,7 +498,7 @@ function CreateExpenseModal({
           setCurrency('');
           setMonthlyRecurring(false);
           setSpendingLimit('');
-          await onCreated();
+          onCreated();
         } finally {
           setIsSubmitting(false);
         }

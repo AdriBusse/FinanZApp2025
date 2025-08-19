@@ -7,6 +7,7 @@ export const CREATEEXPANSETRANSACTION = gql`
     $amount: Float!
     $categoryId: String
     $date: Float
+    $autocategorize: Boolean
   ) {
     createExpenseTransaction(
       expenseId: $expenseId
@@ -14,10 +15,15 @@ export const CREATEEXPANSETRANSACTION = gql`
       amount: $amount
       categoryId: $categoryId
       date: $date
+      autocategorize: $autocategorize
     ) {
       id
-      expense {
-        title
+      amount
+      createdAt
+      describtion
+      category {
+        id
+        name
       }
     }
   }
