@@ -173,7 +173,7 @@ export default function CreateCategory() {
             onChangeText={setName}
             placeholder="Enter category name"
             returnKeyType="done"
-            onSubmitEditing={handleSubmit}
+            blurOnSubmit
           />
 
           <View style={styles.pickerRow}>

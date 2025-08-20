@@ -102,10 +102,11 @@ export const useAuthStore = create<AuthState>(set => ({
     try {
       // Lazy import to avoid circular deps in native envs
       const { apolloClient } = require('../apollo/client');
-      const { LOGIN_MUTATION, ME_QUERY } = require('../graphql/auth');
+      const { LOGIN } = require('../queries/mutations/auth/login');
+      const { ME_QUERY } = require('../graphql/auth');
 
       const result = await apolloClient.mutate({
-        mutation: LOGIN_MUTATION,
+        mutation: LOGIN,
         variables: { username: uname, password: pwd },
         fetchPolicy: 'no-cache',
       });
@@ -115,19 +116,23 @@ export const useAuthStore = create<AuthState>(set => ({
         throw new Error('Invalid login response');
       }
 
-      // Store token securely (Keychain/Keystore) with biometric protection
+      // Put token in memory immediately so subsequent requests (Me) include Authorization
+      set({ token: payload.token });
+
+      // Store token securely (Keychain/Keystore) with biometric protection (with fallbacks)
       await setSecureToken(payload.token);
 
-      // Call me endpoint to fetch latest user profile
-      let me: User | null = null;
+      // Use user returned from LOGIN mutation as baseline
+      let me: User | null = payload?.user ?? null;
       try {
         const meRes = await apolloClient.query({
           query: ME_QUERY,
           fetchPolicy: 'network-only',
         });
-        me = meRes?.data?.me ?? null;
+        me = meRes?.data?.me ?? me;
       } catch {
-        me = payload.user ?? null;
+        // If Me fails (e.g., temporary connectivity), keep baseline from LOGIN response
+        // and proceed without blocking
       }
 
       await storage.setItem(USER_KEY, JSON.stringify(me));
@@ -141,6 +146,14 @@ export const useAuthStore = create<AuthState>(set => ({
         // Swallow prefetch errors to not block login; Dashboard can retry on mount
       }
     } catch (err: any) {
+      // Log detailed error for debugging while keeping UI error generic
+      try {
+        console.error('[Auth] Login error', {
+          message: err?.message,
+          graphQLErrors: err?.graphQLErrors,
+          networkError: err?.networkError,
+        });
+      } catch {}
       // Always return a generic error to avoid leaking whether username or password was incorrect
       throw new Error('Invalid username or password');
     }

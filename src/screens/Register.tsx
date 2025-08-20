@@ -15,6 +15,9 @@ const RegisterSchema = Yup.object().shape({
   password: Yup.string()
     .min(6, 'Min 6 characters')
     .required('Password is required'),
+  confirmPassword: Yup.string()
+    .oneOf([Yup.ref('password')], 'Passwords must match')
+    .required('Confirm your password'),
 });
 
 export default function RegisterScreen() {
@@ -27,19 +30,33 @@ export default function RegisterScreen() {
       <View style={styles.container}>
         <Text style={styles.title}>Create an account</Text>
         <Formik
-          initialValues={{ username: '', email: '', password: '' }}
+          initialValues={{ username: '', email: '', password: '', confirmPassword: '' }}
           validationSchema={RegisterSchema}
+          validateOnMount
           onSubmit={async (values, { setSubmitting }) => {
             setError(null);
             try {
+              const payload = {
+                username: values.username.trim(),
+                email: values.email,
+                password: values.password,
+              };
               await signup({
                 variables: {
-                  data: { ...values, username: values.username.trim() },
+                  data: payload,
                 },
               });
               // On success, go to Login so user can sign in
               navigation.navigate('Login');
             } catch (e: any) {
+              // Log detailed error for debugging
+              try {
+                console.error('[Auth] Register error', {
+                  message: e?.message,
+                  graphQLErrors: e?.graphQLErrors,
+                  networkError: e?.networkError,
+                });
+              } catch {}
               setError(e?.message || 'Signup failed');
             } finally {
               setSubmitting(false);
@@ -54,6 +71,7 @@ export default function RegisterScreen() {
             errors,
             touched,
             isSubmitting,
+            isValid,
           }) => (
             <>
               <Input
@@ -90,12 +108,29 @@ export default function RegisterScreen() {
                 <Text style={styles.error}>{errors.password}</Text>
               ) : null}
 
+              <Input
+                placeholder="Confirm Password"
+                secureTextEntry
+                value={values.confirmPassword}
+                onChangeText={handleChange('confirmPassword')}
+                onBlur={handleBlur('confirmPassword')}
+              />
+              {touched.confirmPassword && errors.confirmPassword ? (
+                <Text style={styles.error}>{errors.confirmPassword}</Text>
+              ) : null}
+
+              {values.confirmPassword.length > 0 &&
+              values.password !== values.confirmPassword ? (
+                <Text style={styles.smallError}>Passwords do not match</Text>
+              ) : null}
+
               {error ? <Text style={styles.error}>{error}</Text> : null}
 
               <RoundedButton
                 title={isSubmitting || loading ? 'Signing up...' : 'Sign up'}
                 onPress={() => handleSubmit()}
                 loading={isSubmitting || loading}
+                disabled={!isValid || isSubmitting || loading}
                 fullWidth
                 style={{ marginTop: 8 }}
               />
@@ -118,6 +153,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, padding: 16, paddingTop: 56 },
   title: { fontSize: 24, fontWeight: '700', marginBottom: 24, color: '#fff' },
   error: { color: 'crimson', marginBottom: 12 },
+  smallError: { color: 'crimson', fontSize: 12, marginTop: -6, marginBottom: 12 },
   linkRow: { flexDirection: 'row', alignItems: 'center', marginTop: 16 },
   linkHint: { color: '#cbd5e1' },
   link: { color: '#2e7d32', fontWeight: '700' },

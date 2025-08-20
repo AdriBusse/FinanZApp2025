@@ -32,6 +32,14 @@ export default function Categories() {
     fetchCategories();
   }, [fetchCategories]);
 
+  // Auto-close FAB when navigating away
+  useEffect(() => {
+    const unsub = navigation.addListener('blur', () =>
+      setIsSpeedDialOpen(false),
+    );
+    return unsub;
+  }, [navigation]);
+
   const handleCreateCategory = () => {
     setIsSpeedDialOpen(false);
     navigation.navigate('CreateCategory');
@@ -133,7 +141,7 @@ export default function Categories() {
   }
 
   return (
-    <ScreenWrapper>
+    <ScreenWrapper scrollable={false}>
       <View style={styles.container}>
         <View style={styles.headerRow}>
           <TouchableOpacity onPress={() => navigation.goBack()}>

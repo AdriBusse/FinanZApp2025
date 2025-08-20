@@ -1,14 +1,5 @@
 import React, { useMemo, useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  ActivityIndicator,
-  StyleSheet,
-  Modal,
-  TouchableOpacity,
-  Switch,
-} from 'react-native';
-import { useMutation } from '@apollo/client';
+import { View, Text, StyleSheet, Modal, TouchableOpacity, Switch } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import FormBottomSheet, {
   formStyles as commonFormStyles,
@@ -16,11 +7,9 @@ import FormBottomSheet, {
 import Input from '../../atoms/Input';
 import Dropdown from '../../atoms/Dropdown';
 import Calendar from '../../atoms/Calendar';
-import { CREATEEXPANSETRANSACTION } from '../../../queries/mutations/Expenses/CreateExpenseTransaction';
 import { useCategoriesStore } from '../../../store/categories';
 import { preferences } from '../../../services/preferences';
 import { useFinanceStore } from '../../../store/finance';
-import { GET_EXPENSES_QUERY } from '../../../graphql/finance';
 
 export default function CreateExpenseTransactionSheet({
   open,
@@ -51,10 +40,9 @@ export default function CreateExpenseTransactionSheet({
   const [day, setDay] = useState(now.getDate());
 
   const { categories, loading, fetchCategories } = useCategoriesStore();
-  const [createTransaction, { loading: creating }] = useMutation(
-    CREATEEXPANSETRANSACTION,
-  );
+  const createExpenseTx = useFinanceStore(s => s.createExpenseTx);
   const [calendarOpen, setCalendarOpen] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   // Fetch categories when modal opens
   useEffect(() => {
@@ -128,103 +116,32 @@ export default function CreateExpenseTransactionSheet({
   const handleSubmit = async () => {
     if (!isValid) return;
     try {
+      setSubmitting(true);
       const createdAmount = Number(amount);
       const createdDesc = describtion;
       const createdCategoryId = selectedCategoryId || '';
-      const tempId = `temp-${Date.now()}`;
-      const createdAtIso = selectedDate.toISOString();
-      const catName =
-        (selectedCategoryId &&
-          categories.find(c => c.id === selectedCategoryId)?.name) ||
-        undefined;
+      // dateMs will be sent to store; no need to compute ISO here
 
-      await createTransaction({
-        variables: {
-          expenseId,
-          amount: createdAmount,
-          describtion: createdDesc,
-          categoryId: selectedCategoryId || null,
-          date: Math.floor(selectedDate.getTime()),
-          autocategorize: autoCategorize,
-        },
-        optimisticResponse: {
-          __typename: 'Mutation',
-          createExpenseTransaction: {
-            __typename: 'ExpenseTransaction',
-            id: tempId,
-            amount: createdAmount,
-            createdAt: createdAtIso,
-            describtion: createdDesc,
-            category: selectedCategoryId
-              ? {
-                  __typename: 'ExpenseCategory',
-                  id: selectedCategoryId,
-                  name: catName || 'Category',
-                }
-              : null,
-          },
-        },
-        update: (cache, { data }) => {
-          const newTx = data?.createExpenseTransaction;
-          try {
-            const existing: any = cache.readQuery({ query: GET_EXPENSES_QUERY });
-            if (existing?.getExpenses) {
-              const updated = existing.getExpenses.map((e: any) => {
-                if (e.id !== expenseId) return e;
-                const txs = Array.isArray(e.transactions)
-                  ? [...e.transactions]
-                  : [];
-                // avoid duplicate if temp replaced by server id
-                const withoutTemp = txs.filter((t: any) => t.id !== newTx?.id);
-                const nextTxs = [newTx, ...withoutTemp];
-                return {
-                  ...e,
-                  transactions: nextTxs,
-                  sum: (e.sum || 0) + (newTx?.amount || 0),
-                };
-              });
-              cache.writeQuery({
-                query: GET_EXPENSES_QUERY,
-                data: { getExpenses: updated },
-              });
-            }
-          } catch {}
-        },
-      });
+      // Delegate creation + optimistic/caching to store
+      await createExpenseTx(
+        expenseId,
+        createdAmount,
+        createdDesc,
+        selectedCategoryId || undefined,
+        Math.floor(selectedDate.getTime()),
+        autoCategorize,
+      );
       // Close immediately after positive response to prevent repeated taps
       onClose();
       // Fire and forget any follow-up logic (e.g., refetch, toast)
       void onCreate?.(createdAmount, createdDesc, createdCategoryId);
-
-      // Optimistically update local finance store for immediate UI
-      try {
-        const st = useFinanceStore.getState();
-        const updatedExpenses = (st.expenses || []).map(e => {
-          if (e.id !== expenseId) return e as any;
-          const tx = {
-            id: tempId,
-            amount: createdAmount,
-            createdAt: createdAtIso,
-            describtion: createdDesc,
-            category: selectedCategoryId
-              ? { id: selectedCategoryId, name: catName }
-              : null,
-            __typename: 'ExpenseTransaction',
-          } as any;
-          const txs = Array.isArray(e.transactions) ? e.transactions : [];
-          return {
-            ...e,
-            transactions: [tx, ...txs],
-            sum: (e.sum || 0) + createdAmount,
-          } as any;
-        });
-        useFinanceStore.setState({ expenses: updatedExpenses as any });
-      } catch {}
       // Persist preference for next time
       void preferences.setTxAutoCategorizeDefault(autoCategorize);
       // Do not manually reset; the sheet's close effect resets fields
     } catch (error) {
       console.error('Error creating transaction:', error);
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -233,7 +150,7 @@ export default function CreateExpenseTransactionSheet({
       visible={open}
       onClose={onClose}
       title="New Expense Transaction"
-      submitDisabled={!isValid || creating}
+      submitDisabled={!isValid || submitting}
       heightPercent={0.7}
       onSubmit={handleSubmit}
     >

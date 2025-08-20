@@ -13,20 +13,33 @@ export async function isBiometryAvailable(): Promise<boolean> {
 
 export async function setSecureToken(token: string): Promise<void> {
   const supportsBio = await isBiometryAvailable();
-  const options: any = {
+  const base: any = {
     service: SERVICE,
     accessible: Keychain.ACCESSIBLE.WHEN_UNLOCKED,
-    // Android requires securityLevel to ensure hardware-backed storage when possible
-    securityLevel: Keychain.SECURITY_LEVEL.SECURE_HARDWARE,
   };
 
+  // Prefer strongest security level first
+  const optionVariants: any[] = [
+    { ...base, securityLevel: Keychain.SECURITY_LEVEL.SECURE_HARDWARE },
+    { ...base, securityLevel: Keychain.SECURITY_LEVEL.SECURE_SOFTWARE },
+    { ...base },
+  ];
+
   if (supportsBio) {
-    // Require current enrolled biometrics to access the token
-    (options as any).accessControl =
-      Keychain.ACCESS_CONTROL.BIOMETRY_CURRENT_SET;
+    optionVariants.forEach(o => {
+      o.accessControl = Keychain.ACCESS_CONTROL.BIOMETRY_CURRENT_SET;
+    });
   }
 
-  await Keychain.setGenericPassword('auth', token, options);
+  // Try fallbacks without failing login flow
+  for (const opts of optionVariants) {
+    try {
+      await Keychain.setGenericPassword('auth', token, opts);
+      return;
+    } catch {
+      // try next option
+    }
+  }
 }
 
 export async function getSecureTokenWithBiometric(
@@ -34,12 +47,14 @@ export async function getSecureTokenWithBiometric(
 ): Promise<string | null> {
   try {
     const supportsBio = await isBiometryAvailable();
-    if (!supportsBio) return null; // Do not retrieve without biometric capability
+    const options: any = supportsBio
+      ? {
+          service: SERVICE,
+          authenticationPrompt: prompt || 'Unlock to access your account',
+        }
+      : { service: SERVICE };
 
-    const result = await Keychain.getGenericPassword({
-      service: SERVICE,
-      authenticationPrompt: prompt || 'Unlock to access your account',
-    } as any);
+    const result = await Keychain.getGenericPassword(options);
     if (result) {
       return result.password;
     }

@@ -77,6 +77,7 @@ export const CREATE_EXPENSE_TRANSACTION = gql`
     $amount: Float!
     $describtion: String!
     $categoryId: String
+    $date: Float
     $autocategorize: Boolean
   ) {
     createExpenseTransaction(
@@ -84,6 +85,7 @@ export const CREATE_EXPENSE_TRANSACTION = gql`
       amount: $amount
       describtion: $describtion
       categoryId: $categoryId
+      date: $date
       autocategorize: $autocategorize
     ) {
       id
@@ -149,5 +151,11 @@ export const DELETE_SAVING_TRANSACTION = gql`
 export const DELETE_SAVING_DEPOT = gql`
   mutation DeleteSavingDepot($id: String!) {
     deleteSavingDepot(id: $id)
+  }
+`;
+
+export const DELETE_EXPENSE_TRANSACTION = gql`
+  mutation DeleteExpenseTransaction($id: String!) {
+    deleteExpenseTransaction(id: $id)
   }
 `;

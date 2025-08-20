@@ -31,10 +31,17 @@ export default function SavingsList() {
   const {
     isSpeedDialOpen,
     toggleSpeedDial,
+    closeSpeedDial,
     openCreateDepotModal,
     isCreateDepotModalOpen,
     closeCreateDepotModal,
   } = useSavingsUIStore();
+
+  // Auto-close FAB when navigating away
+  useEffect(() => {
+    const unsub = navigation.addListener('blur', () => closeSpeedDial());
+    return unsub;
+  }, [navigation, closeSpeedDial]);
 
   return (
     <ScreenWrapper scrollable={false}>
@@ -155,7 +162,10 @@ export default function SavingsList() {
           actions={[
             {
               label: 'New Depot',
-              onPress: openCreateDepotModal,
+              onPress: () => {
+                closeSpeedDial();
+                openCreateDepotModal();
+              },
               color: '#2563eb',
             },
           ]}
@@ -187,7 +197,7 @@ function CreateDepotModal({
   const { createSavingDepot } = useFinanceStore();
   const [name, setName] = React.useState('');
   const [short, setShort] = React.useState('');
-  const [currency, setCurrency] = React.useState('');
+  const [currency, setCurrency] = React.useState('€');
   const [savingGoal, setSavingGoal] = React.useState('');
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const isValid = name.trim().length > 0 && short.trim().length > 0;
@@ -197,7 +207,7 @@ function CreateDepotModal({
     if (!visible) {
       setName('');
       setShort('');
-      setCurrency('');
+      setCurrency('€');
       setSavingGoal('');
       setIsSubmitting(false);
     }

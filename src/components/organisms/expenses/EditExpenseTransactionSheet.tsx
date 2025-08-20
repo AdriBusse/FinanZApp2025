@@ -17,6 +17,8 @@ import Dropdown from '../../atoms/Dropdown';
 import Calendar from '../../atoms/Calendar';
 import { UPDATEEXPENSETRANSACTION } from '../../../queries/mutations/Expenses/UpdateExpenseTransaction';
 import { useCategoriesStore } from '../../../store/categories';
+import { GET_EXPENSES_QUERY } from '../../../graphql/finance';
+import { useFinanceStore } from '../../../store/finance';
 
 interface Transaction {
   id: string;
@@ -122,20 +124,113 @@ export default function EditExpenseTransactionSheet({
   const handleSubmit = async () => {
     if (!isValid || !transaction) return;
 
+    // snapshot for rollback
+    let prevExpensesSnapshot: any[] | null = null;
     try {
+      const newAmount = Number(amount);
+      const newDateIso = selectedDate.toISOString();
+      const cat = (useCategoriesStore.getState().categories || []).find(
+        c => c.id === selectedCategoryId,
+      );
+
+      // Optimistically update Zustand store for immediate UI
+      try {
+        const st = useFinanceStore.getState();
+        prevExpensesSnapshot = st.expenses ? [...(st.expenses as any[])] : null;
+        const next = (st.expenses || []).map(e => {
+          const txs = Array.isArray(e.transactions) ? e.transactions : [];
+          const idx = txs.findIndex((t: any) => t.id === transaction.id);
+          if (idx < 0) return e as any;
+          const oldTx: any = txs[idx];
+          const delta = (newAmount || 0) - (oldTx?.amount || 0);
+          const updatedTx = {
+            ...oldTx,
+            amount: newAmount,
+            describtion,
+            createdAt: newDateIso,
+            category: selectedCategoryId
+              ? {
+                  __typename: 'ExpenseCategory',
+                  id: selectedCategoryId,
+                  name: cat?.name || 'Category',
+                }
+              : null,
+          } as any;
+          const newTxs = [...txs];
+          newTxs[idx] = updatedTx;
+          return { ...e, transactions: newTxs, sum: (e.sum || 0) + delta } as any;
+        });
+        useFinanceStore.setState({ expenses: next as any });
+      } catch {}
+
       await updateTransaction({
         variables: {
           transactionId: transaction.id,
-          amount: Number(amount),
+          amount: newAmount,
           describtion,
           categoryId: selectedCategoryId || null,
           // Backend expects date as String for update mutation
-          date: selectedDate.toISOString(),
+          date: newDateIso,
+        },
+        optimisticResponse: {
+          __typename: 'Mutation',
+          updateExpenseTransaction: {
+            __typename: 'ExpenseTransaction',
+            id: transaction.id,
+            amount: newAmount,
+            createdAt: newDateIso,
+            describtion,
+            category: selectedCategoryId
+              ? {
+                  __typename: 'ExpenseCategory',
+                  id: selectedCategoryId,
+                  name: cat?.name || 'Category',
+                }
+              : null,
+          },
+        },
+        update: (cache, { data }) => {
+          try {
+            const updatedTx: any = (data as any)?.updateExpenseTransaction;
+            const existing: any = cache.readQuery({ query: GET_EXPENSES_QUERY });
+            if (existing?.getExpenses) {
+              let oldAmountC = 0;
+              const updatedExpenses = existing.getExpenses.map((e: any) => {
+                const txs = Array.isArray(e.transactions) ? e.transactions : [];
+                const idx = txs.findIndex((t: any) => t.id === transaction.id);
+                if (idx < 0) return e;
+                const oldTx = txs[idx];
+                oldAmountC = oldTx?.amount || 0;
+                const delta = (updatedTx?.amount || 0) - oldAmountC;
+                const newTxs = [...txs];
+                newTxs[idx] = { ...oldTx, ...updatedTx };
+                return { ...e, transactions: newTxs, sum: (e.sum || 0) + delta };
+              });
+              cache.writeQuery({
+                query: GET_EXPENSES_QUERY,
+                data: { getExpenses: updatedExpenses },
+              });
+            }
+          } catch {}
+
+          // Ensure Zustand mirrors server response (no additional sum changes)
+          try {
+            const st = useFinanceStore.getState();
+            const updatedTx: any = (data as any)?.updateExpenseTransaction;
+            const next = (st.expenses || []).map(e => {
+              const txs = Array.isArray(e.transactions) ? e.transactions : [];
+              const idx = txs.findIndex((t: any) => t.id === transaction.id);
+              if (idx < 0) return e as any;
+              const oldTx = txs[idx];
+              const delta = (updatedTx?.amount || 0) - (oldTx?.amount || 0);
+              const newTxs = [...txs];
+              newTxs[idx] = { ...oldTx, ...updatedTx } as any;
+              return { ...e, transactions: newTxs, sum: (e.sum || 0) + delta } as any;
+            });
+            useFinanceStore.setState({ expenses: next as any });
+          } catch {}
         },
       });
-
-      // Call the onUpdate callback for any additional logic
-      await onUpdate();
 
       // Reset form
       setAmount('');
@@ -149,6 +244,12 @@ export default function EditExpenseTransactionSheet({
       onClose();
     } catch (error) {
       console.error('Error updating transaction:', error);
+      // rollback Zustand on error using previously captured snapshot
+      try {
+        if (prevExpensesSnapshot) {
+          useFinanceStore.setState({ expenses: prevExpensesSnapshot as any });
+        }
+      } catch {}
     }
   };
 

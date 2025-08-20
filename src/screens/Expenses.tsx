@@ -81,6 +81,14 @@ export default function Expenses() {
     };
   }, []);
 
+  // Auto-close FAB when navigating away
+  useEffect(() => {
+    const unsub = navigation.addListener('blur', () =>
+      setIsSpeedDialOpen(false),
+    );
+    return unsub;
+  }, [navigation]);
+
   // Open create modal when navigated with param { openCreate: true }
   useEffect(() => {
     const p = (route as any)?.params;
@@ -251,6 +259,7 @@ export default function Expenses() {
             {
               label: 'Archived',
               onPress: async () => {
+                setIsSpeedDialOpen(false);
                 const next = !showArchived;
                 setShowArchived(next);
                 await preferences.setShowArchivedExpenses(next);
@@ -259,7 +268,10 @@ export default function Expenses() {
             },
             {
               label: 'New Expense',
-              onPress: () => setIsCreateModalOpen(true),
+              onPress: () => {
+                setIsSpeedDialOpen(false);
+                setIsCreateModalOpen(true);
+              },
               color: '#2563eb',
             },
             {

@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -75,6 +75,14 @@ export default function SavingTransactions() {
     (s, t) => s + (t.amount || 0),
     0,
   );
+
+  // Auto-close FAB when navigating away
+  useEffect(() => {
+    const unsub = navigation.addListener('blur', () =>
+      setIsSpeedDialOpen(false),
+    );
+    return unsub;
+  }, [navigation]);
 
   return (
     <ScreenWrapper scrollable={false}>

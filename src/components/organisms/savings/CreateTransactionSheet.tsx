@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Text, Alert } from 'react-native';
 import FormBottomSheet, {
   formStyles as commonFormStyles,
@@ -16,6 +16,8 @@ export default function CreateTransactionSheet({
 }) {
   const [amount, setAmount] = useState('');
   const [describtion, setDescribtion] = useState('');
+  const submittingRef = useRef(false);
+  const [submitting, setSubmitting] = useState(false);
   const isValid =
     amount.trim().length > 0 &&
     describtion.trim().length > 0 &&
@@ -34,15 +36,20 @@ export default function CreateTransactionSheet({
       onClose={onClose}
       title="New Transaction"
       submitLabel="Save"
-      submitDisabled={!isValid}
+      submitDisabled={!isValid || submitting}
       onSubmit={async () => {
-        if (!isValid) return;
+        if (!isValid || submittingRef.current) return;
+        submittingRef.current = true;
+        setSubmitting(true);
         try {
           await onCreate(Number(amount), describtion);
           setAmount('');
           setDescribtion('');
         } catch (e) {
           Alert.alert('Error', 'Failed to create transaction.');
+        } finally {
+          submittingRef.current = false;
+          setSubmitting(false);
         }
       }}
     >

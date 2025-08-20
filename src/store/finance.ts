@@ -7,6 +7,7 @@ import {
   CREATE_EXPENSE_TRANSACTION,
   CREATE_SAVING_TRANSACTION,
   CREATE_SAVING_DEPOT,
+  DELETE_EXPENSE_TRANSACTION,
   DELETE_SAVING_TRANSACTION,
   DELETE_SAVING_DEPOT,
 } from '../graphql/finance';
@@ -28,6 +29,8 @@ interface FinanceState {
     amount: number,
     describtion: string,
     categoryId?: string,
+    dateMs?: number | null,
+    autocategorize?: boolean,
   ) => Promise<void>;
   createSavingTx: (
     depotId: string,
@@ -40,6 +43,7 @@ interface FinanceState {
     currency?: string | null,
     savinggoal?: number | null,
   ) => Promise<void>;
+  deleteExpenseTransaction: (expenseId: string, id: string) => Promise<void>;
   deleteSavingTransaction: (id: string) => Promise<void>;
   deleteSavingDepot: (id: string) => Promise<void>;
 }
@@ -76,8 +80,97 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
       set({ isLoading: false, bootstrapped: true });
     }
   },
-  createExpenseTx: async (expenseId, amount, describtion, categoryId) => {
-    const createdAtIso = new Date().toISOString();
+  deleteExpenseTransaction: async (expenseId, id) => {
+    // If this is a temp ID, just remove locally and from cache; no server call
+    const isTemp = id.startsWith('temp-');
+    let prevExpensesSnapshot: any[] | null = null;
+    try {
+      const st = get();
+      prevExpensesSnapshot = st.expenses ? [...(st.expenses as any[])] : null;
+      let removedAmount = 0;
+      const updatedExpenses = (st.expenses || []).map(e => {
+        if (e.id !== expenseId) return e as any;
+        const txs = Array.isArray(e.transactions) ? e.transactions : [];
+        const found = txs.find((t: any) => t.id === id);
+        removedAmount = found?.amount || 0;
+        return {
+          ...e,
+          transactions: txs.filter((t: any) => t.id !== id),
+          sum: (e.sum || 0) - removedAmount,
+        } as any;
+      });
+      set({ expenses: updatedExpenses as any });
+    } catch {}
+
+    // Update Apollo cache to reflect deletion optimistically
+    try {
+      const existing: any = apolloClient.readQuery({ query: GET_EXPENSES_QUERY });
+      if (existing?.getExpenses) {
+        let removedAmountC = 0;
+        const updated = existing.getExpenses.map((e: any) => {
+          if (e.id !== expenseId) return e;
+          const txs = Array.isArray(e.transactions) ? e.transactions : [];
+          const found = txs.find((t: any) => t.id === id);
+          removedAmountC = found?.amount || 0;
+          return {
+            ...e,
+            transactions: txs.filter((t: any) => t.id !== id),
+            sum: (e.sum || 0) - removedAmountC,
+          };
+        });
+        apolloClient.writeQuery({ query: GET_EXPENSES_QUERY, data: { getExpenses: updated } });
+      }
+    } catch {}
+
+    if (isTemp) {
+      // Nothing to do on server for temp items
+      return;
+    }
+
+    try {
+      await apolloClient.mutate({
+        mutation: DELETE_EXPENSE_TRANSACTION,
+        variables: { id },
+        optimisticResponse: {
+          __typename: 'Mutation',
+          deleteExpenseTransaction: true,
+        },
+        update: cache => {
+          try {
+            const existing: any = cache.readQuery({ query: GET_EXPENSES_QUERY });
+            if (existing?.getExpenses) {
+              let removedAmountC = 0;
+              const updated = existing.getExpenses.map((e: any) => {
+                if (e.id !== expenseId) return e;
+                const txs = Array.isArray(e.transactions) ? e.transactions : [];
+                const found = txs.find((t: any) => t.id === id);
+                removedAmountC = found?.amount || 0;
+                return {
+                  ...e,
+                  transactions: txs.filter((t: any) => t.id !== id),
+                  sum: (e.sum || 0) - removedAmountC,
+                };
+              });
+              cache.writeQuery({ query: GET_EXPENSES_QUERY, data: { getExpenses: updated } });
+            }
+          } catch {}
+        },
+      });
+    } catch (e) {
+      // rollback Zustand on error
+      if (prevExpensesSnapshot) set({ expenses: prevExpensesSnapshot as any });
+      throw e;
+    }
+  },
+  createExpenseTx: async (
+    expenseId,
+    amount,
+    describtion,
+    categoryId,
+    dateMs = null,
+    autocategorize = false,
+  ) => {
+    const createdAtIso = new Date(dateMs ?? Date.now()).toISOString();
     const tempId = `temp-${Date.now()}`;
 
     // Optimistically update local Zustand store immediately
@@ -109,7 +202,8 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
           amount,
           describtion,
           categoryId,
-          autocategorize: false,
+          date: dateMs ?? undefined,
+          autocategorize,
         },
         optimisticResponse: {
           __typename: 'Mutation',

@@ -45,8 +45,8 @@ export default function FABSpeedDial({
           styles.fabContainer,
           { bottom: 24 + (insets.bottom || 0) },
           position === 'left'
-            ? { left: 16, alignItems: 'flex-start' }
-            : { right: 16, alignItems: 'flex-end' },
+            ? { left: 16 + (insets.left || 0), alignItems: 'flex-start' }
+            : { right: 16 + (insets.right || 0), alignItems: 'flex-end' },
           style,
         ]}
         pointerEvents="box-none"
@@ -66,8 +66,9 @@ export default function FABSpeedDial({
                   { backgroundColor: a.color ?? '#2563eb' },
                 ]}
                 onPress={() => {
-                  a.onPress();
+                  // Close the menu first to avoid it staying open during navigation/actions
                   if (isOpen) onToggle();
+                  a.onPress();
                 }}
               >
                 <Text style={styles.smallButtonText}>{a.label}</Text>

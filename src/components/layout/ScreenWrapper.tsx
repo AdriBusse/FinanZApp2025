@@ -11,6 +11,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { useFinanceStore } from '../../store/finance';
+import { useAuthStore } from '../../store/auth';
 
 export type ScreenWrapperProps = {
   children: React.ReactNode;
@@ -30,14 +31,15 @@ export default function ScreenWrapper({
   const Container = scrollable ? ScrollView : View;
   const { bootstrapped, loadAll } = useFinanceStore();
   const called = React.useRef(false);
+  const { token } = useAuthStore();
 
-  // Kick off initial bootstrap once
+  // Kick off initial bootstrap once (only when authenticated)
   React.useEffect(() => {
-    if (!bootstrapped && !called.current) {
+    if (token && !bootstrapped && !called.current) {
       called.current = true;
       void loadAll();
     }
-  }, [bootstrapped, loadAll]);
+  }, [token, bootstrapped, loadAll]);
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor }]}>
@@ -60,7 +62,7 @@ export default function ScreenWrapper({
         >
           {children}
         </Container>
-        {!bootstrapped && (
+        {token && !bootstrapped && (
           <View
             pointerEvents="auto"
             style={[

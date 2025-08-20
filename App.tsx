@@ -5,6 +5,7 @@ import {
   useColorScheme,
   View,
   Pressable,
+  ActivityIndicator,
 } from 'react-native';
 import {
   SafeAreaProvider,
@@ -253,7 +254,16 @@ function AppInner() {
         theme={isDarkMode ? DarkTheme : DefaultTheme}
       >
         {isInitializing ? (
-          <View style={{ flex: 1 }} />
+          <View
+            style={{
+              flex: 1,
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: '#0e0f14',
+            }}
+          >
+            <ActivityIndicator size="large" color="#93c5fd" />
+          </View>
         ) : token ? (
           <AppTabs />
         ) : (
