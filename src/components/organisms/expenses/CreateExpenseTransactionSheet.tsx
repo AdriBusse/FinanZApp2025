@@ -170,6 +170,7 @@ export default function CreateExpenseTransactionSheet({
           keyboardType="numeric"
           placeholder="e.g. 12.50"
           returnKeyType="done"
+          leftAdornment={<Text style={{ color: '#cbd5e1', fontSize: 16 }}>€</Text>}
           // No implicit submit from keyboard; only Save button triggers
         />
 

@@ -347,7 +347,7 @@ function CreateExpenseModal({
   onCreated: () => void;
 }) {
   const [title, setTitle] = useState('');
-  const [currency, setCurrency] = useState('');
+  const [currency, setCurrency] = useState('€');
   const [monthlyRecurring, setMonthlyRecurring] = useState(false);
   const [spendingLimit, setSpendingLimit] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -398,7 +398,7 @@ function CreateExpenseModal({
   React.useEffect(() => {
     if (!visible) {
       setTitle('');
-      setCurrency('');
+      setCurrency('€');
       setMonthlyRecurring(false);
       setSpendingLimit('');
       setTemplates([]);
@@ -445,6 +445,8 @@ function CreateExpenseModal({
               spendingLimit: parsedLimit,
               skipTemplateIds,
             },
+            refetchQueries: [{ query: GET_EXPENSES_QUERY }],
+            awaitRefetchQueries: true,
             optimisticResponse: {
               __typename: 'Mutation',
               createExpense: {
@@ -477,28 +479,11 @@ function CreateExpenseModal({
               } catch {}
             },
           });
-          // Update Zustand store after successful response (reconcile temp/server id)
+          // Sync Zustand store from refetched Apollo cache so transactions are included
           try {
-            const serverId = (res as any)?.data?.createExpense?.id || tempId;
-            const st = useFinanceStore.getState();
-            const withoutDupStore = (st.expenses || []).filter(
-              (e: any) => e.id !== serverId && e.id !== tempId,
-            );
-            const newExpenseStore = {
-              __typename: 'Expense',
-              id: serverId,
-              title: title.trim(),
-              currency: (currency.trim() || null) as any,
-              archived: false,
-              monthlyRecurring,
-              spendingLimit: parsedLimit,
-              sum: 0,
-              transactions: [],
-              expenseByCategory: [],
-            } as any;
-            useFinanceStore.setState({
-              expenses: [newExpenseStore, ...withoutDupStore] as any,
-            });
+            const refreshed: any = apolloClient.readQuery({ query: GET_EXPENSES_QUERY });
+            const list = refreshed?.getExpenses || [];
+            useFinanceStore.setState({ expenses: list as any });
           } catch {}
           // Persist template selection for next time
           if (monthlyRecurring) {
@@ -535,6 +520,7 @@ function CreateExpenseModal({
         onChangeText={setSpendingLimit}
         placeholder="e.g. 300"
         keyboardType="numeric"
+        leftAdornment={<Text style={{ color: '#cbd5e1', fontSize: 16 }}>€</Text>}
       />
 
       <View

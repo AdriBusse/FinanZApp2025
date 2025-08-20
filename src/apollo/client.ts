@@ -1,4 +1,5 @@
 import { ApolloClient, InMemoryCache, HttpLink, from } from '@apollo/client';
+import { onError } from '@apollo/client/link/error';
 import { setContext } from '@apollo/client/link/context';
 import { getAuthToken } from '../store/auth';
 
@@ -9,6 +10,30 @@ import { getAuthToken } from '../store/auth';
 const GRAPHQL_URL = 'https://apifinanzv2.ghettohippy.de/graphql';
 
 const httpLink = new HttpLink({ uri: GRAPHQL_URL });
+
+let isLoggingOut = false;
+const errorLink = onError(({ graphQLErrors, networkError }) => {
+  const hasUnauth =
+    (graphQLErrors || []).some((e: any) => {
+      const code = e?.extensions?.code;
+      return code === 'UNAUTHENTICATED' || code === 'FORBIDDEN';
+    }) ||
+    (networkError as any)?.statusCode === 401;
+  if (hasUnauth) {
+    if (isLoggingOut) return;
+    isLoggingOut = true;
+    try {
+      // Lazy import to avoid circular deps
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const { useAuthStore } = require('../store/auth');
+      Promise.resolve(useAuthStore.getState().logout()).finally(() => {
+        isLoggingOut = false;
+      });
+    } catch {
+      isLoggingOut = false;
+    }
+  }
+});
 
 const authLink = setContext(async (_, { headers }) => {
   const token = await getAuthToken();
@@ -21,6 +46,6 @@ const authLink = setContext(async (_, { headers }) => {
 });
 
 export const apolloClient = new ApolloClient({
-  link: from([authLink, httpLink]),
+  link: from([errorLink, authLink, httpLink]),
   cache: new InMemoryCache(),
 });

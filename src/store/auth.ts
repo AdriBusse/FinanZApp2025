@@ -62,8 +62,15 @@ export const useAuthStore = create<AuthState>(set => ({
       );
 
       if (!token) {
-        // Biometric canceled/failed or no token stored: stay logged out
-        set({ token: null, isInitializing: false });
+        // Biometric canceled/failed or no token stored: ensure fully logged out
+        try {
+          await resetSecureToken();
+          await (getStorage() as any).multiRemove([USER_KEY]);
+          // Also clear Apollo cache to avoid stale user data
+          const { apolloClient } = require('../apollo/client');
+          await apolloClient.clearStore();
+        } catch {}
+        set({ token: null, user: null, isInitializing: false });
         return;
       }
 
@@ -82,8 +89,13 @@ export const useAuthStore = create<AuthState>(set => ({
           set({ user: me });
         }
       } catch {
-        // Token invalid -> clear and require login next time
-        await resetSecureToken();
+        // Token invalid -> force logout: clear secure token, cached user, and Apollo cache
+        try {
+          await resetSecureToken();
+          await storage.multiRemove([USER_KEY]);
+          const { apolloClient } = require('../apollo/client');
+          await apolloClient.clearStore();
+        } catch {}
         set({ token: null, user: null });
       }
 
@@ -122,21 +134,25 @@ export const useAuthStore = create<AuthState>(set => ({
       // Store token securely (Keychain/Keystore) with biometric protection (with fallbacks)
       await setSecureToken(payload.token);
 
-      // Use user returned from LOGIN mutation as baseline
-      let me: User | null = payload?.user ?? null;
+      // Verify token strictly: if Me fails, force logout and abort login
       try {
         const meRes = await apolloClient.query({
           query: ME_QUERY,
           fetchPolicy: 'network-only',
         });
-        me = meRes?.data?.me ?? me;
+        const me: User | null = meRes?.data?.me ?? null;
+        if (!me) throw new Error('Verification failed');
+        await storage.setItem(USER_KEY, JSON.stringify(me));
+        set({ token: payload.token, user: me });
       } catch {
-        // If Me fails (e.g., temporary connectivity), keep baseline from LOGIN response
-        // and proceed without blocking
+        try {
+          await resetSecureToken();
+          await storage.multiRemove([USER_KEY]);
+          await apolloClient.clearStore();
+        } catch {}
+        set({ token: null, user: null });
+        throw new Error('Invalid username or password');
       }
-
-      await storage.setItem(USER_KEY, JSON.stringify(me));
-      set({ token: payload.token, user: me });
 
       // After successful login, prefetch finance summary and other data into zustand
       try {
