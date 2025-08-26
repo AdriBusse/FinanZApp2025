@@ -9,10 +9,12 @@ export default function CreateTransactionSheet({
   open,
   onClose,
   onCreate,
+  currency,
 }: {
   open: boolean;
   onClose: () => void;
   onCreate: (amount: number, describtion: string) => Promise<void>;
+  currency?: string;
 }) {
   const [amount, setAmount] = useState('');
   const [describtion, setDescribtion] = useState('');
@@ -67,6 +69,7 @@ export default function CreateTransactionSheet({
         onChangeText={setAmount}
         keyboardType="numeric"
         placeholder="e.g. 50"
+        leftAdornment={<Text style={{ color: '#cbd5e1', fontSize: 16 }}>{currency || '€'}</Text>}
       />
     </FormBottomSheet>
   );

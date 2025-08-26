@@ -253,6 +253,7 @@ export default function ExpenseTransactions() {
           open={createOpen}
           onClose={() => setCreateOpen(false)}
           expenseId={expenseId}
+          currency={expense?.currency}
           onCreate={() => {}}
         />
 
@@ -263,6 +264,7 @@ export default function ExpenseTransactions() {
             setSelectedTransaction(null);
           }}
           transaction={selectedTransaction}
+          currency={expense?.currency}
           onUpdate={async () => {}}
         />
 

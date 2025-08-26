@@ -21,11 +21,13 @@ export default function EditSavingTransactionSheet({
   onClose,
   onUpdate,
   transaction,
+  currency,
 }: {
   open: boolean;
   onClose: () => void;
   onUpdate: () => Promise<void>;
   transaction: Transaction | null;
+  currency?: string;
 }) {
   const [amount, setAmount] = useState('');
   const [describtion, setDescribtion] = useState('');
@@ -158,6 +160,7 @@ export default function EditSavingTransactionSheet({
           keyboardType="numeric"
           placeholder="e.g. 12.50"
           returnKeyType="done"
+          leftAdornment={<Text style={{ color: '#cbd5e1', fontSize: 16 }}>{currency || '€'}</Text>}
           onFocus={e =>
             e.target.setNativeProps({
               selection: { start: 0, end: amount.length },

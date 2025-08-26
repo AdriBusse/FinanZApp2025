@@ -229,6 +229,7 @@ export default function SavingTransactions() {
         <CreateTransactionSheet
           open={createOpen}
           onClose={() => setCreateOpen(false)}
+          currency={depot?.currency}
           onCreate={async (amount, describtion) => {
             await createSavingTx(depotId, amount, describtion);
             setCreateOpen(false);
@@ -243,6 +244,7 @@ export default function SavingTransactions() {
             setSelectedTransaction(null);
           }}
           transaction={selectedTransaction}
+          currency={depot?.currency}
           onUpdate={async () => {}}
         />
 

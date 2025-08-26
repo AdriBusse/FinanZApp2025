@@ -37,11 +37,13 @@ export default function EditExpenseTransactionSheet({
   onClose,
   onUpdate,
   transaction,
+  currency,
 }: {
   open: boolean;
   onClose: () => void;
   onUpdate: () => Promise<void>;
   transaction: Transaction | null;
+  currency?: string;
 }) {
   const navigation = useNavigation<any>();
   const [amount, setAmount] = useState('');
@@ -283,6 +285,7 @@ export default function EditExpenseTransactionSheet({
           keyboardType="numeric"
           placeholder="e.g. 12.50"
           returnKeyType="done"
+          leftAdornment={<Text style={{ color: '#cbd5e1', fontSize: 16 }}>{currency || '€'}</Text>}
           onFocus={e =>
             e.target.setNativeProps({
               selection: { start: 0, end: amount.length },
