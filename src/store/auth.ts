@@ -4,6 +4,7 @@ import {
   setSecureToken,
   resetSecureToken,
 } from '../services/secureToken';
+import { ME_QUERY } from '../graphql/auth';
 
 export interface User {
   id: string;
@@ -78,10 +79,9 @@ export const useAuthStore = create<AuthState>(set => ({
       set({ token });
       try {
         const { apolloClient } = require('../apollo/client');
-        const { ME_QUERY } = require('../graphql/auth');
         const meRes = await apolloClient.query({
           query: ME_QUERY,
-          fetchPolicy: 'network-only',
+          fetchPolicy: 'no-cache', // No cache for auth queries
         });
         const me = meRes?.data?.me ?? null;
         if (me) {
@@ -138,7 +138,7 @@ export const useAuthStore = create<AuthState>(set => ({
       try {
         const meRes = await apolloClient.query({
           query: ME_QUERY,
-          fetchPolicy: 'network-only',
+          fetchPolicy: 'no-cache', // No cache for auth verification
         });
         const me: User | null = meRes?.data?.me ?? null;
         if (!me) throw new Error('Verification failed');
@@ -154,13 +154,8 @@ export const useAuthStore = create<AuthState>(set => ({
         throw new Error('Invalid username or password');
       }
 
-      // After successful login, prefetch finance summary and other data into zustand
-      try {
-        const { useFinanceStore } = require('../store/finance');
-        await useFinanceStore.getState().loadAll();
-      } catch {
-        // Swallow prefetch errors to not block login; Dashboard can retry on mount
-      }
+      // After successful login, let components load data as needed
+      // This prevents blocking the login flow with unnecessary data loading
     } catch (err: any) {
       // Log detailed error for debugging while keeping UI error generic
       try {

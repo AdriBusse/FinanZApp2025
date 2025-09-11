@@ -7,7 +7,7 @@ import FormBottomSheet, {
 import Input from '../../atoms/Input';
 import { UPDATESAVINGTRANSACTION } from '../../../queries/mutations/Savings/UpdateSavingTransaction';
 import { GET_SAVING_DEPOTS_QUERY } from '../../../graphql/finance';
-import { useFinanceStore } from '../../../store/finance';
+// Legacy finance store removed; rely on Apollo cache only
 
 interface Transaction {
   id: string;
@@ -102,23 +102,7 @@ export default function EditSavingTransactionSheet({
         },
       });
 
-      // Optimistically mirror in Zustand store
-      try {
-        const st = useFinanceStore.getState();
-        const updatedDepots = (st.depots || []).map(d => {
-          const txs = Array.isArray(d.transactions) ? d.transactions : [];
-          const has = txs.some((t: any) => t.id === transaction.id);
-          if (!has) return d as any;
-          const nextTxs = txs.map((t: any) =>
-            t.id === transaction.id
-              ? { ...t, amount: nextAmount, describtion }
-              : t,
-          );
-          const delta = nextAmount - prevAmount;
-          return { ...d, transactions: nextTxs, sum: (d.sum || 0) + delta } as any;
-        });
-        useFinanceStore.setState({ depots: updatedDepots as any });
-      } catch {}
+      // Zustand mirror removed
 
       // Reset form
       setAmount('');

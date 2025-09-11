@@ -7,24 +7,27 @@ import {
   Modal,
   FlatList,
 } from 'react-native';
-import { ICON_MAPPING, IconOption } from '../../utils/iconMapping';
+export type IconOption = { keyword?: string; icon: string; label?: string };
 
 interface IconPickerProps {
   selectedIcon: string;
   onIconSelect: (icon: string) => void;
   label?: string;
+  options?: IconOption[]; // optional, passed from backend metadata
 }
 
 export default function IconPicker({
   selectedIcon,
   onIconSelect,
   label = 'Icon',
+  options,
 }: IconPickerProps) {
   const [isOpen, setIsOpen] = React.useState(false);
+  const OPTIONS: IconOption[] = (Array.isArray(options) && options.length > 0)
+    ? options
+    : [{ icon: '📌', label: 'Pin', keyword: 'pin' }];
 
-  const selectedOption = ICON_MAPPING.find(
-    option => option.icon === selectedIcon,
-  );
+  const selectedOption = OPTIONS.find(option => option.icon === selectedIcon);
 
   return (
     <View style={styles.container}>
@@ -35,9 +38,6 @@ export default function IconPicker({
         activeOpacity={0.7}
       >
         <Text style={styles.iconPreview}>{selectedIcon || '📌'}</Text>
-        <Text style={styles.iconLabel}>
-          {selectedOption?.label || 'Select Icon'}
-        </Text>
       </TouchableOpacity>
 
       <Modal
@@ -59,8 +59,8 @@ export default function IconPicker({
               </TouchableOpacity>
             </View>
             <FlatList
-              data={ICON_MAPPING}
-              keyExtractor={item => item.keyword}
+              data={OPTIONS}
+              keyExtractor={item => item.keyword || item.icon}
               numColumns={4}
               renderItem={({ item }) => (
                 <TouchableOpacity
@@ -75,7 +75,6 @@ export default function IconPicker({
                   activeOpacity={0.7}
                 >
                   <Text style={styles.iconText}>{item.icon}</Text>
-                  <Text style={styles.iconLabelText}>{item.label}</Text>
                 </TouchableOpacity>
               )}
               ItemSeparatorComponent={() => <View style={styles.separator} />}

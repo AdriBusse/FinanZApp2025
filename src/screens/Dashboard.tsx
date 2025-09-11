@@ -9,7 +9,7 @@ import {
   Alert,
   Animated,
 } from 'react-native';
-import { useFinanceStore } from '../store/finance';
+import { useFinanceData } from '../hooks/useFinanceData';
 import { useNavigation } from '@react-navigation/native';
 import RoundedButton from '../components/atoms/RoundedButton';
 import ScreenWrapper from '../components/layout/ScreenWrapper';
@@ -47,7 +47,7 @@ type Widget = {
 };
 
 export default function Dashboard() {
-  const { summary, depots, expenses, loadAll } = useFinanceStore();
+  const { summary, depots, expenses, loading, refetch } = useFinanceData();
   const navigation = useNavigation<any>();
   const userId = useAuthStore(s => s.user?.id);
 
@@ -61,8 +61,9 @@ export default function Dashboard() {
   const [infoOpen, setInfoOpen] = useState(false);
 
   useEffect(() => {
-    loadAll().catch(() => {});
-  }, [loadAll]);
+    // Initial data load
+    refetch();
+  }, [refetch]);
 
   // Load dashboard layout (per user)
   useEffect(() => {

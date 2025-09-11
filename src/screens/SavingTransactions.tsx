@@ -7,7 +7,8 @@ import {
   TouchableOpacity,
   Alert,
 } from 'react-native';
-import { useFinanceStore } from '../store/finance';
+import { useSavingDepots } from '../hooks/useFinanceData';
+import { useFinanceActions } from '../hooks/useFinanceActions';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import FABSpeedDial from '../components/FABSpeedDial';
 import TransactionListItem from '../components/molecules/TransactionListItem';
@@ -64,7 +65,9 @@ export default function SavingTransactions() {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const depotId: string = route.params?.depotId ?? '';
-  const { depots, createSavingTx, deleteSavingTransaction } = useFinanceStore();
+  const { data, loading, error, refetch } = useSavingDepots();
+  const depots = data?.getSavingDepots || [];
+  const { createSavingTransaction, deleteSavingTransaction } = useFinanceActions();
   const depot = depots.find(d => d.id === depotId);
 
   const grouped = useMemo(
@@ -231,7 +234,7 @@ export default function SavingTransactions() {
           onClose={() => setCreateOpen(false)}
           currency={depot?.currency}
           onCreate={async (amount, describtion) => {
-            await createSavingTx(depotId, amount, describtion);
+            await createSavingTransaction(depotId, amount, describtion);
             setCreateOpen(false);
           }}
         />

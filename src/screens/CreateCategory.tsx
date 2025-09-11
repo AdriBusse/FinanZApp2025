@@ -13,10 +13,10 @@ import ScreenWrapper from '../components/layout/ScreenWrapper';
 import Input from '../components/atoms/Input';
 import ColorPicker from '../components/atoms/ColorPicker';
 import IconPicker from '../components/atoms/IconPicker';
+import { useCategoryMetadata } from '../hooks/useCategoryMetadata';
 import { CREATEEXPANSECATEGORY } from '../queries/mutations/Expenses/CreateExpenseCategory';
 import { UPDATEEXPENSECATEGORY } from '../queries/mutations/Expenses/UpdateExpenseCategory';
 import { GETEXPENSECATEGORIES } from '../queries/GetExpenseCategories';
-import { useCategoriesStore } from '../store/categories';
 
 export default function CreateCategory() {
   const navigation = useNavigation<any>();
@@ -24,10 +24,15 @@ export default function CreateCategory() {
   const categoryToEdit = route.params?.category;
 
   const [name, setName] = useState('');
-  const [selectedColor, setSelectedColor] = useState('#3b82f6'); // Default blue
-  const [selectedIcon, setSelectedIcon] = useState('📌'); // Default icon
+  const { data: metaData, loading: metaLoading, error: metaError, refetch: refetchMeta, colors, icons } = useCategoryMetadata();
+  const [selectedColor, setSelectedColor] = useState('#3b82f6');
+  const [selectedIcon, setSelectedIcon] = useState('📌');
 
-  const { addCategory, updateCategory } = useCategoriesStore();
+
+  // Refresh metadata when screen opens
+  useEffect(() => {
+    void refetchMeta();
+  }, [refetchMeta]);
 
   // Initialize form with category data if editing
   useEffect(() => {
@@ -37,6 +42,18 @@ export default function CreateCategory() {
       setSelectedIcon(categoryToEdit.icon || '📌');
     }
   }, [categoryToEdit]);
+
+  // When creating new (not editing), preselect first backend options if available
+  useEffect(() => {
+    if (!categoryToEdit) {
+      if (colors && colors.length > 0 && !selectedColor) {
+        setSelectedColor(colors[0]);
+      }
+      if (icons && icons.length > 0 && !selectedIcon) {
+        setSelectedIcon(icons[0].icon);
+      }
+    }
+  }, [categoryToEdit, colors, icons]);
 
   const [createCategory, { loading: creating }] = useMutation(
     CREATEEXPANSECATEGORY,
@@ -59,8 +76,7 @@ export default function CreateCategory() {
             });
           }
 
-          // Update Zustand store
-          addCategory(data.createExpenseCategory);
+          // Cache update handled by Apollo
         }
       },
     },
@@ -89,11 +105,7 @@ export default function CreateCategory() {
             });
           }
 
-          // Update Zustand store
-          updateCategory(
-            data.updateExpenseCategory.id,
-            data.updateExpenseCategory,
-          );
+          // Cache update handled by Apollo
         }
       },
     },
@@ -166,6 +178,11 @@ export default function CreateCategory() {
 
         <View style={styles.form}>
           <Text style={styles.sectionTitle}>Category Details</Text>
+          {metaError ? (
+            <Text style={{ color: '#ef4444', marginBottom: 8 }}>
+              Failed to load icon/color options. Using defaults.
+            </Text>
+          ) : null}
 
           <Text style={styles.label}>Name</Text>
           <Input
@@ -182,6 +199,7 @@ export default function CreateCategory() {
                 selectedColor={selectedColor}
                 onColorSelect={setSelectedColor}
                 label="Color"
+                options={colors}
               />
             </View>
             <View style={styles.pickerColumn}>
@@ -189,6 +207,7 @@ export default function CreateCategory() {
                 selectedIcon={selectedIcon}
                 onIconSelect={setSelectedIcon}
                 label="Icon"
+                options={icons}
               />
             </View>
           </View>

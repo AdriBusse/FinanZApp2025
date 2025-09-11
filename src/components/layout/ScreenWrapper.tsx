@@ -10,7 +10,6 @@ import {
   KeyboardAvoidingView,
   ActivityIndicator,
 } from 'react-native';
-import { useFinanceStore } from '../../store/finance';
 import { useAuthStore } from '../../store/auth';
 
 export type ScreenWrapperProps = {
@@ -29,17 +28,7 @@ export default function ScreenWrapper({
   keyboardOffset = 0,
 }: ScreenWrapperProps) {
   const Container = scrollable ? ScrollView : View;
-  const { bootstrapped, loadAll } = useFinanceStore();
-  const called = React.useRef(false);
-  const { token } = useAuthStore();
-
-  // Kick off initial bootstrap once (only when authenticated)
-  React.useEffect(() => {
-    if (token && !bootstrapped && !called.current) {
-      called.current = true;
-      void loadAll();
-    }
-  }, [token, bootstrapped, loadAll]);
+  const { token, isInitializing } = useAuthStore();
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor }]}>
@@ -62,7 +51,7 @@ export default function ScreenWrapper({
         >
           {children}
         </Container>
-        {token && !bootstrapped && (
+        {token && isInitializing && (
           <View
             pointerEvents="auto"
             style={[

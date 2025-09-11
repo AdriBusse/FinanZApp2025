@@ -12,9 +12,10 @@ interface ColorPickerProps {
   selectedColor: string;
   onColorSelect: (color: string) => void;
   label?: string;
+  options?: string[]; // optional, defaults to built-in palette
 }
 
-const COLORS = [
+const DEFAULT_COLORS = [
   '#ef4444', // red
   '#f97316', // orange
   '#eab308', // yellow
@@ -41,8 +42,10 @@ export default function ColorPicker({
   selectedColor,
   onColorSelect,
   label = 'Color',
+  options,
 }: ColorPickerProps) {
   const [isOpen, setIsOpen] = React.useState(false);
+  const COLORS = Array.isArray(options) && options.length > 0 ? options : DEFAULT_COLORS;
 
   return (
     <View style={styles.container}>

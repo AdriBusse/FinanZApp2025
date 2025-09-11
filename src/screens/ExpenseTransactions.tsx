@@ -11,7 +11,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import ScreenWrapper from '../components/layout/ScreenWrapper';
 import FABSpeedDial from '../components/FABSpeedDial';
 import TransactionListItem from '../components/molecules/TransactionListItem';
-import { useFinanceStore } from '../store/finance';
+import { useExpenses } from '../hooks/useFinanceData';
 import CreateExpenseTransactionSheet from '../components/organisms/expenses/CreateExpenseTransactionSheet';
 import EditExpenseTransactionSheet from '../components/organisms/expenses/EditExpenseTransactionSheet';
 import EditExpenseSheet from '../components/organisms/expenses/EditExpenseSheet';
@@ -21,8 +21,9 @@ import HorizontalBar from '../components/atoms/HorizontalBar';
 import { Info } from 'lucide-react-native';
 import InfoModal from '../components/atoms/InfoModal';
 // import { GET_EXPENSES_QUERY } from '../graphql/finance';
+import { useFinanceActions } from '../hooks/useFinanceActions';
 
-// deletion is handled by useFinanceStore.deleteExpenseTransaction
+// deletion handled by useFinanceActions().deleteExpenseTransaction
 
 function formatDate(dateStr?: string) {
   if (!dateStr) return '';
@@ -67,9 +68,10 @@ export default function ExpenseTransactions() {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const expenseId: string = route.params?.expenseId ?? '';
-  const { expenses, createExpenseTx } = useFinanceStore();
-  const deleteExpenseTransaction = useFinanceStore(s => s.deleteExpenseTransaction);
+  const { data, loading, error, refetch } = useExpenses();
+  const expenses = data?.getExpenses || [];
   const expense = expenses.find(e => e.id === expenseId);
+  const { deleteExpenseTransaction } = useFinanceActions();
 
   // Open create sheet when navigated with { openCreate: true }
   useEffect(() => {

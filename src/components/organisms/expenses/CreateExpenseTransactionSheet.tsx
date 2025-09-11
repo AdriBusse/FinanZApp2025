@@ -7,9 +7,9 @@ import FormBottomSheet, {
 import Input from '../../atoms/Input';
 import Dropdown from '../../atoms/Dropdown';
 import Calendar from '../../atoms/Calendar';
-import { useCategoriesStore } from '../../../store/categories';
+import { useCategories } from '../../../hooks/useCategories';
 import { preferences } from '../../../services/preferences';
-import { useFinanceStore } from '../../../store/finance';
+import { useFinanceActions } from '../../../hooks/useFinanceActions';
 
 export default function CreateExpenseTransactionSheet({
   open,
@@ -41,17 +41,18 @@ export default function CreateExpenseTransactionSheet({
   const [month, setMonth] = useState(now.getMonth()); // 0-11
   const [day, setDay] = useState(now.getDate());
 
-  const { categories, loading, fetchCategories } = useCategoriesStore();
-  const createExpenseTx = useFinanceStore(s => s.createExpenseTx);
+  const { data: categoriesData, loading, refetch } = useCategories();
+  const categories = categoriesData?.getExpenseCategories || [];
+  const { createExpenseTransaction } = useFinanceActions();
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   // Fetch categories when modal opens
   useEffect(() => {
     if (open) {
-      fetchCategories();
+      refetch();
     }
-  }, [open, fetchCategories]);
+  }, [open, refetch]);
 
   // Load persisted autocategorize default when opening
   useEffect(() => {
@@ -125,7 +126,7 @@ export default function CreateExpenseTransactionSheet({
       // dateMs will be sent to store; no need to compute ISO here
 
       // Delegate creation + optimistic/caching to store
-      await createExpenseTx(
+      await createExpenseTransaction(
         expenseId,
         createdAmount,
         createdDesc,

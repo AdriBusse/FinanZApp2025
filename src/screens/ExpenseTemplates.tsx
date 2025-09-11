@@ -21,7 +21,7 @@ import FloatingActionButton from '../components/atoms/FloatingActionButton';
 import InfoModal from '../components/atoms/InfoModal';
 import { apolloClient } from '../apollo/client';
 import { gql } from '@apollo/client';
-import { useCategoriesStore } from '../store/categories';
+import { useCategories } from '../hooks/useCategories';
 
 const GET_TEMPLATES = gql`
   query GET_EXPENSE_TEMPLATES {
@@ -284,7 +284,8 @@ function TemplateFormSheet({
   title: string;
   initial?: TemplateItem;
 }) {
-  const { categories, fetchCategories } = useCategoriesStore();
+  const { data: categoriesData, refetch } = useCategories();
+  const categories = categoriesData?.getExpenseCategories || [];
   const [describtion, setDescribtion] = useState('');
   const [amount, setAmount] = useState('');
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(
@@ -294,7 +295,7 @@ function TemplateFormSheet({
 
   useEffect(() => {
     if (open) {
-      if (categories.length === 0) void fetchCategories();
+      if (categories.length === 0) void refetch();
       if (initial) {
         setDescribtion(initial.describtion || '');
         setAmount(String(Math.round(initial.amount)));
@@ -305,7 +306,7 @@ function TemplateFormSheet({
         setSelectedCategoryId(null);
       }
     }
-  }, [open, initial, categories.length, fetchCategories]);
+  }, [open, initial, categories.length, refetch]);
 
   const options = useMemo(() => {
     return [

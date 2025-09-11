@@ -16,9 +16,9 @@ import Input from '../../atoms/Input';
 import Dropdown from '../../atoms/Dropdown';
 import Calendar from '../../atoms/Calendar';
 import { UPDATEEXPENSETRANSACTION } from '../../../queries/mutations/Expenses/UpdateExpenseTransaction';
-import { useCategoriesStore } from '../../../store/categories';
+import { useCategories } from '../../../hooks/useCategories';
 import { GET_EXPENSES_QUERY } from '../../../graphql/finance';
-import { useFinanceStore } from '../../../store/finance';
+// Legacy finance store removed; rely on Apollo cache only
 
 interface Transaction {
   id: string;
@@ -58,7 +58,8 @@ export default function EditExpenseTransactionSheet({
   const [day, setDay] = useState(now.getDate());
   const [calendarOpen, setCalendarOpen] = useState(false);
 
-  const { categories, loading, fetchCategories } = useCategoriesStore();
+  const { data: categoriesData, loading, refetch } = useCategories();
+  const categories = categoriesData?.getExpenseCategories || [];
   const [updateTransaction, { loading: updating }] = useMutation(
     UPDATEEXPENSETRANSACTION,
   );
@@ -74,7 +75,7 @@ export default function EditExpenseTransactionSheet({
           transaction.categoryId ||
           null,
       );
-      fetchCategories();
+      refetch();
       const base = transaction?.createdAt
         ? new Date(transaction.createdAt)
         : new Date();
@@ -82,7 +83,7 @@ export default function EditExpenseTransactionSheet({
       setMonth(base.getMonth());
       setDay(base.getDate());
     }
-  }, [open, transaction, fetchCategories]);
+  }, [open, transaction, refetch]);
 
   // Clamp day when month/year changes
   useEffect(() => {
@@ -126,44 +127,13 @@ export default function EditExpenseTransactionSheet({
   const handleSubmit = async () => {
     if (!isValid || !transaction) return;
 
-    // snapshot for rollback
-    let prevExpensesSnapshot: any[] | null = null;
+    // legacy snapshot for rollback removed with store
     try {
       const newAmount = Number(amount);
       const newDateIso = selectedDate.toISOString();
-      const cat = (useCategoriesStore.getState().categories || []).find(
-        c => c.id === selectedCategoryId,
-      );
+      const cat = categories.find(c => c.id === selectedCategoryId);
 
-      // Optimistically update Zustand store for immediate UI
-      try {
-        const st = useFinanceStore.getState();
-        prevExpensesSnapshot = st.expenses ? [...(st.expenses as any[])] : null;
-        const next = (st.expenses || []).map(e => {
-          const txs = Array.isArray(e.transactions) ? e.transactions : [];
-          const idx = txs.findIndex((t: any) => t.id === transaction.id);
-          if (idx < 0) return e as any;
-          const oldTx: any = txs[idx];
-          const delta = (newAmount || 0) - (oldTx?.amount || 0);
-          const updatedTx = {
-            ...oldTx,
-            amount: newAmount,
-            describtion,
-            createdAt: newDateIso,
-            category: selectedCategoryId
-              ? {
-                  __typename: 'ExpenseCategory',
-                  id: selectedCategoryId,
-                  name: cat?.name || 'Category',
-                }
-              : null,
-          } as any;
-          const newTxs = [...txs];
-          newTxs[idx] = updatedTx;
-          return { ...e, transactions: newTxs, sum: (e.sum || 0) + delta } as any;
-        });
-        useFinanceStore.setState({ expenses: next as any });
-      } catch {}
+      // Zustand optimistic mirror removed; handled via Apollo optimisticResponse
 
       await updateTransaction({
         variables: {
@@ -215,22 +185,7 @@ export default function EditExpenseTransactionSheet({
             }
           } catch {}
 
-          // Ensure Zustand mirrors server response (no additional sum changes)
-          try {
-            const st = useFinanceStore.getState();
-            const updatedTx: any = (data as any)?.updateExpenseTransaction;
-            const next = (st.expenses || []).map(e => {
-              const txs = Array.isArray(e.transactions) ? e.transactions : [];
-              const idx = txs.findIndex((t: any) => t.id === transaction.id);
-              if (idx < 0) return e as any;
-              const oldTx = txs[idx];
-              const delta = (updatedTx?.amount || 0) - (oldTx?.amount || 0);
-              const newTxs = [...txs];
-              newTxs[idx] = { ...oldTx, ...updatedTx } as any;
-              return { ...e, transactions: newTxs, sum: (e.sum || 0) + delta } as any;
-            });
-            useFinanceStore.setState({ expenses: next as any });
-          } catch {}
+          // Zustand mirror removed
         },
       });
 
@@ -246,12 +201,7 @@ export default function EditExpenseTransactionSheet({
       onClose();
     } catch (error) {
       console.error('Error updating transaction:', error);
-      // rollback Zustand on error using previously captured snapshot
-      try {
-        if (prevExpensesSnapshot) {
-          useFinanceStore.setState({ expenses: prevExpensesSnapshot as any });
-        }
-      } catch {}
+      // No rollback needed
     }
   };
 

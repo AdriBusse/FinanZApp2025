@@ -7,7 +7,7 @@ import FormBottomSheet, {
 import Input from '../../atoms/Input';
 import { UPDATEEXPENSE } from '../../../queries/mutations/Expenses/UpdateExpense';
 import { GET_EXPENSES_QUERY } from '../../../graphql/finance';
-import { useFinanceStore } from '../../../store/finance';
+// Legacy finance store removed; rely on Apollo cache only
 
 interface Expense {
   id: string;
@@ -57,8 +57,7 @@ export default function EditExpenseSheet({
 
   const handleSubmit = async () => {
     if (!isValid || !expense) return;
-    // snapshot for rollback
-    let prevExpensesSnapshot: any[] | null = null;
+    // legacy snapshot removed with store
     const updatedFields = {
       title: title.trim(),
       currency: currency.trim() || null,
@@ -70,15 +69,7 @@ export default function EditExpenseSheet({
           : null,
     };
     try {
-      // Optimistically update Zustand store
-      try {
-        const st = useFinanceStore.getState();
-        prevExpensesSnapshot = st.expenses ? [...(st.expenses as any[])] : null;
-        const next = (st.expenses || []).map(e =>
-          e.id === expense.id ? ({ ...e, ...updatedFields } as any) : (e as any),
-        );
-        useFinanceStore.setState({ expenses: next as any });
-      } catch {}
+      // Optimistic UI via Apollo only
 
       await updateExpense({
         variables: { id: expense.id, ...updatedFields },
@@ -106,27 +97,14 @@ export default function EditExpenseSheet({
             }
           } catch {}
 
-          // Mirror into Zustand
-          try {
-            const st = useFinanceStore.getState();
-            const updated: any = (data as any)?.updateExpense;
-            const next = (st.expenses || []).map(e =>
-              e.id === expense.id ? ({ ...e, ...updated } as any) : (e as any),
-            );
-            useFinanceStore.setState({ expenses: next as any });
-          } catch {}
+          // Zustand mirror removed
         },
       });
 
       onClose();
     } catch (e) {
       console.error('Error updating expense:', e);
-      // rollback Zustand on error
-      try {
-        if (prevExpensesSnapshot) {
-          useFinanceStore.setState({ expenses: prevExpensesSnapshot as any });
-        }
-      } catch {}
+      // No rollback needed
     }
   };
 

@@ -13,6 +13,18 @@ const httpLink = new HttpLink({ uri: GRAPHQL_URL });
 
 let isLoggingOut = false;
 const errorLink = onError(({ graphQLErrors, networkError }) => {
+  try {
+    if (graphQLErrors && graphQLErrors.length) {
+      // Surface GraphQL errors to debug console to aid diagnosis
+      // Each item may contain message, locations, path, and extensions
+      // eslint-disable-next-line no-console
+      console.error('[Apollo] GraphQL errors:', graphQLErrors);
+    }
+    if (networkError) {
+      // eslint-disable-next-line no-console
+      console.error('[Apollo] Network error:', networkError);
+    }
+  } catch {}
   const hasUnauth =
     (graphQLErrors || []).some((e: any) => {
       const code = e?.extensions?.code;
@@ -47,5 +59,52 @@ const authLink = setContext(async (_, { headers }) => {
 
 export const apolloClient = new ApolloClient({
   link: from([errorLink, authLink, httpLink]),
-  cache: new InMemoryCache(),
+  cache: new InMemoryCache({
+    typePolicies: {
+      Query: {
+        fields: {
+          summary: {
+            merge(existing, incoming) {
+              return { ...existing, ...incoming };
+            },
+          },
+          getSavingDepots: {
+            merge(existing, incoming) {
+              return incoming;
+            },
+          },
+          getExpenses: {
+            merge(existing, incoming) {
+              return incoming;
+            },
+          },
+          getExpenseCategories: {
+            merge(existing, incoming) {
+              return incoming;
+            },
+          },
+        },
+      },
+      SavingDepot: {
+        keyFields: ['id'],
+        fields: {
+          transactions: {
+            merge(existing, incoming) {
+              return incoming;
+            },
+          },
+        },
+      },
+      Expense: {
+        keyFields: ['id'],
+        fields: {
+          transactions: {
+            merge(existing, incoming) {
+              return incoming;
+            },
+          },
+        },
+      },
+    },
+  }),
 });

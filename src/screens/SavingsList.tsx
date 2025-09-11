@@ -10,7 +10,8 @@ import {
 } from 'react-native';
 import Input from '../components/atoms/Input';
 import RoundedButton from '../components/atoms/RoundedButton';
-import { useFinanceStore } from '../store/finance';
+import { useSavingDepots } from '../hooks/useFinanceData';
+import { useFinanceActions } from '../hooks/useFinanceActions';
 import { useNavigation } from '@react-navigation/native';
 import { useSavingsUIStore } from '../store/savingsUI';
 import FABSpeedDial from '../components/FABSpeedDial';
@@ -20,13 +21,15 @@ import ScreenWrapper from '../components/layout/ScreenWrapper';
 import InfoModal from '../components/atoms/InfoModal';
 
 export default function SavingsList() {
-  const { depots, isLoading, loadAll, deleteSavingDepot } = useFinanceStore();
+  const { data, loading, error, refetch } = useSavingDepots();
+  const { deleteSavingDepot } = useFinanceActions();
+  const depots = data?.getSavingDepots || [];
   const navigation = useNavigation<any>();
   const [infoOpen, setInfoOpen] = React.useState(false);
 
   useEffect(() => {
-    if (!depots || depots.length === 0) void loadAll();
-  }, [depots, loadAll]);
+    if (!depots || depots.length === 0) void refetch();
+  }, [depots, refetch]);
 
   const {
     isSpeedDialOpen,
@@ -50,20 +53,23 @@ export default function SavingsList() {
           style={{
             flexDirection: 'row',
             alignItems: 'center',
+            justifyContent: 'space-between',
             marginBottom: 16,
           }}
         >
-          <Text style={styles.title}>Savings</Text>
-          <TouchableOpacity
-            onPress={() => setInfoOpen(true)}
-            accessibilityLabel="About savings"
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            style={{ marginLeft: 8 }}
-          >
-            <Info color="#94a3b8" size={20} />
-          </TouchableOpacity>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Text style={styles.title}>Savings</Text>
+            <TouchableOpacity
+              onPress={() => setInfoOpen(true)}
+              accessibilityLabel="About savings"
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              style={{ marginLeft: 8 }}
+            >
+              <Info color="#94a3b8" size={20} />
+            </TouchableOpacity>
+          </View>
         </View>
-        {isLoading && depots.length === 0 ? (
+        {loading && depots.length === 0 ? (
           <View style={styles.center}>
             <ActivityIndicator />
           </View>
@@ -194,7 +200,7 @@ function CreateDepotModal({
   visible: boolean;
   onClose: () => void;
 }) {
-  const { createSavingDepot } = useFinanceStore();
+  const { createSavingDepot } = useFinanceActions();
   const [name, setName] = React.useState('');
   const [short, setShort] = React.useState('');
   const [currency, setCurrency] = React.useState('€');

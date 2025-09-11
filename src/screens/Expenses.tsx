@@ -17,7 +17,7 @@ import Input from '../components/atoms/Input';
 import RoundedButton from '../components/atoms/RoundedButton';
 import { Trash2, Info } from 'lucide-react-native';
 import InfoModal from '../components/atoms/InfoModal';
-import { useFinanceStore } from '../store/finance';
+import { useExpenses } from '../hooks/useFinanceData';
 import { apolloClient } from '../apollo/client';
 import { gql } from '@apollo/client';
 import { preferences } from '../services/preferences';
@@ -52,7 +52,8 @@ const DELETE_EXPENSE = gql`
 export default function Expenses() {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
-  const { expenses, isLoading, loadAll } = useFinanceStore();
+  const { data, loading, error, refetch } = useExpenses();
+  const expenses = data?.getExpenses || [];
   const [isSpeedDialOpen, setIsSpeedDialOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
@@ -64,8 +65,8 @@ export default function Expenses() {
   );
 
   useEffect(() => {
-    if (!expenses || expenses.length === 0) void loadAll();
-  }, [expenses, loadAll]);
+    if (!expenses || expenses.length === 0) void refetch();
+  }, [expenses, refetch]);
 
   // Load persisted preference once
   useEffect(() => {
@@ -129,7 +130,7 @@ export default function Expenses() {
             </Text>
           </TouchableOpacity>
         </View>
-        {isLoading && expenses.length === 0 ? (
+        {loading && expenses.length === 0 ? (
           <View style={styles.center}>
             <ActivityIndicator />
           </View>
@@ -201,15 +202,6 @@ export default function Expenses() {
                             text: 'Delete',
                             style: 'destructive',
                             onPress: async () => {
-                              // Optimistically remove from Zustand and Apollo cache
-                              const st = useFinanceStore.getState();
-                              const prev = st.expenses ? [...(st.expenses as any[])] : null;
-                              try {
-                                useFinanceStore.setState({
-                                  expenses: (st.expenses || []).filter(e => e.id !== item.id) as any,
-                                });
-                              } catch {}
-
                               try {
                                 await apolloClient.mutate({
                                   mutation: DELETE_EXPENSE,
@@ -229,9 +221,7 @@ export default function Expenses() {
                                     } catch {}
                                   },
                                 });
-                              } catch {
-                                if (prev) useFinanceStore.setState({ expenses: prev as any });
-                              }
+                              } catch {}
                             },
                           },
                         ],
@@ -479,12 +469,7 @@ function CreateExpenseModal({
               } catch {}
             },
           });
-          // Sync Zustand store from refetched Apollo cache so transactions are included
-          try {
-            const refreshed: any = apolloClient.readQuery({ query: GET_EXPENSES_QUERY });
-            const list = refreshed?.getExpenses || [];
-            useFinanceStore.setState({ expenses: list as any });
-          } catch {}
+          // Apollo cache already updated; no Zustand sync
           // Persist template selection for next time
           if (monthlyRecurring) {
             await preferences.setSelectedExpenseTemplateIds(

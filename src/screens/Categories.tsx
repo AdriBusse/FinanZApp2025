@@ -13,15 +13,16 @@ import { useMutation } from '@apollo/client';
 import { Trash2, Edit, Info } from 'lucide-react-native';
 import ScreenWrapper from '../components/layout/ScreenWrapper';
 import FABSpeedDial from '../components/FABSpeedDial';
-import { useCategoriesStore } from '../store/categories';
+import { useCategories } from '../hooks/useCategories';
 import { DELETEEXPENSECATEGORY } from '../queries/mutations/Expenses/DeleteExpenseCategory';
+import { GETEXPENSECATEGORIES } from '../queries/GetExpenseCategories';
 import InfoModal from '../components/atoms/InfoModal';
 
 export default function Categories() {
   const navigation = useNavigation<any>();
   const [isSpeedDialOpen, setIsSpeedDialOpen] = useState(false);
-  const { categories, loading, error, fetchCategories, deleteCategory } =
-    useCategoriesStore();
+  const { data, loading, error, refetch } = useCategories();
+  const categories = data?.getExpenseCategories || [];
   const [infoOpen, setInfoOpen] = useState(false);
 
   const [deleteCategoryMutation, { loading: deleting }] = useMutation(
@@ -29,8 +30,8 @@ export default function Categories() {
   );
 
   useEffect(() => {
-    fetchCategories();
-  }, [fetchCategories]);
+    refetch();
+  }, [refetch]);
 
   // Auto-close FAB when navigating away
   useEffect(() => {
@@ -62,10 +63,21 @@ export default function Categories() {
             try {
               await deleteCategoryMutation({
                 variables: { id: category.id },
+                optimisticResponse: {
+                  __typename: 'Mutation',
+                  deleteExpenseCategory: true,
+                },
+                update: (cache) => {
+                  try {
+                    const existing: any = cache.readQuery({ query: GETEXPENSECATEGORIES });
+                    const list = existing?.getExpenseCategories || [];
+                    cache.writeQuery({
+                      query: GETEXPENSECATEGORIES,
+                      data: { getExpenseCategories: list.filter((c: any) => c.id !== category.id) },
+                    });
+                  } catch {}
+                },
               });
-
-              // Update local store
-              deleteCategory(category.id);
 
               Alert.alert('Success', 'Category deleted successfully!');
             } catch (error) {
@@ -131,7 +143,7 @@ export default function Categories() {
           <Text style={styles.errorText}>Error: {error}</Text>
           <TouchableOpacity
             style={styles.retryButton}
-            onPress={fetchCategories}
+            onPress={refetch}
           >
             <Text style={styles.retryButtonText}>Retry</Text>
           </TouchableOpacity>
