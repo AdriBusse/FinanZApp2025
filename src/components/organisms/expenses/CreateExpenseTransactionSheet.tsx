@@ -1,9 +1,15 @@
-import React, { useMemo, useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Modal, TouchableOpacity, Switch } from 'react-native';
+import React, { useMemo, useState, useEffect, useRef } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  Modal,
+  TouchableOpacity,
+  Switch,
+  TextInput,
+} from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import FormBottomSheet, {
-  formStyles as commonFormStyles,
-} from '../../FormBottomSheet';
+import FormBottomSheet from '../../FormBottomSheet';
 import Input from '../../atoms/Input';
 import Dropdown from '../../atoms/Dropdown';
 import Calendar from '../../atoms/Calendar';
@@ -48,6 +54,7 @@ export default function CreateExpenseTransactionSheet({
   const categories = categoriesData?.getExpenseCategories || [];
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const amountInputRef = useRef<TextInput | null>(null);
 
   // Fetch categories when modal opens
   useEffect(() => {
@@ -63,6 +70,7 @@ export default function CreateExpenseTransactionSheet({
         .getTxAutoCategorizeDefault()
         .then(v => setAutoCategorize(!!v))
         .catch(() => {});
+      setTimeout(() => amountInputRef.current?.focus(), 50);
     }
   }, [open]);
 
@@ -150,62 +158,81 @@ export default function CreateExpenseTransactionSheet({
     }
   };
 
+  const formattedDate = `${String(selectedDate.getDate()).padStart(2, '0')}.${String(
+    selectedDate.getMonth() + 1,
+  ).padStart(2, '0')}.${selectedDate.getFullYear()}`;
+
   return (
     <FormBottomSheet
       visible={open}
       onClose={onClose}
-      title="New Expense Transaction"
+      title="New Transaction"
       submitDisabled={!isValid || submitting}
-      heightPercent={0.7}
+      heightPercent={0.85}
       onSubmit={handleSubmit}
     >
-      <View style={styles.scrollContainer}>
-        <Text style={commonFormStyles.modalLabel}>Description</Text>
-        <Input
-          value={describtion}
-          onChangeText={setDescribtion}
-          placeholder="What is this?"
-          returnKeyType="next"
-        />
+      <View style={styles.sheetContent}>
+        <Text style={styles.sectionLabel}>Amount</Text>
+        <View style={styles.amountRow}>
+          <Text style={styles.amountCurrency}>{currency || '€'}</Text>
+          <TextInput
+            ref={amountInputRef}
+            value={amount}
+            onChangeText={setAmount}
+            keyboardType="numeric"
+            placeholder="0.00"
+            placeholderTextColor="#6b7280"
+            style={styles.amountInput}
+          />
+        </View>
 
-        <Text style={commonFormStyles.modalLabel}>Amount</Text>
-        <Input
-          value={amount}
-          onChangeText={setAmount}
-          keyboardType="numeric"
-          placeholder="e.g. 12.50"
-          returnKeyType="done"
-          leftAdornment={<Text style={{ color: '#cbd5e1', fontSize: 16 }}>{currency || '€'}</Text>}
-          // No implicit submit from keyboard; only Save button triggers
-        />
+        <View style={styles.formBlock}>
+          <View>
+            <Text style={styles.sectionLabel}>Title</Text>
+            <Input
+              value={describtion}
+              onChangeText={setDescribtion}
+              placeholder="Groceries from Whole Foods"
+              returnKeyType="next"
+            />
+          </View>
 
-        <Dropdown
-          label="Category (Optional)"
-          value={selectedCategoryId}
-          options={dropdownOptions}
-          onSelect={option => {
-            if (option.id === 'create_new') {
-              // Navigate to create category screen
-              onClose();
-              navigation.navigate('CreateCategory');
-            } else {
-              setSelectedCategoryId(option.id || null);
-            }
-          }}
-          placeholder="Select a category (optional)"
-          loading={loading}
-          disabled={loading}
-        />
+          <Dropdown
+            label="Category"
+            value={selectedCategoryId}
+            options={dropdownOptions}
+            onSelect={option => {
+              if (option.id === 'create_new') {
+                onClose();
+                navigation.navigate('CreateCategory');
+              } else {
+                setSelectedCategoryId(option.id || null);
+              }
+            }}
+            placeholder="Select category"
+            loading={loading}
+            disabled={loading}
+          />
 
-        <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            marginTop: 8,
-          }}
-        >
-          <Text style={commonFormStyles.modalLabel}>Autocategorize</Text>
+          <View>
+            <Text style={styles.sectionLabel}>Date</Text>
+            <View style={styles.pressWrapper}>
+              <Input
+                value={formattedDate}
+                editable={false}
+                placeholder="Select a date"
+              />
+              <TouchableOpacity
+                style={styles.pressOverlay}
+                activeOpacity={0.8}
+                onPress={() => setCalendarOpen(true)}
+              />
+            </View>
+          </View>
+        </View>
+
+        <View style={[styles.inlineRow, { marginTop: 10 }]}>
+          <Text style={styles.sectionLabel}>Auto categorize</Text>
           <Switch
             value={autoCategorize}
             onValueChange={async v => {
@@ -217,24 +244,6 @@ export default function CreateExpenseTransactionSheet({
           />
         </View>
 
-        {/* Category preview removed per request — dropdown selection is sufficient */}
-
-        {/* Date moved below category */}
-        <Text style={commonFormStyles.modalLabel}>Date</Text>
-        <View style={styles.pressWrapper}>
-          <Input
-            value={`${String(selectedDate.getDate()).padStart(2, '0')}.${String(
-              selectedDate.getMonth() + 1,
-            ).padStart(2, '0')}.${selectedDate.getFullYear()}`}
-            editable={false}
-            placeholder="Select a date"
-          />
-          <TouchableOpacity
-            style={styles.pressOverlay}
-            activeOpacity={0.8}
-            onPress={() => setCalendarOpen(true)}
-          />
-        </View>
         <Modal
           visible={calendarOpen}
           transparent
@@ -265,35 +274,54 @@ export default function CreateExpenseTransactionSheet({
 }
 
 const styles = StyleSheet.create({
-  scrollContainer: {
+  sheetContent: {
     flex: 1,
+    gap: 16,
   },
-  dateRow: {
-    flexDirection: 'row',
-    gap: 8,
-    marginBottom: 12,
+  sectionLabel: {
+    color: '#94a3b8',
+    fontSize: 14,
+    marginBottom: 6,
   },
-  dateCol: {
-    flex: 1,
-  },
-  categoryPreview: {
-    marginTop: 20,
-    padding: 15,
-    backgroundColor: '#1e212b',
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#374151',
-  },
-  previewContainer: {
+  amountRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 10,
+    backgroundColor: '#111827',
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
   },
-  dateText: {
-    color: '#cbd5e1',
-    fontSize: 12,
-    marginTop: 6,
-    marginBottom: 8,
+  amountCurrency: {
+    color: '#9ca3af',
+    fontSize: 18,
+    fontWeight: '700',
+    marginRight: 12,
+  },
+  amountInput: {
+    flex: 1,
+    color: '#f8fafc',
+    fontSize: 40,
+    fontWeight: '800',
+  },
+  formBlock: {
+    marginTop: 12,
+    gap: 10,
+  },
+  inlineRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 16,
+  },
+  pressWrapper: {
+    position: 'relative',
+  },
+  pressOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
   },
   modalOverlay: {
     flex: 1,

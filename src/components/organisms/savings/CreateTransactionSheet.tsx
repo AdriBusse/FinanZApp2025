@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Text, Alert } from 'react-native';
+import { Text, Alert, View, TextInput, StyleSheet } from 'react-native';
 import FormBottomSheet, {
   formStyles as commonFormStyles,
 } from '../../FormBottomSheet';
@@ -20,6 +20,7 @@ export default function CreateTransactionSheet({
   const [describtion, setDescribtion] = useState('');
   const submittingRef = useRef(false);
   const [submitting, setSubmitting] = useState(false);
+  const amountInputRef = useRef<TextInput | null>(null);
   const isValid =
     amount.trim().length > 0 &&
     describtion.trim().length > 0 &&
@@ -30,6 +31,8 @@ export default function CreateTransactionSheet({
     if (!open) {
       setAmount('');
       setDescribtion('');
+    } else {
+      setTimeout(() => amountInputRef.current?.focus(), 50);
     }
   }, [open]);
   return (
@@ -55,22 +58,61 @@ export default function CreateTransactionSheet({
         }
       }}
     >
-      <Text style={commonFormStyles.modalLabel}>Description</Text>
-      <Input
-        value={describtion}
-        onChangeText={setDescribtion}
-        placeholder="What is this?"
-      />
-      <Text style={commonFormStyles.modalLabel}>
-        Amount (+ deposit / - withdrawal)
-      </Text>
-      <Input
-        value={amount}
-        onChangeText={setAmount}
-        keyboardType="numeric"
-        placeholder="e.g. 50"
-        leftAdornment={<Text style={{ color: '#cbd5e1', fontSize: 16 }}>{currency || '€'}</Text>}
-      />
+      <View style={styles.sheetContent}>
+        <Text style={styles.sectionLabel}>Amount</Text>
+        <View style={styles.amountRow}>
+          <Text style={styles.amountCurrency}>{currency || '€'}</Text>
+          <TextInput
+            ref={amountInputRef}
+            value={amount}
+            onChangeText={setAmount}
+            keyboardType="numeric"
+            placeholder="0.00"
+            placeholderTextColor="#6b7280"
+            style={styles.amountInput}
+          />
+        </View>
+
+        <View style={{ marginTop: 12 }}>
+          <Text style={styles.sectionLabel}>Title</Text>
+          <Input
+            value={describtion}
+            onChangeText={setDescribtion}
+            placeholder="What is this?"
+          />
+        </View>
+      </View>
     </FormBottomSheet>
   );
 }
+
+const styles = StyleSheet.create({
+  sheetContent: {
+    flex: 1,
+  },
+  sectionLabel: {
+    color: '#94a3b8',
+    fontSize: 14,
+    marginBottom: 6,
+  },
+  amountRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#111827',
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  amountCurrency: {
+    color: '#9ca3af',
+    fontSize: 18,
+    fontWeight: '700',
+    marginRight: 12,
+  },
+  amountInput: {
+    flex: 1,
+    color: '#f8fafc',
+    fontSize: 40,
+    fontWeight: '800',
+  },
+});

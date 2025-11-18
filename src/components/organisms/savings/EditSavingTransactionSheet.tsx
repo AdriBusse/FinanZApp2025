@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, TextInput } from 'react-native';
 import FormBottomSheet, {
   formStyles as commonFormStyles,
 } from '../../FormBottomSheet';
@@ -31,6 +31,7 @@ export default function EditSavingTransactionSheet({
 }) {
   const [amount, setAmount] = useState('');
   const [describtion, setDescribtion] = useState('');
+  const amountInputRef = useRef<TextInput | null>(null);
   const { updateSavingTransaction } = useSavings({ depotId });
   const [updating, setUpdating] = useState(false);
 
@@ -39,6 +40,7 @@ export default function EditSavingTransactionSheet({
     if (open && transaction) {
       setAmount(transaction.amount?.toString() || '');
       setDescribtion(transaction.describtion || '');
+      setTimeout(() => amountInputRef.current?.focus(), 50);
     }
   }, [open, transaction]);
 
@@ -85,39 +87,34 @@ export default function EditSavingTransactionSheet({
       onSubmit={handleSubmit}
     >
       <View style={styles.container}>
-        <Text style={commonFormStyles.modalLabel}>Description</Text>
-        <Input
-          value={describtion}
-          onChangeText={setDescribtion}
-          placeholder="What is this?"
-          returnKeyType="next"
-          onFocus={e =>
-            e.target.setNativeProps({
-              selection: { start: 0, end: describtion.length },
-            })
-          }
-        />
+        <Text style={styles.sectionLabel}>Amount</Text>
+        <View style={styles.amountRow}>
+          <Text style={styles.amountCurrency}>{currency || '€'}</Text>
+          <TextInput
+            ref={amountInputRef}
+            value={amount}
+            onChangeText={setAmount}
+            keyboardType="numeric"
+            placeholder="0.00"
+            placeholderTextColor="#6b7280"
+            style={styles.amountInput}
+          />
+        </View>
 
-        <Text style={commonFormStyles.modalLabel}>Amount</Text>
-        <Input
-          value={amount}
-          onChangeText={setAmount}
-          keyboardType="numeric"
-          placeholder="e.g. 12.50"
-          returnKeyType="done"
-          leftAdornment={<Text style={{ color: '#cbd5e1', fontSize: 16 }}>{currency || '€'}</Text>}
-          onFocus={e =>
-            e.target.setNativeProps({
-              selection: { start: 0, end: amount.length },
-            })
-          }
-          onSubmitEditing={() => {
-            // Focus next input or submit if valid
-            if (isValid) {
-              handleSubmit();
+        <View style={{ marginTop: 12 }}>
+          <Text style={styles.sectionLabel}>Title</Text>
+          <Input
+            value={describtion}
+            onChangeText={setDescribtion}
+            placeholder="What is this?"
+            returnKeyType="next"
+            onFocus={e =>
+              e.target.setNativeProps({
+                selection: { start: 0, end: describtion.length },
+              })
             }
-          }}
-        />
+          />
+        </View>
       </View>
     </FormBottomSheet>
   );
@@ -126,5 +123,30 @@ export default function EditSavingTransactionSheet({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  sectionLabel: {
+    color: '#94a3b8',
+    fontSize: 14,
+    marginBottom: 6,
+  },
+  amountRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#111827',
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  amountCurrency: {
+    color: '#9ca3af',
+    fontSize: 18,
+    fontWeight: '700',
+    marginRight: 12,
+  },
+  amountInput: {
+    flex: 1,
+    color: '#f8fafc',
+    fontSize: 40,
+    fontWeight: '800',
   },
 });
