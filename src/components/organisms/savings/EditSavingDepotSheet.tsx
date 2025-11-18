@@ -1,12 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { useMutation } from '@apollo/client';
 import FormBottomSheet, {
   formStyles as commonFormStyles,
 } from '../../FormBottomSheet';
 import Input from '../../atoms/Input';
-import { UPDATESAVINGDEPOT } from '../../../queries/mutations/Savings/UpdateSavingDepot';
-import { GET_SAVING_DEPOTS_QUERY } from '../../../graphql/finance';
+import { useSavings } from '../../../hooks/useSavings';
 // Legacy finance store removed; rely on Apollo cache only
 
 interface Depot {
@@ -32,8 +30,8 @@ export default function EditSavingDepotSheet({
   const [short, setShort] = useState('');
   const [currency, setCurrency] = useState('');
   const [savingGoal, setSavingGoal] = useState('');
-
-  const [updateDepot, { loading: updating }] = useMutation(UPDATESAVINGDEPOT);
+  const { updateSavingDepot } = useSavings({ depotId: depot?.id });
+  const [updating, setUpdating] = useState(false);
 
   // Initialize form with depot data when modal opens
   useEffect(() => {
@@ -55,6 +53,7 @@ export default function EditSavingDepotSheet({
     if (!isValid || !depot) return;
 
     try {
+      setUpdating(true);
       const nextName = name.trim();
       const nextShort = short.trim();
       const nextCurrency = currency.trim() || null;
@@ -63,43 +62,13 @@ export default function EditSavingDepotSheet({
           ? parseInt(savingGoal, 10)
           : null;
 
-      await updateDepot({
-        variables: {
-          id: depot.id,
-          name: nextName,
-          short: nextShort,
-          currency: nextCurrency,
-          savinggoal: nextGoal,
-        },
-        optimisticResponse: {
-          __typename: 'Mutation',
-          updateSavingDepot: {
-            __typename: 'SavingDepot',
-            id: depot.id,
-            name: nextName,
-            short: nextShort,
-            currency: nextCurrency,
-            savinggoal: nextGoal,
-          },
-        },
-        update: (cache, { data }) => {
-          try {
-            const upd: any = data?.updateSavingDepot;
-            const existing: any = cache.readQuery({ query: GET_SAVING_DEPOTS_QUERY });
-            if (existing?.getSavingDepots) {
-              const updated = existing.getSavingDepots.map((d: any) =>
-                d.id === depot.id ? { ...d, ...upd } : d,
-              );
-              cache.writeQuery({
-                query: GET_SAVING_DEPOTS_QUERY,
-                data: { getSavingDepots: updated },
-              });
-            }
-          } catch {}
-        },
-      });
-
-      // Zustand mirror removed
+      await updateSavingDepot(
+        depot.id,
+        nextName,
+        nextShort,
+        nextCurrency,
+        nextGoal,
+      );
 
       // Reset form
       setName('');
@@ -107,9 +76,12 @@ export default function EditSavingDepotSheet({
       setCurrency('');
       setSavingGoal('');
 
+      await onUpdate();
       onClose();
     } catch (error) {
       console.error('Error updating depot:', error);
+    } finally {
+      setUpdating(false);
     }
   };
 

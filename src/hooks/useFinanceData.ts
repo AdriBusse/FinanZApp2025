@@ -1,9 +1,7 @@
 import { useQuery } from '@apollo/client';
-import {
-  SUMMARY_QUERY,
-  GET_SAVING_DEPOTS_QUERY,
-  GET_EXPENSES_QUERY,
-} from '../graphql/finance';
+import { GETDEPOTS } from '../queries/GetDepots';
+import { SUMMARY_QUERY } from '../queries/Summary';
+import { GETEXPENSES } from '../queries/GetExpenses';
 
 export const useSummary = () => {
   return useQuery(SUMMARY_QUERY, {
@@ -13,15 +11,13 @@ export const useSummary = () => {
 };
 
 export const useSavingDepots = () => {
-  return useQuery(GET_SAVING_DEPOTS_QUERY, {
-    fetchPolicy: 'cache-and-network',
+  return useQuery(GETDEPOTS, {
     notifyOnNetworkStatusChange: true,
   });
 };
 
 export const useExpenses = () => {
-  return useQuery(GET_EXPENSES_QUERY, {
-    fetchPolicy: 'cache-and-network',
+  return useQuery(GETEXPENSES, {
     notifyOnNetworkStatusChange: true,
   });
 };

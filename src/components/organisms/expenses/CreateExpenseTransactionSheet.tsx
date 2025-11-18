@@ -7,9 +7,8 @@ import FormBottomSheet, {
 import Input from '../../atoms/Input';
 import Dropdown from '../../atoms/Dropdown';
 import Calendar from '../../atoms/Calendar';
-import { useCategories } from '../../../hooks/useCategories';
 import { preferences } from '../../../services/preferences';
-import { useFinanceActions } from '../../../hooks/useFinanceActions';
+import { useExpenses } from '../../../hooks/useExpenses';
 
 export default function CreateExpenseTransactionSheet({
   open,
@@ -41,9 +40,12 @@ export default function CreateExpenseTransactionSheet({
   const [month, setMonth] = useState(now.getMonth()); // 0-11
   const [day, setDay] = useState(now.getDate());
 
-  const { data: categoriesData, loading, refetch } = useCategories();
+  const { categoriesQuery, createExpenseTransaction } = useExpenses({
+    includeCategories: true,
+    expenseId,
+  });
+  const { data: categoriesData, loading, refetch } = categoriesQuery;
   const categories = categoriesData?.getExpenseCategories || [];
-  const { createExpenseTransaction } = useFinanceActions();
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 

@@ -10,8 +10,7 @@ import {
 } from 'react-native';
 import Input from '../components/atoms/Input';
 import RoundedButton from '../components/atoms/RoundedButton';
-import { useSavingDepots } from '../hooks/useFinanceData';
-import { useFinanceActions } from '../hooks/useFinanceActions';
+import { useSavings } from '../hooks/useSavings';
 import { useNavigation } from '@react-navigation/native';
 import { useSavingsUIStore } from '../store/savingsUI';
 import FABSpeedDial from '../components/FABSpeedDial';
@@ -21,8 +20,8 @@ import ScreenWrapper from '../components/layout/ScreenWrapper';
 import InfoModal from '../components/atoms/InfoModal';
 
 export default function SavingsList() {
-  const { data, loading, error, refetch } = useSavingDepots();
-  const { deleteSavingDepot } = useFinanceActions();
+  const { depotsQuery, deleteSavingDepot } = useSavings();
+  const { data, loading, error, refetch } = depotsQuery;
   const depots = data?.getSavingDepots || [];
   const navigation = useNavigation<any>();
   const [infoOpen, setInfoOpen] = React.useState(false);
@@ -200,7 +199,7 @@ function CreateDepotModal({
   visible: boolean;
   onClose: () => void;
 }) {
-  const { createSavingDepot } = useFinanceActions();
+  const { createSavingDepot } = useSavings();
   const [name, setName] = React.useState('');
   const [short, setShort] = React.useState('');
   const [currency, setCurrency] = React.useState('€');

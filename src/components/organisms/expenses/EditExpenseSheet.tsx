@@ -1,12 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, Switch } from 'react-native';
-import { useMutation } from '@apollo/client';
 import FormBottomSheet, {
   formStyles as commonFormStyles,
 } from '../../FormBottomSheet';
 import Input from '../../atoms/Input';
-import { UPDATEEXPENSE } from '../../../queries/mutations/Expenses/UpdateExpense';
-import { GET_EXPENSES_QUERY } from '../../../graphql/finance';
+import { useExpenses } from '../../../hooks/useExpenses';
 // Legacy finance store removed; rely on Apollo cache only
 
 interface Expense {
@@ -34,8 +32,10 @@ export default function EditExpenseSheet({
   const [archived, setArchived] = useState(false);
   const [monthlyRecurring, setMonthlyRecurring] = useState(false);
   const [spendingLimit, setSpendingLimit] = useState('');
-
-  const [updateExpense, { loading: updating }] = useMutation(UPDATEEXPENSE);
+  const { updateExpense } = useExpenses({
+    expenseId: expense?.id,
+  });
+  const [updating, setUpdating] = useState(false);
 
   // Initialize form when opening
   useEffect(() => {
@@ -69,42 +69,21 @@ export default function EditExpenseSheet({
           : null,
     };
     try {
-      // Optimistic UI via Apollo only
-
-      await updateExpense({
-        variables: { id: expense.id, ...updatedFields },
-        optimisticResponse: {
-          __typename: 'Mutation',
-          updateExpense: {
-            __typename: 'Expense',
-            id: expense.id,
-            ...updatedFields,
-          },
-        },
-        update: (cache, { data }) => {
-          // Update Apollo cache list
-          try {
-            const updated: any = (data as any)?.updateExpense;
-            const existing: any = cache.readQuery({ query: GET_EXPENSES_QUERY });
-            if (existing?.getExpenses) {
-              const list = existing.getExpenses.map((e: any) =>
-                e.id === expense.id ? { ...e, ...updated } : e,
-              );
-              cache.writeQuery({
-                query: GET_EXPENSES_QUERY,
-                data: { getExpenses: list },
-              });
-            }
-          } catch {}
-
-          // Zustand mirror removed
-        },
-      });
-
+      setUpdating(true);
+      await updateExpense(
+        expense.id,
+        updatedFields.title,
+        updatedFields.currency,
+        updatedFields.archived,
+        updatedFields.monthlyRecurring,
+        updatedFields.spendingLimit,
+      );
+      await onUpdate();
       onClose();
     } catch (e) {
       console.error('Error updating expense:', e);
-      // No rollback needed
+    } finally {
+      setUpdating(false);
     }
   };
 

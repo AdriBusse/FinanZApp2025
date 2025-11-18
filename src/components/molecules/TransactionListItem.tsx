@@ -21,6 +21,8 @@ export default function TransactionListItem({
   onPress,
   onDelete,
 }: TransactionListItemProps) {
+  console.log({id, title});
+  
   return (
     <TouchableOpacity
       style={styles.row}

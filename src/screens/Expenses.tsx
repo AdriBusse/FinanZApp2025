@@ -17,56 +17,49 @@ import Input from '../components/atoms/Input';
 import RoundedButton from '../components/atoms/RoundedButton';
 import { Trash2, Info } from 'lucide-react-native';
 import InfoModal from '../components/atoms/InfoModal';
-import { useExpenses } from '../hooks/useFinanceData';
-import { apolloClient } from '../apollo/client';
-import { gql } from '@apollo/client';
 import { preferences } from '../services/preferences';
-import { GET_EXPENSES_QUERY } from '../graphql/finance';
-
-const CREATE_EXPENSE = gql`
-  mutation CreateExpense(
-    $title: String!
-    $currency: String
-    $monthlyRecurring: Boolean
-    $spendingLimit: Int
-    $skipTemplateIds: [ID!]
-  ) {
-    createExpense(
-      title: $title
-      currency: $currency
-      monthlyRecurring: $monthlyRecurring
-      spendingLimit: $spendingLimit
-      skipTemplateIds: $skipTemplateIds
-    ) {
-      id
-    }
-  }
-`;
-
-const DELETE_EXPENSE = gql`
-  mutation DELETEEXPENSE($id: String!) {
-    deleteExpense(id: $id)
-  }
-`;
+import { useExpenses } from '../hooks/useExpenses';
 
 export default function Expenses() {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
-  const { data, loading, error, refetch } = useExpenses();
-  const expenses = data?.getExpenses || [];
+  const {
+    expensesQuery,
+    archivedExpensesQuery,
+    deleteExpense,
+  } = useExpenses({ includeArchived: true });
+  const {
+    data: expensesData,
+    loading: expensesLoading,
+    refetch: refetchExpenses,
+  } = expensesQuery;
+  const {
+    data: archivedExpensesData,
+    loading: archivedLoading,
+    refetch: refetchArchivedExpenses,
+  } = archivedExpensesQuery;
+  const activeExpenses = expensesData?.getExpenses || [];
+  const archivedExpenses = archivedExpensesData?.getExpenses || [];
   const [isSpeedDialOpen, setIsSpeedDialOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
   const [infoOpen, setInfoOpen] = useState(false);
+  const isLoading = showArchived ? archivedLoading : expensesLoading;
 
   const displayedExpenses = useMemo(
-    () => (showArchived ? expenses : (expenses || []).filter(e => !e.archived)),
-    [expenses, showArchived],
+    () => (showArchived ? archivedExpenses : activeExpenses),
+    [activeExpenses, archivedExpenses, showArchived],
   );
 
   useEffect(() => {
-    if (!expenses || expenses.length === 0) void refetch();
-  }, [expenses, refetch]);
+    if (!activeExpenses.length) void refetchExpenses();
+  }, [activeExpenses.length, refetchExpenses]);
+
+  useEffect(() => {
+    if (showArchived && !archivedExpenses.length) {
+      void refetchArchivedExpenses();
+    }
+  }, [archivedExpenses.length, refetchArchivedExpenses, showArchived]);
 
   // Load persisted preference once
   useEffect(() => {
@@ -130,7 +123,7 @@ export default function Expenses() {
             </Text>
           </TouchableOpacity>
         </View>
-        {loading && expenses.length === 0 ? (
+        {isLoading && displayedExpenses.length === 0 ? (
           <View style={styles.center}>
             <ActivityIndicator />
           </View>
@@ -203,24 +196,7 @@ export default function Expenses() {
                             style: 'destructive',
                             onPress: async () => {
                               try {
-                                await apolloClient.mutate({
-                                  mutation: DELETE_EXPENSE,
-                                  variables: { id: item.id },
-                                  optimisticResponse: {
-                                    __typename: 'Mutation',
-                                    deleteExpense: true,
-                                  },
-                                  update: cache => {
-                                    try {
-                                      const existing: any = cache.readQuery({ query: GET_EXPENSES_QUERY });
-                                      const list = existing?.getExpenses || [];
-                                      cache.writeQuery({
-                                        query: GET_EXPENSES_QUERY,
-                                        data: { getExpenses: list.filter((e: any) => e.id !== item.id) },
-                                      });
-                                    } catch {}
-                                  },
-                                });
+                                await deleteExpense(item.id);
                               } catch {}
                             },
                           },
@@ -349,26 +325,18 @@ function CreateExpenseModal({
   >([]);
   const [selectedTemplateIds, setSelectedTemplateIds] = useState<string[]>([]);
 
-  const GET_TEMPLATES = gql`
-    query GET_EXPENSE_TEMPLATES {
-      getExpenseTransactionTemplates {
-        id
-        describtion
-        amount
-      }
-    }
-  `;
+  const { createExpense, expenseTemplatesQuery } = useExpenses({
+    includeTemplates: monthlyRecurring,
+  });
+  const { refetch: refetchTemplates, loading: templatesLoading } =
+    expenseTemplatesQuery;
 
   const loadTemplates = async () => {
     try {
-      const { data } = await apolloClient.query({
-        query: GET_TEMPLATES,
-        fetchPolicy: 'network-only',
-      });
+      const { data } = await refetchTemplates();
       const list: Array<{ id: string; describtion: string; amount?: number }> =
         data?.getExpenseTransactionTemplates ?? [];
       setTemplates(list);
-      // Initialize selection: use saved prefs intersecting with current list; default to all
       const saved = (await preferences.getSelectedExpenseTemplateIds()) ?? null;
       if (saved && saved.length > 0) {
         const existing = list.filter(t => saved.includes(t.id)).map(t => t.id);
@@ -379,7 +347,6 @@ function CreateExpenseModal({
         setSelectedTemplateIds(list.map(t => t.id));
       }
     } catch (e) {
-      // ignore errors; empty list
       setTemplates([]);
     }
   };
@@ -425,59 +392,21 @@ function CreateExpenseModal({
             spendingLimit.trim() && !Number.isNaN(Number(spendingLimit))
               ? parseInt(spendingLimit, 10)
               : null;
-          const tempId = `temp-${Date.now()}`;
-          const res = await apolloClient.mutate({
-            mutation: CREATE_EXPENSE,
-            variables: {
-              title: title.trim(),
-              currency: currency.trim() || null,
-              monthlyRecurring,
-              spendingLimit: parsedLimit,
-              skipTemplateIds,
-            },
-            refetchQueries: [{ query: GET_EXPENSES_QUERY }],
-            awaitRefetchQueries: true,
-            optimisticResponse: {
-              __typename: 'Mutation',
-              createExpense: {
-                __typename: 'Expense',
-                id: tempId,
-              } as any,
-            },
-            update: (cache, { data }) => {
-              try {
-                const createdId = (data as any)?.createExpense?.id ?? tempId;
-                const existing: any = cache.readQuery({ query: GET_EXPENSES_QUERY });
-                const list = existing?.getExpenses || [];
-                const withoutDup = list.filter((e: any) => e.id !== createdId && e.id !== tempId);
-                const newExpense = {
-                  __typename: 'Expense',
-                  id: createdId,
-                  title: title.trim(),
-                  currency: (currency.trim() || null) as any,
-                  archived: false,
-                  monthlyRecurring,
-                  spendingLimit: parsedLimit,
-                  sum: 0,
-                  transactions: [],
-                  expenseByCategory: [],
-                } as any;
-                cache.writeQuery({
-                  query: GET_EXPENSES_QUERY,
-                  data: { getExpenses: [newExpense, ...withoutDup] },
-                });
-              } catch {}
-            },
-          });
-          // Apollo cache already updated; no Zustand sync
-          // Persist template selection for next time
+          await createExpense(
+            title.trim(),
+            currency.trim() || null,
+            monthlyRecurring,
+            parsedLimit,
+            skipTemplateIds,
+          );
+
           if (monthlyRecurring) {
             await preferences.setSelectedExpenseTemplateIds(
               selectedTemplateIds,
             );
           }
           setTitle('');
-          setCurrency('');
+          setCurrency('€');
           setMonthlyRecurring(false);
           setSpendingLimit('');
           onCreated();

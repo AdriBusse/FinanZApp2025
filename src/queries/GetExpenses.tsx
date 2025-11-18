@@ -10,6 +10,22 @@ export const GETEXPENSES = gql`
       archived
       monthlyRecurring
       spendingLimit
+      transactions {
+        id
+        amount
+        createdAt
+        describtion
+        category {
+          id
+          name
+        }
+      }
+      expenseByCategory {
+        name
+        amount
+        color
+        icon
+      }
     }
   }
 `;

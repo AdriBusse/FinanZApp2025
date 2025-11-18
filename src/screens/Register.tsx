@@ -7,7 +7,7 @@ import { useMutation } from '@apollo/client';
 import ScreenWrapper from '../components/layout/ScreenWrapper';
 import Input from '../components/atoms/Input';
 import RoundedButton from '../components/atoms/RoundedButton';
-import { SIGNUP_MUTATION } from '../graphql/auth';
+import { SIGNUP } from '../queries/mutations/auth/signup';
 
 const RegisterSchema = Yup.object().shape({
   username: Yup.string().trim().required('Username is required'),
@@ -23,7 +23,7 @@ const RegisterSchema = Yup.object().shape({
 export default function RegisterScreen() {
   const navigation = useNavigation<any>();
   const [error, setError] = useState<string | null>(null);
-  const [signup, { loading }] = useMutation(SIGNUP_MUTATION);
+  const [signup, { loading }] = useMutation(SIGNUP);
 
   return (
     <ScreenWrapper>

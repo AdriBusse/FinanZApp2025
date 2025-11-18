@@ -11,7 +11,8 @@ import {
 import { useAuthStore } from '../store/auth';
 import ScreenWrapper from '../components/layout/ScreenWrapper';
 import { useQuery, useMutation } from '@apollo/client';
-import { ME_QUERY, CHANGE_PASSWORD_MUTATION } from '../graphql/auth';
+import { ME_QUERY } from '../queries/auth/me';
+import { CHANGE_PASSWORD } from '../queries/mutations/auth/changePassword';
 
 export default function Profile() {
   const { user, logout } = useAuthStore();
@@ -20,7 +21,7 @@ export default function Profile() {
   const [currentPassword, setCurrentPassword] = React.useState('');
   const [newPassword, setNewPassword] = React.useState('');
   const [confirmNewPassword, setConfirmNewPassword] = React.useState('');
-  const [changePassword, { loading }] = useMutation(CHANGE_PASSWORD_MUTATION);
+  const [changePassword, { loading }] = useMutation(CHANGE_PASSWORD);
 
   // Read version from package.json (Metro supports JSON require)
   const pkg = require('../../package.json');

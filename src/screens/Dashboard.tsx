@@ -9,7 +9,6 @@ import {
   Alert,
   Animated,
 } from 'react-native';
-import { useFinanceData } from '../hooks/useFinanceData';
 import { useNavigation } from '@react-navigation/native';
 import RoundedButton from '../components/atoms/RoundedButton';
 import ScreenWrapper from '../components/layout/ScreenWrapper';
@@ -26,6 +25,7 @@ import {
 } from 'lucide-react-native';
 import DashboardGrid from '../components/dashboard/DashboardGrid';
 import InfoModal from '../components/atoms/InfoModal';
+import { useDashboard } from '../hooks/useDashboard';
 
 type WidgetType =
   | 'saving_sum'
@@ -47,7 +47,7 @@ type Widget = {
 };
 
 export default function Dashboard() {
-  const { summary, depots, expenses, loading, refetch } = useFinanceData();
+  const { summary, depots, expenses, loading, refetchAll } = useDashboard();
   const navigation = useNavigation<any>();
   const userId = useAuthStore(s => s.user?.id);
 
@@ -62,8 +62,8 @@ export default function Dashboard() {
 
   useEffect(() => {
     // Initial data load
-    refetch();
-  }, [refetch]);
+    void refetchAll();
+  }, [refetchAll]);
 
   // Load dashboard layout (per user)
   useEffect(() => {

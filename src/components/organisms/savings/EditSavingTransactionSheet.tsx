@@ -1,12 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { useMutation } from '@apollo/client';
 import FormBottomSheet, {
   formStyles as commonFormStyles,
 } from '../../FormBottomSheet';
 import Input from '../../atoms/Input';
-import { UPDATESAVINGTRANSACTION } from '../../../queries/mutations/Savings/UpdateSavingTransaction';
-import { GET_SAVING_DEPOTS_QUERY } from '../../../graphql/finance';
+import { useSavings } from '../../../hooks/useSavings';
 // Legacy finance store removed; rely on Apollo cache only
 
 interface Transaction {
@@ -22,19 +20,19 @@ export default function EditSavingTransactionSheet({
   onUpdate,
   transaction,
   currency,
+  depotId,
 }: {
   open: boolean;
   onClose: () => void;
   onUpdate: () => Promise<void>;
   transaction: Transaction | null;
   currency?: string;
+  depotId: string;
 }) {
   const [amount, setAmount] = useState('');
   const [describtion, setDescribtion] = useState('');
-
-  const [updateTransaction, { loading: updating }] = useMutation(
-    UPDATESAVINGTRANSACTION,
-  );
+  const { updateSavingTransaction } = useSavings({ depotId });
+  const [updating, setUpdating] = useState(false);
 
   // Initialize form with transaction data when modal opens
   useEffect(() => {
@@ -53,54 +51,14 @@ export default function EditSavingTransactionSheet({
     if (!isValid || !transaction) return;
 
     try {
-      const prevAmount = Number(transaction.amount || 0);
+      setUpdating(true);
       const nextAmount = Number(amount);
-      const prevCreatedAt = transaction.createdAt;
-      await updateTransaction({
-        variables: {
-          id: Number(transaction.id),
-          amount: nextAmount,
-          describtion,
-        },
-        optimisticResponse: {
-          __typename: 'Mutation',
-          updateSavingTransaction: {
-            __typename: 'SavingTransaction',
-            id: transaction.id,
-            amount: nextAmount,
-            describtion,
-            createdAt: prevCreatedAt || new Date().toISOString(),
-          },
-        },
-        update: (cache, { data }) => {
-          try {
-            const updatedTx: any = data?.updateSavingTransaction;
-            const existing: any = cache.readQuery({
-              query: GET_SAVING_DEPOTS_QUERY,
-            });
-            if (existing?.getSavingDepots) {
-              let found = false;
-              const updatedDepots = existing.getSavingDepots.map((d: any) => {
-                const txs = Array.isArray(d.transactions) ? d.transactions : [];
-                const has = txs.some((t: any) => t.id === transaction.id);
-                if (!has) return d;
-                found = true;
-                const nextTxs = txs.map((t: any) =>
-                  t.id === transaction.id ? { ...t, ...updatedTx } : t,
-                );
-                const delta = (updatedTx?.amount || 0) - prevAmount;
-                return { ...d, transactions: nextTxs, sum: (d.sum || 0) + delta };
-              });
-              if (found) {
-                cache.writeQuery({
-                  query: GET_SAVING_DEPOTS_QUERY,
-                  data: { getSavingDepots: updatedDepots },
-                });
-              }
-            }
-          } catch {}
-        },
-      });
+      await updateSavingTransaction(
+        transaction.id,
+        depotId,
+        nextAmount,
+        describtion,
+      );
 
       // Zustand mirror removed
 
@@ -108,9 +66,12 @@ export default function EditSavingTransactionSheet({
       setAmount('');
       setDescribtion('');
 
+      await onUpdate();
       onClose();
     } catch (error) {
       console.error('Error updating transaction:', error);
+    } finally {
+      setUpdating(false);
     }
   };
 

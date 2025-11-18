@@ -7,7 +7,6 @@ import {
   Modal,
   TouchableOpacity,
 } from 'react-native';
-import { useMutation } from '@apollo/client';
 import { useNavigation } from '@react-navigation/native';
 import FormBottomSheet, {
   formStyles as commonFormStyles,
@@ -15,9 +14,7 @@ import FormBottomSheet, {
 import Input from '../../atoms/Input';
 import Dropdown from '../../atoms/Dropdown';
 import Calendar from '../../atoms/Calendar';
-import { UPDATEEXPENSETRANSACTION } from '../../../queries/mutations/Expenses/UpdateExpenseTransaction';
-import { useCategories } from '../../../hooks/useCategories';
-import { GET_EXPENSES_QUERY } from '../../../graphql/finance';
+import { useExpenses } from '../../../hooks/useExpenses';
 // Legacy finance store removed; rely on Apollo cache only
 
 interface Transaction {
@@ -38,12 +35,14 @@ export default function EditExpenseTransactionSheet({
   onUpdate,
   transaction,
   currency,
+  expenseId,
 }: {
   open: boolean;
   onClose: () => void;
   onUpdate: () => Promise<void>;
   transaction: Transaction | null;
   currency?: string;
+  expenseId: string;
 }) {
   const navigation = useNavigation<any>();
   const [amount, setAmount] = useState('');
@@ -58,11 +57,13 @@ export default function EditExpenseTransactionSheet({
   const [day, setDay] = useState(now.getDate());
   const [calendarOpen, setCalendarOpen] = useState(false);
 
-  const { data: categoriesData, loading, refetch } = useCategories();
+  const { categoriesQuery, updateExpenseTransaction } = useExpenses({
+    includeCategories: true,
+    expenseId,
+  });
+  const { data: categoriesData, loading, refetch } = categoriesQuery;
   const categories = categoriesData?.getExpenseCategories || [];
-  const [updateTransaction, { loading: updating }] = useMutation(
-    UPDATEEXPENSETRANSACTION,
-  );
+  const [updating, setUpdating] = useState(false);
 
   // Initialize form with transaction data when modal opens
   useEffect(() => {
@@ -127,67 +128,19 @@ export default function EditExpenseTransactionSheet({
   const handleSubmit = async () => {
     if (!isValid || !transaction) return;
 
-    // legacy snapshot for rollback removed with store
     try {
+      setUpdating(true);
       const newAmount = Number(amount);
       const newDateIso = selectedDate.toISOString();
-      const cat = categories.find(c => c.id === selectedCategoryId);
 
-      // Zustand optimistic mirror removed; handled via Apollo optimisticResponse
-
-      await updateTransaction({
-        variables: {
-          transactionId: transaction.id,
-          amount: newAmount,
-          describtion,
-          categoryId: selectedCategoryId || null,
-          // Backend expects date as String for update mutation
-          date: newDateIso,
-        },
-        optimisticResponse: {
-          __typename: 'Mutation',
-          updateExpenseTransaction: {
-            __typename: 'ExpenseTransaction',
-            id: transaction.id,
-            amount: newAmount,
-            createdAt: newDateIso,
-            describtion,
-            category: selectedCategoryId
-              ? {
-                  __typename: 'ExpenseCategory',
-                  id: selectedCategoryId,
-                  name: cat?.name || 'Category',
-                }
-              : null,
-          },
-        },
-        update: (cache, { data }) => {
-          try {
-            const updatedTx: any = (data as any)?.updateExpenseTransaction;
-            const existing: any = cache.readQuery({ query: GET_EXPENSES_QUERY });
-            if (existing?.getExpenses) {
-              let oldAmountC = 0;
-              const updatedExpenses = existing.getExpenses.map((e: any) => {
-                const txs = Array.isArray(e.transactions) ? e.transactions : [];
-                const idx = txs.findIndex((t: any) => t.id === transaction.id);
-                if (idx < 0) return e;
-                const oldTx = txs[idx];
-                oldAmountC = oldTx?.amount || 0;
-                const delta = (updatedTx?.amount || 0) - oldAmountC;
-                const newTxs = [...txs];
-                newTxs[idx] = { ...oldTx, ...updatedTx };
-                return { ...e, transactions: newTxs, sum: (e.sum || 0) + delta };
-              });
-              cache.writeQuery({
-                query: GET_EXPENSES_QUERY,
-                data: { getExpenses: updatedExpenses },
-              });
-            }
-          } catch {}
-
-          // Zustand mirror removed
-        },
-      });
+      await updateExpenseTransaction(
+        transaction.id,
+        expenseId,
+        newAmount,
+        describtion,
+        selectedCategoryId || null,
+        newDateIso,
+      );
 
       // Reset form
       setAmount('');
@@ -198,10 +151,12 @@ export default function EditExpenseTransactionSheet({
       setMonth(t.getMonth());
       setDay(t.getDate());
 
+      await onUpdate();
       onClose();
     } catch (error) {
       console.error('Error updating transaction:', error);
-      // No rollback needed
+    } finally {
+      setUpdating(false);
     }
   };
 

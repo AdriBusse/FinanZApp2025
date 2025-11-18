@@ -7,9 +7,9 @@ import { getAuthToken } from '../store/auth';
 // The schema is located at .ai/backend_graphql_schema.json
 // Following the guidelines in .ai/project_description.md, the app will use Apollo Client.
 // If you have a different endpoint, set it here or provide via native config.
-const GRAPHQL_URL = 'https://apifinanzv2.ghettohippy.de/graphql';
+console.log(process.env.API_URL);
 
-const httpLink = new HttpLink({ uri: GRAPHQL_URL });
+const httpLink = new HttpLink({ uri: "https://apifinanzv2.ghettohippy.de/graphql" });
 
 let isLoggingOut = false;
 const errorLink = onError(({ graphQLErrors, networkError }) => {

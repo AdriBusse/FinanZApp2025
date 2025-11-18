@@ -1,33 +1,21 @@
 import { gql } from '@apollo/client';
-
-export const SUMMARY = gql`
-  query SUMMARY {
+export const SUMMARY_QUERY = gql`
+  query Summary {
     summary {
+      savingValue
+      etfWorth
+      etfMovement
       todaySpent {
         id
-        describtion
         amount
         createdAt
-        category {
-          id
-        }
-        expense {
-          id
-        }
+        describtion
       }
       latestExpense {
         id
         title
         sum
-        transactions {
-          id
-          describtion
-          amount
-        }
       }
-      savingValue
-      etfMovement
-      etfWorth
     }
   }
 `;
