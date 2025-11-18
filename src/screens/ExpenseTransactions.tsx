@@ -81,6 +81,22 @@ export default function ExpenseTransactions() {
     }
   }, [route, navigation]);
 
+  useEffect(() => {
+    const p = (route as any)?.params;
+    const transactionId = p?.openTransactionId;
+    if (!transactionId || !expense?.transactions?.length) return;
+    const match = expense.transactions.find(
+      t => `${t.id}` === `${transactionId}`,
+    );
+    if (match) {
+      setSelectedTransaction(match);
+      setEditOpen(true);
+      try {
+        (navigation as any)?.setParams?.({ openTransactionId: null });
+      } catch {}
+    }
+  }, [route, expense?.transactions, navigation, expense]);
+
   // Auto-close FAB when navigating away
   useEffect(() => {
     const unsub = navigation.addListener('blur', () => setIsSpeedDialOpen(false));
