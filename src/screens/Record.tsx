@@ -75,6 +75,7 @@ export default function Record() {
   const [messages, setMessages] = useState<VoiceMessage[]>([]);
   const [isProcessingUpload, setIsProcessingUpload] = useState(false);
   const [selectedLanguage, setSelectedLanguage] = useState<'auto' | 'en' | 'de'>('auto');
+  const [canceledUploads, setCanceledUploads] = useState<Set<string>>(new Set());
 
   const { expensesQuery, categoriesQuery } = useExpenses({ includeCategories: true });
   const expenses = expensesQuery.data?.getExpenses ?? [];
@@ -199,7 +200,7 @@ export default function Record() {
             ? { ...msg, status: 'done' }
             : msg,
         );
-        if (!result) return updated;
+        if (!result || canceledUploads.has(audioId)) return updated;
         return [
           ...updated,
           {
@@ -329,6 +330,21 @@ export default function Record() {
     [messages, selectedExpenseId],
   );
 
+  const cancelUpload = (audioId: string) => {
+    setCanceledUploads(prev => {
+      const next = new Set(prev);
+      next.add(audioId);
+      return next;
+    });
+    setMessages(prev =>
+      prev.map(msg =>
+        msg.id === audioId && msg.type === 'audio'
+          ? { ...msg, status: 'error', error: 'Canceled' }
+          : msg,
+      ),
+    );
+  };
+
   const scrollToBottom = () => {
     try {
       listRef.current?.scrollToEnd({ animated: true });
@@ -395,9 +411,18 @@ export default function Record() {
                 <Text style={styles.metaText}>{formatTimestamp(item.recordedAt)}</Text>
               </View>
               {item.status === 'processing' ? (
-                <View style={[styles.bubbleFooterRow, { marginTop: 0 }]}>
+                <View style={[styles.bubbleFooterRow, { marginTop: 0 }]}> {
+                  /* Cancel button + spinner */
+                }
                   <Loader2 color="#fbbf24" size={14} />
                   <Text style={styles.bubbleHint}>Processing...</Text>
+                  <TouchableOpacity
+                    onPress={() => cancelUpload(item.id)}
+                    style={[styles.playButton, { backgroundColor: '#fca5a5' }]}
+                    activeOpacity={0.8}
+                  >
+                    <Pause color="#0f172a" size={16} />
+                  </TouchableOpacity>
                 </View>
               ) : item.status === 'error' ? (
                 <Text style={[styles.bubbleHint, { color: '#fca5a5' }]}> {item.error ?? 'Upload failed'} </Text>
