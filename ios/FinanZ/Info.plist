@@ -33,6 +33,8 @@
 	</dict>
 	<key>NSFaceIDUsageDescription</key>
 	<string>Unlock your account with Face ID</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>We use the microphone to capture voice expenses.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string></string>
 	<key>RCTNewArchEnabled</key>

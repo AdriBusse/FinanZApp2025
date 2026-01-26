@@ -7,8 +7,7 @@ import {
   TouchableOpacity,
   Alert,
 } from 'react-native';
-import { useSavingDepots } from '../hooks/useFinanceData';
-import { useFinanceActions } from '../hooks/useFinanceActions';
+import { useSavings } from '../hooks/useSavings';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import FABSpeedDial from '../components/FABSpeedDial';
 import TransactionListItem from '../components/molecules/TransactionListItem';
@@ -65,10 +64,13 @@ export default function SavingTransactions() {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const depotId: string = route.params?.depotId ?? '';
-  const { data, loading, error, refetch } = useSavingDepots();
-  const depots = data?.getSavingDepots || [];
-  const { createSavingTransaction, deleteSavingTransaction } = useFinanceActions();
-  const depot = depots.find(d => d.id === depotId);
+  const {
+    depotQuery,
+    createSavingTransaction,
+    deleteSavingTransaction,
+  } = useSavings({ depotId });
+  const { data, loading, error, refetch } = depotQuery;
+  const depot = data?.getSavingDepot;
 
   const grouped = useMemo(
     () => groupByDate(depot?.transactions ?? []),
@@ -199,7 +201,7 @@ export default function SavingTransactions() {
                           style: 'destructive',
                           onPress: async () => {
                             try {
-                              await deleteSavingTransaction(id);
+                              await deleteSavingTransaction(id, depotId);
                             } catch {}
                           },
                         },
@@ -248,7 +250,8 @@ export default function SavingTransactions() {
           }}
           transaction={selectedTransaction}
           currency={depot?.currency}
-          onUpdate={async () => {}}
+          depotId={depotId}
+          onUpdate={refetch}
         />
 
         {/* Edit Depot Bottom Sheet */}
@@ -258,7 +261,7 @@ export default function SavingTransactions() {
             setEditDepotOpen(false);
           }}
           depot={depot || null}
-          onUpdate={async () => {}}
+          onUpdate={refetch}
         />
 
         <InfoModal

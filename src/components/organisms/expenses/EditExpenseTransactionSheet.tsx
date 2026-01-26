@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -6,18 +6,15 @@ import {
   StyleSheet,
   Modal,
   TouchableOpacity,
+  TextInput,
+  FlatList,
 } from 'react-native';
-import { useMutation } from '@apollo/client';
 import { useNavigation } from '@react-navigation/native';
-import FormBottomSheet, {
-  formStyles as commonFormStyles,
-} from '../../FormBottomSheet';
-import Input from '../../atoms/Input';
-import Dropdown from '../../atoms/Dropdown';
+import { Calendar as CalendarIcon, Plus, X } from 'lucide-react-native';
+import FormBottomSheet from '../../FormBottomSheet';
 import Calendar from '../../atoms/Calendar';
-import { UPDATEEXPENSETRANSACTION } from '../../../queries/mutations/Expenses/UpdateExpenseTransaction';
-import { useCategories } from '../../../hooks/useCategories';
-import { GET_EXPENSES_QUERY } from '../../../graphql/finance';
+import { useExpenses } from '../../../hooks/useExpenses';
+import IconSymbol from '../../atoms/IconSymbol';
 // Legacy finance store removed; rely on Apollo cache only
 
 interface Transaction {
@@ -38,12 +35,14 @@ export default function EditExpenseTransactionSheet({
   onUpdate,
   transaction,
   currency,
+  expenseId,
 }: {
   open: boolean;
   onClose: () => void;
   onUpdate: () => Promise<void>;
   transaction: Transaction | null;
   currency?: string;
+  expenseId: string;
 }) {
   const navigation = useNavigation<any>();
   const [amount, setAmount] = useState('');
@@ -57,12 +56,16 @@ export default function EditExpenseTransactionSheet({
   const [month, setMonth] = useState(now.getMonth()); // 0-11
   const [day, setDay] = useState(now.getDate());
   const [calendarOpen, setCalendarOpen] = useState(false);
+  const [categoryOpen, setCategoryOpen] = useState(false);
+  const amountInputRef = useRef<TextInput | null>(null);
 
-  const { data: categoriesData, loading, refetch } = useCategories();
+  const { categoriesQuery, updateExpenseTransaction } = useExpenses({
+    includeCategories: true,
+    expenseId,
+  });
+  const { data: categoriesData, loading, refetch } = categoriesQuery;
   const categories = categoriesData?.getExpenseCategories || [];
-  const [updateTransaction, { loading: updating }] = useMutation(
-    UPDATEEXPENSETRANSACTION,
-  );
+  const [updating, setUpdating] = useState(false);
 
   // Initialize form with transaction data when modal opens
   useEffect(() => {
@@ -82,6 +85,7 @@ export default function EditExpenseTransactionSheet({
       setYear(base.getFullYear());
       setMonth(base.getMonth());
       setDay(base.getDate());
+      setTimeout(() => amountInputRef.current?.focus(), 50);
     }
   }, [open, transaction, refetch]);
 
@@ -100,19 +104,22 @@ export default function EditExpenseTransactionSheet({
       icon: cat.icon || undefined,
       color: cat.color || undefined,
     }));
-
-    // Add "Create New Category" option if no categories exist
-    if (categories.length === 0 && !loading) {
-      categoryOptions.push({
-        id: 'create_new',
-        label: 'Create New Category',
-        icon: '➕',
-        color: '#2e7d32',
-      });
-    }
-
     return categoryOptions;
   }, [categories, loading]);
+  const selectedCategory = useMemo(
+    () => categories.find(cat => cat.id === selectedCategoryId) || null,
+    [categories, selectedCategoryId],
+  );
+  const categoryOptions = useMemo(
+    () => [
+      { id: '', label: 'No category', icon: 'x' },
+      ...dropdownOptions,
+      ...(categories.length === 0 && !loading
+        ? [{ id: 'create_new', label: 'Create New Category', icon: 'plus' }]
+        : []),
+    ],
+    [dropdownOptions, categories.length, loading],
+  );
 
   const isValid =
     amount.trim().length > 0 &&
@@ -127,67 +134,19 @@ export default function EditExpenseTransactionSheet({
   const handleSubmit = async () => {
     if (!isValid || !transaction) return;
 
-    // legacy snapshot for rollback removed with store
     try {
+      setUpdating(true);
       const newAmount = Number(amount);
       const newDateIso = selectedDate.toISOString();
-      const cat = categories.find(c => c.id === selectedCategoryId);
 
-      // Zustand optimistic mirror removed; handled via Apollo optimisticResponse
-
-      await updateTransaction({
-        variables: {
-          transactionId: transaction.id,
-          amount: newAmount,
-          describtion,
-          categoryId: selectedCategoryId || null,
-          // Backend expects date as String for update mutation
-          date: newDateIso,
-        },
-        optimisticResponse: {
-          __typename: 'Mutation',
-          updateExpenseTransaction: {
-            __typename: 'ExpenseTransaction',
-            id: transaction.id,
-            amount: newAmount,
-            createdAt: newDateIso,
-            describtion,
-            category: selectedCategoryId
-              ? {
-                  __typename: 'ExpenseCategory',
-                  id: selectedCategoryId,
-                  name: cat?.name || 'Category',
-                }
-              : null,
-          },
-        },
-        update: (cache, { data }) => {
-          try {
-            const updatedTx: any = (data as any)?.updateExpenseTransaction;
-            const existing: any = cache.readQuery({ query: GET_EXPENSES_QUERY });
-            if (existing?.getExpenses) {
-              let oldAmountC = 0;
-              const updatedExpenses = existing.getExpenses.map((e: any) => {
-                const txs = Array.isArray(e.transactions) ? e.transactions : [];
-                const idx = txs.findIndex((t: any) => t.id === transaction.id);
-                if (idx < 0) return e;
-                const oldTx = txs[idx];
-                oldAmountC = oldTx?.amount || 0;
-                const delta = (updatedTx?.amount || 0) - oldAmountC;
-                const newTxs = [...txs];
-                newTxs[idx] = { ...oldTx, ...updatedTx };
-                return { ...e, transactions: newTxs, sum: (e.sum || 0) + delta };
-              });
-              cache.writeQuery({
-                query: GET_EXPENSES_QUERY,
-                data: { getExpenses: updatedExpenses },
-              });
-            }
-          } catch {}
-
-          // Zustand mirror removed
-        },
-      });
+      await updateExpenseTransaction(
+        transaction.id,
+        expenseId,
+        newAmount,
+        describtion,
+        selectedCategoryId || null,
+        newDateIso,
+      );
 
       // Reset form
       setAmount('');
@@ -198,12 +157,18 @@ export default function EditExpenseTransactionSheet({
       setMonth(t.getMonth());
       setDay(t.getDate());
 
+      await onUpdate();
       onClose();
     } catch (error) {
       console.error('Error updating transaction:', error);
-      // No rollback needed
+    } finally {
+      setUpdating(false);
     }
   };
+
+  const formattedDate = `${String(selectedDate.getDate()).padStart(2, '0')}.${String(
+    selectedDate.getMonth() + 1,
+  ).padStart(2, '0')}.${selectedDate.getFullYear()}`;
 
   return (
     <FormBottomSheet
@@ -211,80 +176,73 @@ export default function EditExpenseTransactionSheet({
       onClose={onClose}
       title="Edit Transaction"
       submitDisabled={!isValid || updating}
-      heightPercent={0.7}
+      heightPercent={0.85}
       onSubmit={handleSubmit}
     >
       <View style={styles.container}>
-        <Text style={commonFormStyles.modalLabel}>Description</Text>
-        <Input
-          value={describtion}
-          onChangeText={setDescribtion}
-          placeholder="What is this?"
-          returnKeyType="next"
-          onFocus={e =>
-            e.target.setNativeProps({
-              selection: { start: 0, end: describtion.length },
-            })
-          }
-        />
-
-        <Text style={commonFormStyles.modalLabel}>Amount</Text>
-        <Input
-          value={amount}
-          onChangeText={setAmount}
-          keyboardType="numeric"
-          placeholder="e.g. 12.50"
-          returnKeyType="done"
-          leftAdornment={<Text style={{ color: '#cbd5e1', fontSize: 16 }}>{currency || '€'}</Text>}
-          onFocus={e =>
-            e.target.setNativeProps({
-              selection: { start: 0, end: amount.length },
-            })
-          }
-          onSubmitEditing={() => {
-            // Focus next input or submit if valid
-            if (isValid) {
-              handleSubmit();
-            }
-          }}
-        />
-
-        <Dropdown
-          label="Category (Optional)"
-          value={selectedCategoryId}
-          options={dropdownOptions}
-          onSelect={option => {
-            if (option.id === 'create_new') {
-              // Navigate to create category screen
-              onClose();
-              navigation.navigate('CreateCategory');
-            } else {
-              setSelectedCategoryId(option.id || null);
-            }
-          }}
-          placeholder="Select a category (optional)"
-          loading={loading}
-          disabled={loading}
-        />
-
-        {/* Category preview removed per request — dropdown selection is sufficient */}
-
-        {/* Date moved below category */}
-        <Text style={commonFormStyles.modalLabel}>Date</Text>
-        <View style={styles.pressWrapper}>
-          <Input
-            value={`${String(selectedDate.getDate()).padStart(2, '0')}.${String(
-              selectedDate.getMonth() + 1,
-            ).padStart(2, '0')}.${selectedDate.getFullYear()}`}
-            editable={false}
-            placeholder="Select a date"
-          />
-          <TouchableOpacity
-            style={styles.pressOverlay}
-            activeOpacity={0.8}
-            onPress={() => setCalendarOpen(true)}
+        <Text style={styles.amountLabel}>Amount</Text>
+        <View style={styles.amountRow}>
+          <Text style={styles.amountCurrency}>{currency || '€'}</Text>
+          <TextInput
+            ref={amountInputRef}
+            value={amount}
+            onChangeText={setAmount}
+            keyboardType="numeric"
+            placeholder="0.00"
+            placeholderTextColor="#6b7280"
+            style={styles.amountInput}
           />
         </View>
+
+        <View style={styles.formBlock}>
+          <View>
+            <Text style={styles.sectionLabel}>Title</Text>
+            <View style={styles.titleRow}>
+              <TextInput
+                value={describtion}
+                onChangeText={setDescribtion}
+                placeholder="What is this?"
+                placeholderTextColor="#6b7280"
+                returnKeyType="next"
+                onFocus={e =>
+                  e.target.setNativeProps({
+                    selection: { start: 0, end: describtion.length },
+                  })
+                }
+                style={styles.titleInput}
+              />
+            </View>
+          </View>
+
+          <View style={styles.inlineInputs}>
+            <View style={styles.fieldGroup}>
+              <Text style={styles.sectionLabel}>Category</Text>
+              <TouchableOpacity
+                style={styles.categorySquare}
+                onPress={() => setCategoryOpen(true)}
+                activeOpacity={0.8}
+              >
+                {selectedCategory?.icon ? (
+                  <IconSymbol name={selectedCategory.icon} size={22} color="#3b82f6" />
+                ) : (
+                  <X color="#3b82f6" size={22} />
+                )}
+              </TouchableOpacity>
+            </View>
+            <View style={styles.fieldGroupWide}>
+              <Text style={styles.sectionLabel}>Date</Text>
+              <TouchableOpacity
+                style={styles.dateInput}
+                onPress={() => setCalendarOpen(true)}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.dateText}>{formattedDate}</Text>
+                <CalendarIcon color="#3b82f6" size={18} />
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+
         <Modal
           visible={calendarOpen}
           transparent
@@ -309,6 +267,65 @@ export default function EditExpenseTransactionSheet({
             </View>
           </TouchableOpacity>
         </Modal>
+
+        <Modal
+          visible={categoryOpen}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setCategoryOpen(false)}
+        >
+          <TouchableOpacity
+            style={styles.modalOverlay}
+            activeOpacity={1}
+            onPress={() => setCategoryOpen(false)}
+          >
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Select Category</Text>
+                <TouchableOpacity onPress={() => setCategoryOpen(false)}>
+                  <Text style={styles.closeButton}>✕</Text>
+                </TouchableOpacity>
+              </View>
+              <FlatList
+                data={categoryOptions}
+                keyExtractor={item => item.id || item.label}
+                renderItem={({ item }) => (
+                  <TouchableOpacity
+                    style={[
+                      styles.option,
+                      (item.id || '') === (selectedCategoryId || '') &&
+                        styles.optionSelected,
+                    ]}
+                    onPress={() => {
+                      if (item.id === 'create_new') {
+                        setCategoryOpen(false);
+                        onClose();
+                        navigation.navigate('CreateCategory');
+                        return;
+                      }
+                      setSelectedCategoryId(item.id || null);
+                      setCategoryOpen(false);
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <View style={styles.optionContent}>
+                      {item.icon ? (
+                        item.icon === 'plus' ? (
+                          <Plus color="#3b82f6" size={18} />
+                        ) : (
+                          <IconSymbol name={item.icon} size={18} color="#3b82f6" />
+                        )
+                      ) : null}
+                      <Text style={styles.optionText}>{item.label}</Text>
+                    </View>
+                  </TouchableOpacity>
+                )}
+                ItemSeparatorComponent={() => <View style={styles.separator} />}
+                showsVerticalScrollIndicator={false}
+              />
+            </View>
+          </TouchableOpacity>
+        </Modal>
       </View>
     </FormBottomSheet>
   );
@@ -317,12 +334,85 @@ export default function EditExpenseTransactionSheet({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    gap: 16,
+  },
+  sectionLabel: {
+    color: '#94a3b8',
+    fontSize: 14,
+    marginBottom: 4,
+  },
+  amountLabel: {
+    color: '#94a3b8',
+    fontSize: 14,
+    marginBottom: 2,
+  },
+  amountRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#1f2937',
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  amountCurrency: {
+    color: '#9ca3af',
+    fontSize: 18,
+    fontWeight: '700',
+    marginRight: 12,
+  },
+  amountInput: {
+    flex: 1,
+    color: '#f8fafc',
+    fontSize: 40,
+    fontWeight: '800',
+  },
+  formBlock: {
+    gap: 10,
+  },
+  inlineInputs: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  fieldGroup: {
+    alignItems: 'flex-start',
+  },
+  fieldGroupWide: {
+    flex: 1,
+  },
+  categorySquare: {
+    width: 56,
+    height: 56,
+    borderRadius: 12,
+    backgroundColor: '#1f2937',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dateInput: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    height: 56,
+    backgroundColor: '#1f2937',
+    borderRadius: 12,
+    paddingHorizontal: 12,
   },
   dateText: {
-    color: '#cbd5e1',
-    fontSize: 12,
-    marginTop: 6,
-    marginBottom: 8,
+    color: '#f8fafc',
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  titleRow: {
+    backgroundColor: '#1f2937',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  titleInput: {
+    color: '#f8fafc',
+    fontSize: 18,
+    fontWeight: '600',
   },
   modalOverlay: {
     flex: 1,
@@ -338,54 +428,42 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     padding: 12,
   },
-  pressWrapper: {
-    position: 'relative',
-  },
-  pressOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-  },
-  dateRow: {
+  modalHeader: {
     flexDirection: 'row',
-    gap: 8,
-    marginBottom: 12,
-  },
-  dateCol: {
-    flex: 1,
-  },
-  categoryPreview: {
-    marginTop: 20,
-    padding: 15,
-    backgroundColor: '#1e212b',
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#374151',
-  },
-  previewContainer: {
-    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: 10,
+    paddingBottom: 12,
   },
-  previewItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginRight: 10,
-  },
-  previewIcon: {
-    fontSize: 20,
-    marginRight: 5,
-  },
-  previewName: {
-    fontSize: 16,
-    fontWeight: 'bold',
+  modalTitle: {
     color: '#f8fafc',
+    fontSize: 18,
+    fontWeight: '700',
   },
-  previewColor: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
+  closeButton: {
+    color: '#94a3b8',
+    fontSize: 20,
+    padding: 4,
+  },
+  option: {
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+  },
+  optionSelected: {
+    backgroundColor: '#1f2937',
+    borderRadius: 8,
+  },
+  optionContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  optionText: {
+    color: '#f8fafc',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  separator: {
+    height: 1,
+    backgroundColor: '#374151',
   },
 });

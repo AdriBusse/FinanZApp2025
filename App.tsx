@@ -13,7 +13,6 @@ import {
 } from 'react-native-safe-area-context';
 import { Platform } from 'react-native';
 import { ApolloProvider } from '@apollo/client';
-import { apolloClient } from './src/apollo/client';
 import Dashboard from './src/screens/Dashboard';
 import Login from './src/screens/Login';
 import Register from './src/screens/Register';
@@ -27,6 +26,7 @@ import CreateCategory from './src/screens/CreateCategory';
 import Categories from './src/screens/Categories';
 import Profile from './src/screens/Profile';
 import Report from './src/screens/Report';
+import Record from './src/screens/Record';
 import { useAuthStore } from './src/store/auth';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import {
@@ -45,7 +45,9 @@ import {
   ReceiptText,
   User,
   PieChart,
+  Mic,
 } from 'lucide-react-native';
+import { apolloClient } from './src/apollo/client';
 
 const AuthStack = createNativeStackNavigator();
 const SavingsStack = createNativeStackNavigator();
@@ -177,6 +179,8 @@ function AppTabs() {
               return <ReceiptText {...iconProps} />;
             case 'ReportTab':
               return <PieChart {...iconProps} />;
+            case 'RecordTab':
+              return <Mic {...iconProps} />;
             case 'ProfileTab':
               return <User {...iconProps} />;
             default:
@@ -222,6 +226,11 @@ function AppTabs() {
         name="ReportTab"
         component={Report}
         options={{ title: 'Report' }}
+      />
+      <Tab.Screen
+        name="RecordTab"
+        component={Record}
+        options={{ title: 'Record' }}
       />
       <Tab.Screen
         name="ProfileTab"

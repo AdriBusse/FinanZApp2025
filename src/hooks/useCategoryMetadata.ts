@@ -1,12 +1,11 @@
 import { useMemo } from 'react';
 import { useQuery } from '@apollo/client';
-import { CATEGORY_METADATA_QUERY } from '../graphql/categories';
+import { CATEGORY_METADATA_QUERY } from '../queries/GetCategoryMetadata';
 
 export type IconMeta = { icon: string; label?: string; keyword?: string };
 
 export const useCategoryMetadata = () => {
   const q = useQuery(CATEGORY_METADATA_QUERY, {
-    fetchPolicy: 'cache-and-network',
     notifyOnNetworkStatusChange: true,
   });
 
@@ -22,7 +21,7 @@ export const useCategoryMetadata = () => {
     return Array.isArray(list)
       ? list
           .map((i: any) => ({
-            icon: i?.icon,
+            icon: i?.icon ?? i?.keyword ?? i?.label,
             label: i?.label ?? undefined,
             keyword: i?.keyword ?? undefined,
           }))

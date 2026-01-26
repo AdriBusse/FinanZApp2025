@@ -19,99 +19,51 @@ import Dropdown from '../components/atoms/Dropdown';
 import RoundedButton from '../components/atoms/RoundedButton';
 import FloatingActionButton from '../components/atoms/FloatingActionButton';
 import InfoModal from '../components/atoms/InfoModal';
-import { apolloClient } from '../apollo/client';
-import { gql } from '@apollo/client';
-import { useCategories } from '../hooks/useCategories';
-
-const GET_TEMPLATES = gql`
-  query GET_EXPENSE_TEMPLATES {
-    getExpenseTransactionTemplates {
-      id
-      describtion
-      amount
-      category {
-        id
-        name
-        icon
-        color
-      }
-    }
-  }
-`;
-
-const CREATE_TEMPLATE = gql`
-  mutation CREATE_EXPENSE_TEMPLATE(
-    $describtion: String!
-    $amount: Float!
-    $categoryId: String
-  ) {
-    createExpenseTransactionTemplate(
-      describtion: $describtion
-      amount: $amount
-      categoryId: $categoryId
-    ) {
-      id
-    }
-  }
-`;
-
-const UPDATE_TEMPLATE = gql`
-  mutation UPDATE_EXPENSE_TEMPLATE(
-    $id: String!
-    $describtion: String
-    $amount: Float
-    $categoryId: String
-  ) {
-    updateExpenseTransactionTemplate(
-      id: $id
-      describtion: $describtion
-      amount: $amount
-      categoryId: $categoryId
-    ) {
-      id
-    }
-  }
-`;
-
-const DELETE_TEMPLATE = gql`
-  mutation DELETE_EXPENSE_TEMPLATE($id: String!) {
-    deleteExpenseTransactionTemplate(id: $id)
-  }
-`;
+import { useExpenses } from '../hooks/useExpenses';
 
 interface TemplateItem {
   id: string;
   describtion: string;
   amount: number;
-  category?: {
-    id: string;
-    name: string;
-    icon?: string | null;
-    color?: string | null;
-  } | null;
+  category?: TemplateCategory | null;
 }
+
+type TemplateCategory = {
+  id: string;
+  name: string;
+  icon?: string | null;
+  color?: string | null;
+};
 
 export default function ExpenseTemplates() {
   const navigation = useNavigation<any>();
   const insets = useSafeAreaInsets();
   const [templates, setTemplates] = useState<TemplateItem[]>([]);
-  const [loading, setLoading] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [editOpen, setEditOpen] = useState<TemplateItem | null>(null);
   const [infoOpen, setInfoOpen] = useState(false);
+  const {
+    expenseTemplatesQuery,
+    categoriesQuery,
+    createTemplate,
+    updateTemplate,
+    deleteTemplate,
+  } = useExpenses({ includeTemplates: true, includeCategories: true });
+  const { data: templatesData, refetch: refetchTemplates } =
+    expenseTemplatesQuery;
+  const { data: categoriesData } = categoriesQuery;
+  const categories = categoriesData?.getExpenseCategories ?? [];
 
   const load = async () => {
-    try {
-      setLoading(true);
-      const { data } = await apolloClient.query({
-        query: GET_TEMPLATES,
-        fetchPolicy: 'network-only',
-      });
-      setTemplates(data?.getExpenseTransactionTemplates ?? []);
-    } finally {
-      setLoading(false);
-    }
+    const { data } = await refetchTemplates();
+    setTemplates(data?.getExpenseTransactionTemplates ?? []);
   };
+
+  useEffect(() => {
+    if (templatesData?.getExpenseTransactionTemplates) {
+      setTemplates(templatesData.getExpenseTransactionTemplates);
+    }
+  }, [templatesData]);
 
   useEffect(() => {
     void load();
@@ -192,10 +144,7 @@ export default function ExpenseTemplates() {
                         text: 'Delete',
                         style: 'destructive',
                         onPress: async () => {
-                          await apolloClient.mutate({
-                            mutation: DELETE_TEMPLATE,
-                            variables: { id: item.id },
-                          });
+                          await deleteTemplate(item.id);
                           await load();
                         },
                       },
@@ -233,13 +182,16 @@ export default function ExpenseTemplates() {
           open={createOpen}
           onClose={() => setCreateOpen(false)}
           onSubmit={async data => {
-            await apolloClient.mutate({
-              mutation: CREATE_TEMPLATE,
-              variables: data,
-            });
+            await createTemplate(
+              data.describtion,
+              data.amount,
+              data.categoryId || undefined,
+            );
             setCreateOpen(false);
             await load();
           }}
+          categories={categories}
+          onRefreshCategories={categoriesQuery.refetch}
         />
 
         <TemplateFormSheet
@@ -248,13 +200,18 @@ export default function ExpenseTemplates() {
           initial={editOpen ?? undefined}
           onClose={() => setEditOpen(null)}
           onSubmit={async data => {
-            await apolloClient.mutate({
-              mutation: UPDATE_TEMPLATE,
-              variables: { id: editOpen?.id, ...data },
-            });
+            if (!editOpen?.id) return;
+            await updateTemplate(
+              editOpen.id,
+              data.describtion,
+              data.amount,
+              data.categoryId || undefined,
+            );
             setEditOpen(null);
             await load();
           }}
+          categories={categories}
+          onRefreshCategories={categoriesQuery.refetch}
         />
         <InfoModal
           visible={infoOpen}
@@ -273,6 +230,8 @@ function TemplateFormSheet({
   onSubmit,
   title,
   initial,
+  categories,
+  onRefreshCategories,
 }: {
   open: boolean;
   onClose: () => void;
@@ -283,9 +242,9 @@ function TemplateFormSheet({
   }) => Promise<void>;
   title: string;
   initial?: TemplateItem;
+  categories: TemplateCategory[];
+  onRefreshCategories: () => Promise<any>;
 }) {
-  const { data: categoriesData, refetch } = useCategories();
-  const categories = categoriesData?.getExpenseCategories || [];
   const [describtion, setDescribtion] = useState('');
   const [amount, setAmount] = useState('');
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(
@@ -295,7 +254,7 @@ function TemplateFormSheet({
 
   useEffect(() => {
     if (open) {
-      if (categories.length === 0) void refetch();
+      if (categories.length === 0) void onRefreshCategories();
       if (initial) {
         setDescribtion(initial.describtion || '');
         setAmount(String(Math.round(initial.amount)));
@@ -367,6 +326,7 @@ function TemplateFormSheet({
           options={options}
           onSelect={opt => setSelectedCategoryId(opt.id || null)}
           placeholder="Select a category (optional)"
+          iconColor="#3b82f6"
         />
       </View>
     </FormBottomSheet>

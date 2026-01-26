@@ -8,8 +8,7 @@ import {
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import ScreenWrapper from '../components/layout/ScreenWrapper';
-import { useExpenses } from '../hooks/useFinanceData';
-import { useCategories } from '../hooks/useCategories';
+import { useExpenses } from '../hooks/useExpenses';
 import { PieChart, BarChart } from 'react-native-gifted-charts';
 
 function toDateKey(d: Date) {
@@ -20,15 +19,16 @@ export default function ExpenseStats() {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const expenseId: string = route.params?.expenseId ?? '';
-  const { data } = useExpenses();
-  const expenses = data?.getExpenses || [];
-  const { data: catsData, refetch } = useCategories();
-  const categories = catsData?.getExpenseCategories || [];
-  const expense = expenses.find(e => e.id === expenseId);
+  const { expenseQuery, categoriesQuery } = useExpenses({
+    expenseId,
+    includeCategories: true,
+  });
+  const categories = categoriesQuery.data?.getExpenseCategories || [];
+  const expense = expenseQuery.data?.getExpense;
 
   useEffect(() => {
-    void refetch();
-  }, [refetch]);
+    void categoriesQuery.refetch();
+  }, [categoriesQuery.refetch]);
 
   const transactions = expense?.transactions ?? ([] as any[]);
   const total = transactions.reduce(

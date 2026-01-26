@@ -9,28 +9,30 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { useMutation } from '@apollo/client';
 import { Trash2, Edit, Info } from 'lucide-react-native';
 import ScreenWrapper from '../components/layout/ScreenWrapper';
 import FABSpeedDial from '../components/FABSpeedDial';
-import { useCategories } from '../hooks/useCategories';
-import { DELETEEXPENSECATEGORY } from '../queries/mutations/Expenses/DeleteExpenseCategory';
-import { GETEXPENSECATEGORIES } from '../queries/GetExpenseCategories';
+import { useExpenses } from '../hooks/useExpenses';
 import InfoModal from '../components/atoms/InfoModal';
+import IconSymbol from '../components/atoms/IconSymbol';
 
 export default function Categories() {
   const navigation = useNavigation<any>();
   const [isSpeedDialOpen, setIsSpeedDialOpen] = useState(false);
-  const { data, loading, error, refetch } = useCategories();
-  const categories = data?.getExpenseCategories || [];
+  const { categoriesQuery, deleteCategory } = useExpenses({
+    includeCategories: true,
+  });
+  const {
+    data: categoriesData,
+    loading,
+    error,
+    refetch,
+  } = categoriesQuery;
+  const categories = categoriesData?.getExpenseCategories || [];
   const [infoOpen, setInfoOpen] = useState(false);
 
-  const [deleteCategoryMutation, { loading: deleting }] = useMutation(
-    DELETEEXPENSECATEGORY,
-  );
-
   useEffect(() => {
-    refetch();
+    void refetch();
   }, [refetch]);
 
   // Auto-close FAB when navigating away
@@ -61,23 +63,7 @@ export default function Categories() {
           style: 'destructive',
           onPress: async () => {
             try {
-              await deleteCategoryMutation({
-                variables: { id: category.id },
-                optimisticResponse: {
-                  __typename: 'Mutation',
-                  deleteExpenseCategory: true,
-                },
-                update: (cache) => {
-                  try {
-                    const existing: any = cache.readQuery({ query: GETEXPENSECATEGORIES });
-                    const list = existing?.getExpenseCategories || [];
-                    cache.writeQuery({
-                      query: GETEXPENSECATEGORIES,
-                      data: { getExpenseCategories: list.filter((c: any) => c.id !== category.id) },
-                    });
-                  } catch {}
-                },
-              });
+              await deleteCategory(category.id);
 
               Alert.alert('Success', 'Category deleted successfully!');
             } catch (error) {
@@ -101,7 +87,11 @@ export default function Categories() {
       ]}
     >
       <View style={styles.categoryContent}>
-        {item.icon && <Text style={styles.categoryIcon}>{item.icon}</Text>}
+        {item.icon && (
+          <View style={styles.categoryIcon}>
+            <IconSymbol name={item.icon} size={20} color={item.color || '#f8fafc'} />
+          </View>
+        )}
         <View style={styles.categoryInfo}>
           <Text style={styles.categoryName}>{item.name}</Text>
         </View>
@@ -140,7 +130,9 @@ export default function Categories() {
     return (
       <ScreenWrapper>
         <View style={styles.errorContainer}>
-          <Text style={styles.errorText}>Error: {error}</Text>
+          <Text style={styles.errorText}>
+            Error: {error?.message || 'Failed to load categories'}
+          </Text>
           <TouchableOpacity
             style={styles.retryButton}
             onPress={refetch}
@@ -314,8 +306,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   categoryIcon: {
-    fontSize: 24,
     marginRight: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   categoryInfo: {
     flex: 1,

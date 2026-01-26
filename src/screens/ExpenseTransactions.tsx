@@ -11,19 +11,14 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import ScreenWrapper from '../components/layout/ScreenWrapper';
 import FABSpeedDial from '../components/FABSpeedDial';
 import TransactionListItem from '../components/molecules/TransactionListItem';
-import { useExpenses } from '../hooks/useFinanceData';
+import { useExpenses } from '../hooks/useExpenses';
 import CreateExpenseTransactionSheet from '../components/organisms/expenses/CreateExpenseTransactionSheet';
 import EditExpenseTransactionSheet from '../components/organisms/expenses/EditExpenseTransactionSheet';
 import EditExpenseSheet from '../components/organisms/expenses/EditExpenseSheet';
-// apollo imports not needed here after refactor
 import RoundedButton from '../components/atoms/RoundedButton';
 import HorizontalBar from '../components/atoms/HorizontalBar';
 import { Info } from 'lucide-react-native';
 import InfoModal from '../components/atoms/InfoModal';
-// import { GET_EXPENSES_QUERY } from '../graphql/finance';
-import { useFinanceActions } from '../hooks/useFinanceActions';
-
-// deletion handled by useFinanceActions().deleteExpenseTransaction
 
 function formatDate(dateStr?: string) {
   if (!dateStr) return '';
@@ -68,10 +63,11 @@ export default function ExpenseTransactions() {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const expenseId: string = route.params?.expenseId ?? '';
-  const { data, loading, error, refetch } = useExpenses();
-  const expenses = data?.getExpenses || [];
-  const expense = expenses.find(e => e.id === expenseId);
-  const { deleteExpenseTransaction } = useFinanceActions();
+  const { expenseQuery, deleteExpenseTransaction } = useExpenses({
+    expenseId,
+  });
+  const { data, loading, error, refetch } = expenseQuery;
+  const expense = data?.getExpense;
 
   // Open create sheet when navigated with { openCreate: true }
   useEffect(() => {
@@ -84,6 +80,22 @@ export default function ExpenseTransactions() {
       } catch {}
     }
   }, [route, navigation]);
+
+  useEffect(() => {
+    const p = (route as any)?.params;
+    const transactionId = p?.openTransactionId;
+    if (!transactionId || !expense?.transactions?.length) return;
+    const match = expense.transactions.find(
+      t => `${t.id}` === `${transactionId}`,
+    );
+    if (match) {
+      setSelectedTransaction(match);
+      setEditOpen(true);
+      try {
+        (navigation as any)?.setParams?.({ openTransactionId: null });
+      } catch {}
+    }
+  }, [route, expense?.transactions, navigation, expense]);
 
   // Auto-close FAB when navigating away
   useEffect(() => {
@@ -216,7 +228,10 @@ export default function ExpenseTransactions() {
                           text: 'Delete',
                           style: 'destructive',
                           onPress: async () => {
-                            await deleteExpenseTransaction(expenseId, id);
+                            console.log("in function");
+                            console.log({expenseId, id});
+                            
+                            await deleteExpenseTransaction(id, expenseId);
                           },
                         },
                       ],
@@ -267,14 +282,15 @@ export default function ExpenseTransactions() {
           }}
           transaction={selectedTransaction}
           currency={expense?.currency}
-          onUpdate={async () => {}}
+          expenseId={expenseId}
+          onUpdate={refetch}
         />
 
         <EditExpenseSheet
           open={editExpenseOpen}
           onClose={() => setEditExpenseOpen(false)}
           expense={expense ?? null}
-          onUpdate={async () => {}}
+          onUpdate={refetch}
         />
 
         <InfoModal

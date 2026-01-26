@@ -1,10 +1,10 @@
-import create from 'zustand';
+import { create } from 'zustand';
 import {
   getSecureTokenWithBiometric,
   setSecureToken,
   resetSecureToken,
 } from '../services/secureToken';
-import { ME_QUERY } from '../graphql/auth';
+import { ME_QUERY } from '../queries/auth/me';
 
 export interface User {
   id: string;
@@ -110,12 +110,12 @@ export const useAuthStore = create<AuthState>(set => ({
     const pwd = password ?? '';
     if (!uname || !pwd) throw new Error('Invalid username or password');
 
-    // Execute GraphQL LOGIN mutation against backend
+      // Execute GraphQL LOGIN mutation against backend
     try {
       // Lazy import to avoid circular deps in native envs
       const { apolloClient } = require('../apollo/client');
       const { LOGIN } = require('../queries/mutations/auth/login');
-      const { ME_QUERY } = require('../graphql/auth');
+      const { ME_QUERY } = require('../queries/auth/me');
 
       const result = await apolloClient.mutate({
         mutation: LOGIN,

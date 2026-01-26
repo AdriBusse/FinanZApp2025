@@ -1,12 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import { useMutation } from '@apollo/client';
-import FormBottomSheet, {
-  formStyles as commonFormStyles,
-} from '../../FormBottomSheet';
-import Input from '../../atoms/Input';
-import { UPDATESAVINGTRANSACTION } from '../../../queries/mutations/Savings/UpdateSavingTransaction';
-import { GET_SAVING_DEPOTS_QUERY } from '../../../graphql/finance';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, TextInput } from 'react-native';
+import FormBottomSheet from '../../FormBottomSheet';
+import { useSavings } from '../../../hooks/useSavings';
 // Legacy finance store removed; rely on Apollo cache only
 
 interface Transaction {
@@ -22,25 +17,27 @@ export default function EditSavingTransactionSheet({
   onUpdate,
   transaction,
   currency,
+  depotId,
 }: {
   open: boolean;
   onClose: () => void;
   onUpdate: () => Promise<void>;
   transaction: Transaction | null;
   currency?: string;
+  depotId: string;
 }) {
   const [amount, setAmount] = useState('');
   const [describtion, setDescribtion] = useState('');
-
-  const [updateTransaction, { loading: updating }] = useMutation(
-    UPDATESAVINGTRANSACTION,
-  );
+  const amountInputRef = useRef<TextInput | null>(null);
+  const { updateSavingTransaction } = useSavings({ depotId });
+  const [updating, setUpdating] = useState(false);
 
   // Initialize form with transaction data when modal opens
   useEffect(() => {
     if (open && transaction) {
       setAmount(transaction.amount?.toString() || '');
       setDescribtion(transaction.describtion || '');
+      setTimeout(() => amountInputRef.current?.focus(), 50);
     }
   }, [open, transaction]);
 
@@ -53,54 +50,14 @@ export default function EditSavingTransactionSheet({
     if (!isValid || !transaction) return;
 
     try {
-      const prevAmount = Number(transaction.amount || 0);
+      setUpdating(true);
       const nextAmount = Number(amount);
-      const prevCreatedAt = transaction.createdAt;
-      await updateTransaction({
-        variables: {
-          id: Number(transaction.id),
-          amount: nextAmount,
-          describtion,
-        },
-        optimisticResponse: {
-          __typename: 'Mutation',
-          updateSavingTransaction: {
-            __typename: 'SavingTransaction',
-            id: transaction.id,
-            amount: nextAmount,
-            describtion,
-            createdAt: prevCreatedAt || new Date().toISOString(),
-          },
-        },
-        update: (cache, { data }) => {
-          try {
-            const updatedTx: any = data?.updateSavingTransaction;
-            const existing: any = cache.readQuery({
-              query: GET_SAVING_DEPOTS_QUERY,
-            });
-            if (existing?.getSavingDepots) {
-              let found = false;
-              const updatedDepots = existing.getSavingDepots.map((d: any) => {
-                const txs = Array.isArray(d.transactions) ? d.transactions : [];
-                const has = txs.some((t: any) => t.id === transaction.id);
-                if (!has) return d;
-                found = true;
-                const nextTxs = txs.map((t: any) =>
-                  t.id === transaction.id ? { ...t, ...updatedTx } : t,
-                );
-                const delta = (updatedTx?.amount || 0) - prevAmount;
-                return { ...d, transactions: nextTxs, sum: (d.sum || 0) + delta };
-              });
-              if (found) {
-                cache.writeQuery({
-                  query: GET_SAVING_DEPOTS_QUERY,
-                  data: { getSavingDepots: updatedDepots },
-                });
-              }
-            }
-          } catch {}
-        },
-      });
+      await updateSavingTransaction(
+        transaction.id,
+        depotId,
+        nextAmount,
+        describtion,
+      );
 
       // Zustand mirror removed
 
@@ -108,9 +65,12 @@ export default function EditSavingTransactionSheet({
       setAmount('');
       setDescribtion('');
 
+      await onUpdate();
       onClose();
     } catch (error) {
       console.error('Error updating transaction:', error);
+    } finally {
+      setUpdating(false);
     }
   };
 
@@ -124,39 +84,40 @@ export default function EditSavingTransactionSheet({
       onSubmit={handleSubmit}
     >
       <View style={styles.container}>
-        <Text style={commonFormStyles.modalLabel}>Description</Text>
-        <Input
-          value={describtion}
-          onChangeText={setDescribtion}
-          placeholder="What is this?"
-          returnKeyType="next"
-          onFocus={e =>
-            e.target.setNativeProps({
-              selection: { start: 0, end: describtion.length },
-            })
-          }
-        />
+        <View>
+          <Text style={styles.amountLabel}>Amount</Text>
+          <View style={styles.amountRow}>
+            <Text style={styles.amountCurrency}>{currency || '€'}</Text>
+            <TextInput
+              ref={amountInputRef}
+              value={amount}
+              onChangeText={setAmount}
+              keyboardType="numeric"
+              placeholder="0.00"
+              placeholderTextColor="#6b7280"
+              style={styles.amountInput}
+            />
+          </View>
+        </View>
 
-        <Text style={commonFormStyles.modalLabel}>Amount</Text>
-        <Input
-          value={amount}
-          onChangeText={setAmount}
-          keyboardType="numeric"
-          placeholder="e.g. 12.50"
-          returnKeyType="done"
-          leftAdornment={<Text style={{ color: '#cbd5e1', fontSize: 16 }}>{currency || '€'}</Text>}
-          onFocus={e =>
-            e.target.setNativeProps({
-              selection: { start: 0, end: amount.length },
-            })
-          }
-          onSubmitEditing={() => {
-            // Focus next input or submit if valid
-            if (isValid) {
-              handleSubmit();
-            }
-          }}
-        />
+        <View>
+          <Text style={styles.sectionLabel}>Title</Text>
+          <View style={styles.titleRow}>
+            <TextInput
+              value={describtion}
+              onChangeText={setDescribtion}
+              placeholder="What is this?"
+              placeholderTextColor="#6b7280"
+              returnKeyType="next"
+              onFocus={e =>
+                e.target.setNativeProps({
+                  selection: { start: 0, end: describtion.length },
+                })
+              }
+              style={styles.titleInput}
+            />
+          </View>
+        </View>
       </View>
     </FormBottomSheet>
   );
@@ -165,5 +126,47 @@ export default function EditSavingTransactionSheet({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    gap: 16,
+  },
+  sectionLabel: {
+    color: '#94a3b8',
+    fontSize: 14,
+    marginBottom: 4,
+  },
+  amountLabel: {
+    color: '#94a3b8',
+    fontSize: 14,
+    marginBottom: 2,
+  },
+  amountRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#1f2937',
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  amountCurrency: {
+    color: '#9ca3af',
+    fontSize: 18,
+    fontWeight: '700',
+    marginRight: 12,
+  },
+  amountInput: {
+    flex: 1,
+    color: '#f8fafc',
+    fontSize: 40,
+    fontWeight: '800',
+  },
+  titleRow: {
+    backgroundColor: '#1f2937',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  titleInput: {
+    color: '#f8fafc',
+    fontSize: 18,
+    fontWeight: '600',
   },
 });

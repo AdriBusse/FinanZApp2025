@@ -1,15 +1,27 @@
-import { ApolloClient, InMemoryCache, HttpLink, from } from '@apollo/client';
+import { ApolloClient, InMemoryCache, from, ApolloLink } from '@apollo/client';
 import { onError } from '@apollo/client/link/error';
 import { setContext } from '@apollo/client/link/context';
+// Use the ESM entry directly (package exports only .mjs files)
+import createUploadLink from 'apollo-upload-client/createUploadLink.mjs';
 import { getAuthToken } from '../store/auth';
 
 // NOTE: Update this URL to your backend GraphQL endpoint.
 // The schema is located at .ai/backend_graphql_schema.json
 // Following the guidelines in .ai/project_description.md, the app will use Apollo Client.
 // If you have a different endpoint, set it here or provide via native config.
-const GRAPHQL_URL = 'https://apifinanzv2.ghettohippy.de/graphql';
+console.log(process.env.API_URL);
 
-const httpLink = new HttpLink({ uri: GRAPHQL_URL });
+const isReactNativeFile = (value: any) =>
+  value &&
+  typeof value === 'object' &&
+  typeof value.uri === 'string' &&
+  (typeof value.name === 'string' || typeof value.type === 'string');
+
+const uploadLink = createUploadLink({
+  //uri: "https://apifinanzv2.ghettohippy.de/graphql",
+  uri: "http://192.168.100.187:4000/graphql",
+  isExtractableFile: isReactNativeFile,
+}) as unknown as ApolloLink;
 
 let isLoggingOut = false;
 const errorLink = onError(({ graphQLErrors, networkError }) => {
@@ -58,7 +70,7 @@ const authLink = setContext(async (_, { headers }) => {
 });
 
 export const apolloClient = new ApolloClient({
-  link: from([errorLink, authLink, httpLink]),
+  link: from([errorLink, authLink, uploadLink]),
   cache: new InMemoryCache({
     typePolicies: {
       Query: {

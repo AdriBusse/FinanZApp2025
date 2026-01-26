@@ -8,15 +8,12 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { useMutation } from '@apollo/client';
 import ScreenWrapper from '../components/layout/ScreenWrapper';
 import Input from '../components/atoms/Input';
 import ColorPicker from '../components/atoms/ColorPicker';
 import IconPicker from '../components/atoms/IconPicker';
-import { useCategoryMetadata } from '../hooks/useCategoryMetadata';
-import { CREATEEXPANSECATEGORY } from '../queries/mutations/Expenses/CreateExpenseCategory';
-import { UPDATEEXPENSECATEGORY } from '../queries/mutations/Expenses/UpdateExpenseCategory';
-import { GETEXPENSECATEGORIES } from '../queries/GetExpenseCategories';
+import IconSymbol from '../components/atoms/IconSymbol';
+import { useExpenses } from '../hooks/useExpenses';
 
 export default function CreateCategory() {
   const navigation = useNavigation<any>();
@@ -24,9 +21,21 @@ export default function CreateCategory() {
   const categoryToEdit = route.params?.category;
 
   const [name, setName] = useState('');
-  const { data: metaData, loading: metaLoading, error: metaError, refetch: refetchMeta, colors, icons } = useCategoryMetadata();
   const [selectedColor, setSelectedColor] = useState('#3b82f6');
-  const [selectedIcon, setSelectedIcon] = useState('📌');
+  const [selectedIcon, setSelectedIcon] = useState('pin');
+  const {
+    categoryMetadataQuery,
+    createCategory,
+    updateCategory,
+    categoryMeta,
+  } = useExpenses({ includeCategoryMetadata: true });
+  const {
+    loading: metaLoading,
+    error: metaError,
+    refetch: refetchMeta,
+  } = categoryMetadataQuery;
+  const { colors, icons } = categoryMeta;
+  const [isSaving, setIsSaving] = useState(false);
 
 
   // Refresh metadata when screen opens
@@ -39,7 +48,7 @@ export default function CreateCategory() {
     if (categoryToEdit) {
       setName(categoryToEdit.name);
       setSelectedColor(categoryToEdit.color || '#3b82f6');
-      setSelectedIcon(categoryToEdit.icon || '📌');
+      setSelectedIcon(categoryToEdit.icon || 'pin');
     }
   }, [categoryToEdit]);
 
@@ -55,79 +64,22 @@ export default function CreateCategory() {
     }
   }, [categoryToEdit, colors, icons]);
 
-  const [createCategory, { loading: creating }] = useMutation(
-    CREATEEXPANSECATEGORY,
-    {
-      update: (cache, { data }) => {
-        if (data?.createExpenseCategory) {
-          // Update Apollo cache
-          const existingCategories = cache.readQuery({
-            query: GETEXPENSECATEGORIES,
-          }) as any;
-          if (existingCategories?.getExpenseCategories) {
-            cache.writeQuery({
-              query: GETEXPENSECATEGORIES,
-              data: {
-                getExpenseCategories: [
-                  ...existingCategories.getExpenseCategories,
-                  data.createExpenseCategory,
-                ],
-              },
-            });
-          }
-
-          // Cache update handled by Apollo
-        }
-      },
-    },
-  );
-
-  const [updateCategoryMutation, { loading: updating }] = useMutation(
-    UPDATEEXPENSECATEGORY,
-    {
-      update: (cache, { data }) => {
-        if (data?.updateExpenseCategory) {
-          // Update Apollo cache
-          const existingCategories = cache.readQuery({
-            query: GETEXPENSECATEGORIES,
-          }) as any;
-          if (existingCategories?.getExpenseCategories) {
-            cache.writeQuery({
-              query: GETEXPENSECATEGORIES,
-              data: {
-                getExpenseCategories:
-                  existingCategories.getExpenseCategories.map((cat: any) =>
-                    cat.id === data.updateExpenseCategory.id
-                      ? data.updateExpenseCategory
-                      : cat,
-                  ),
-              },
-            });
-          }
-
-          // Cache update handled by Apollo
-        }
-      },
-    },
-  );
-
   const isValid = name.trim().length > 0;
   const isEditing = !!categoryToEdit;
-  const isLoading = creating || updating;
+  const isLoading = isSaving;
 
   const handleSubmit = async () => {
     if (!isValid) return;
 
     try {
+      setIsSaving(true);
       if (isEditing) {
-        await updateCategoryMutation({
-          variables: {
-            id: categoryToEdit.id,
-            name: name.trim(),
-            color: selectedColor,
-            icon: selectedIcon,
-          },
-        });
+        await updateCategory(
+          categoryToEdit.id,
+          name.trim(),
+          selectedColor,
+          selectedIcon,
+        );
 
         Alert.alert('Success', 'Category updated successfully!', [
           {
@@ -136,13 +88,7 @@ export default function CreateCategory() {
           },
         ]);
       } else {
-        await createCategory({
-          variables: {
-            name: name.trim(),
-            color: selectedColor,
-            icon: selectedIcon,
-          },
-        });
+        await createCategory(name.trim(), selectedColor, selectedIcon);
 
         Alert.alert('Success', 'Category created successfully!', [
           {
@@ -160,6 +106,8 @@ export default function CreateCategory() {
         } category. Please try again.`,
         [{ text: 'OK' }],
       );
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -215,7 +163,9 @@ export default function CreateCategory() {
           <View style={styles.preview}>
             <Text style={styles.previewTitle}>Preview</Text>
             <View style={styles.previewItem}>
-              <Text style={styles.previewIcon}>{selectedIcon}</Text>
+              <View style={styles.previewIcon}>
+                <IconSymbol name={selectedIcon} size={24} color={selectedColor} />
+              </View>
               <Text style={[styles.previewName, { color: selectedColor }]}>
                 {name || 'Category Name'}
               </Text>
@@ -316,8 +266,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   previewIcon: {
-    fontSize: 24,
     marginRight: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   previewName: {
     fontSize: 16,
