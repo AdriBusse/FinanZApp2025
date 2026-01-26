@@ -7,14 +7,15 @@ import {
   TouchableOpacity,
   Switch,
   TextInput,
+  FlatList,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { Calendar as CalendarIcon, Plus, X } from 'lucide-react-native';
 import FormBottomSheet from '../../FormBottomSheet';
-import Input from '../../atoms/Input';
-import Dropdown from '../../atoms/Dropdown';
 import Calendar from '../../atoms/Calendar';
 import { preferences } from '../../../services/preferences';
 import { useExpenses } from '../../../hooks/useExpenses';
+import IconSymbol from '../../atoms/IconSymbol';
 
 export default function CreateExpenseTransactionSheet({
   open,
@@ -53,6 +54,7 @@ export default function CreateExpenseTransactionSheet({
   const { data: categoriesData, loading, refetch } = categoriesQuery;
   const categories = categoriesData?.getExpenseCategories || [];
   const [calendarOpen, setCalendarOpen] = useState(false);
+  const [categoryOpen, setCategoryOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const amountInputRef = useRef<TextInput | null>(null);
 
@@ -102,19 +104,22 @@ export default function CreateExpenseTransactionSheet({
       icon: cat.icon || undefined,
       color: cat.color || undefined,
     }));
-
-    // Add "Create New Category" option if no categories exist
-    if (categories.length === 0 && !loading) {
-      categoryOptions.push({
-        id: 'create_new',
-        label: 'Create New Category',
-        icon: '➕',
-        color: '#2e7d32',
-      });
-    }
-
     return categoryOptions;
   }, [categories, loading]);
+  const selectedCategory = useMemo(
+    () => categories.find(cat => cat.id === selectedCategoryId) || null,
+    [categories, selectedCategoryId],
+  );
+  const categoryOptions = useMemo(
+    () => [
+      { id: '', label: 'No category', icon: 'x' },
+      ...dropdownOptions,
+      ...(categories.length === 0 && !loading
+        ? [{ id: 'create_new', label: 'Create New Category', icon: 'plus' }]
+        : []),
+    ],
+    [dropdownOptions, categories.length, loading],
+  );
 
   const isValid =
     amount.trim().length > 0 &&
@@ -172,7 +177,7 @@ export default function CreateExpenseTransactionSheet({
       onSubmit={handleSubmit}
     >
       <View style={styles.sheetContent}>
-        <Text style={styles.sectionLabel}>Amount</Text>
+        <Text style={styles.amountLabel}>Amount</Text>
         <View style={styles.amountRow}>
           <Text style={styles.amountCurrency}>{currency || '€'}</Text>
           <TextInput
@@ -189,44 +194,43 @@ export default function CreateExpenseTransactionSheet({
         <View style={styles.formBlock}>
           <View>
             <Text style={styles.sectionLabel}>Title</Text>
-            <Input
-              value={describtion}
-              onChangeText={setDescribtion}
-              placeholder="Groceries from Whole Foods"
-              returnKeyType="next"
-            />
+            <View style={styles.titleRow}>
+              <TextInput
+                value={describtion}
+                onChangeText={setDescribtion}
+                placeholder="Groceries from Whole Foods"
+                placeholderTextColor="#6b7280"
+                returnKeyType="next"
+                style={styles.titleInput}
+              />
+            </View>
           </View>
 
-          <Dropdown
-            label="Category"
-            value={selectedCategoryId}
-            options={dropdownOptions}
-            onSelect={option => {
-              if (option.id === 'create_new') {
-                onClose();
-                navigation.navigate('CreateCategory');
-              } else {
-                setSelectedCategoryId(option.id || null);
-              }
-            }}
-            placeholder="Select category"
-            loading={loading}
-            disabled={loading}
-          />
-
-          <View>
-            <Text style={styles.sectionLabel}>Date</Text>
-            <View style={styles.pressWrapper}>
-              <Input
-                value={formattedDate}
-                editable={false}
-                placeholder="Select a date"
-              />
+          <View style={styles.inlineInputs}>
+            <View style={styles.fieldGroup}>
+              <Text style={styles.sectionLabel}>Category</Text>
               <TouchableOpacity
-                style={styles.pressOverlay}
+                style={styles.categorySquare}
+                onPress={() => setCategoryOpen(true)}
                 activeOpacity={0.8}
+              >
+                {selectedCategory?.icon ? (
+                  <IconSymbol name={selectedCategory.icon} size={22} color="#3b82f6" />
+                ) : (
+                  <X color="#3b82f6" size={22} />
+                )}
+              </TouchableOpacity>
+            </View>
+            <View style={styles.fieldGroupWide}>
+              <Text style={styles.sectionLabel}>Date</Text>
+              <TouchableOpacity
+                style={styles.dateInput}
                 onPress={() => setCalendarOpen(true)}
-              />
+                activeOpacity={0.8}
+              >
+                <Text style={styles.dateText}>{formattedDate}</Text>
+                <CalendarIcon color="#3b82f6" size={18} />
+              </TouchableOpacity>
             </View>
           </View>
         </View>
@@ -268,6 +272,65 @@ export default function CreateExpenseTransactionSheet({
             </View>
           </TouchableOpacity>
         </Modal>
+
+        <Modal
+          visible={categoryOpen}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setCategoryOpen(false)}
+        >
+          <TouchableOpacity
+            style={styles.modalOverlay}
+            activeOpacity={1}
+            onPress={() => setCategoryOpen(false)}
+          >
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Select Category</Text>
+                <TouchableOpacity onPress={() => setCategoryOpen(false)}>
+                  <Text style={styles.closeButton}>✕</Text>
+                </TouchableOpacity>
+              </View>
+              <FlatList
+                data={categoryOptions}
+                keyExtractor={item => item.id || item.label}
+                renderItem={({ item }) => (
+                  <TouchableOpacity
+                    style={[
+                      styles.option,
+                      (item.id || '') === (selectedCategoryId || '') &&
+                        styles.optionSelected,
+                    ]}
+                    onPress={() => {
+                      if (item.id === 'create_new') {
+                        setCategoryOpen(false);
+                        onClose();
+                        navigation.navigate('CreateCategory');
+                        return;
+                      }
+                      setSelectedCategoryId(item.id || null);
+                      setCategoryOpen(false);
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <View style={styles.optionContent}>
+                      {item.icon ? (
+                        item.icon === 'plus' ? (
+                          <Plus color="#3b82f6" size={18} />
+                        ) : (
+                          <IconSymbol name={item.icon} size={18} color="#3b82f6" />
+                        )
+                      ) : null}
+                      <Text style={styles.optionText}>{item.label}</Text>
+                    </View>
+                  </TouchableOpacity>
+                )}
+                ItemSeparatorComponent={() => <View style={styles.separator} />}
+                showsVerticalScrollIndicator={false}
+              />
+            </View>
+          </TouchableOpacity>
+        </Modal>
       </View>
     </FormBottomSheet>
   );
@@ -281,12 +344,17 @@ const styles = StyleSheet.create({
   sectionLabel: {
     color: '#94a3b8',
     fontSize: 14,
-    marginBottom: 6,
+    marginBottom: 4,
+  },
+  amountLabel: {
+    color: '#94a3b8',
+    fontSize: 14,
+    marginBottom: 2,
   },
   amountRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#111827',
+    backgroundColor: '#1f2937',
     borderRadius: 14,
     paddingHorizontal: 16,
     paddingVertical: 12,
@@ -304,8 +372,52 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   formBlock: {
-    marginTop: 12,
     gap: 10,
+  },
+  inlineInputs: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  fieldGroup: {
+    alignItems: 'flex-start',
+  },
+  fieldGroupWide: {
+    flex: 1,
+  },
+  categorySquare: {
+    width: 56,
+    height: 56,
+    borderRadius: 12,
+    backgroundColor: '#1f2937',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dateInput: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    height: 56,
+    backgroundColor: '#1f2937',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+  },
+  dateText: {
+    color: '#f8fafc',
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  titleRow: {
+    backgroundColor: '#1f2937',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  titleInput: {
+    color: '#f8fafc',
+    fontSize: 18,
+    fontWeight: '600',
   },
   inlineRow: {
     flexDirection: 'row',
@@ -337,33 +449,42 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     padding: 12,
   },
-  pressWrapper: {
-    position: 'relative',
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingBottom: 12,
   },
-  pressOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
+  modalTitle: {
+    color: '#f8fafc',
+    fontSize: 18,
+    fontWeight: '700',
   },
-  previewItem: {
+  closeButton: {
+    color: '#94a3b8',
+    fontSize: 20,
+    padding: 4,
+  },
+  option: {
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+  },
+  optionSelected: {
+    backgroundColor: '#1f2937',
+    borderRadius: 8,
+  },
+  optionContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginRight: 10,
+    gap: 10,
   },
-  previewIcon: {
-    fontSize: 20,
-    marginRight: 5,
-  },
-  previewName: {
-    fontSize: 16,
-    fontWeight: 'bold',
+  optionText: {
     color: '#f8fafc',
+    fontSize: 16,
+    fontWeight: '600',
   },
-  previewColor: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
+  separator: {
+    height: 1,
+    backgroundColor: '#374151',
   },
 });

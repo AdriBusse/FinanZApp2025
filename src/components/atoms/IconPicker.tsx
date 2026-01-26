@@ -7,6 +7,7 @@ import {
   Modal,
   FlatList,
 } from 'react-native';
+import IconSymbol from './IconSymbol';
 export type IconOption = { keyword?: string; icon: string; label?: string };
 
 interface IconPickerProps {
@@ -23,11 +24,10 @@ export default function IconPicker({
   options,
 }: IconPickerProps) {
   const [isOpen, setIsOpen] = React.useState(false);
-  const OPTIONS: IconOption[] = (Array.isArray(options) && options.length > 0)
-    ? options
-    : [{ icon: '📌', label: 'Pin', keyword: 'pin' }];
-
-  const selectedOption = OPTIONS.find(option => option.icon === selectedIcon);
+  const OPTIONS: IconOption[] =
+    Array.isArray(options) && options.length > 0
+      ? options
+      : [{ icon: 'pin', label: 'Pin', keyword: 'pin' }];
 
   return (
     <View style={styles.container}>
@@ -37,7 +37,9 @@ export default function IconPicker({
         onPress={() => setIsOpen(true)}
         activeOpacity={0.7}
       >
-        <Text style={styles.iconPreview}>{selectedIcon || '📌'}</Text>
+        <View style={styles.iconPreview}>
+          <IconSymbol name={selectedIcon || 'pin'} size={28} color="#3b82f6" />
+        </View>
       </TouchableOpacity>
 
       <Modal
@@ -60,23 +62,26 @@ export default function IconPicker({
             </View>
             <FlatList
               data={OPTIONS}
-              keyExtractor={item => item.keyword || item.icon}
+              keyExtractor={item => item.icon || item.keyword || item.label || 'pin'}
               numColumns={4}
-              renderItem={({ item }) => (
-                <TouchableOpacity
-                  style={[
-                    styles.iconOption,
-                    selectedIcon === item.icon && styles.selectedIcon,
-                  ]}
-                  onPress={() => {
-                    onIconSelect(item.icon);
-                    setIsOpen(false);
-                  }}
-                  activeOpacity={0.7}
-                >
-                  <Text style={styles.iconText}>{item.icon}</Text>
-                </TouchableOpacity>
-              )}
+              renderItem={({ item }) => {
+                const iconKey = item.icon || item.keyword || item.label || 'pin';
+                return (
+                  <TouchableOpacity
+                    style={[
+                      styles.iconOption,
+                      selectedIcon === iconKey && styles.selectedIcon,
+                    ]}
+                    onPress={() => {
+                      onIconSelect(iconKey);
+                      setIsOpen(false);
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <IconSymbol name={iconKey} size={28} color="#3b82f6" />
+                  </TouchableOpacity>
+                );
+              }}
               ItemSeparatorComponent={() => <View style={styles.separator} />}
               showsVerticalScrollIndicator={false}
               contentContainerStyle={styles.iconGrid}
@@ -99,17 +104,16 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   iconButton: {
-    flexDirection: 'row',
+    width: 64,
+    height: 64,
     alignItems: 'center',
-    padding: 12,
     borderRadius: 8,
-    backgroundColor: '#1e212b',
-    borderWidth: 1,
-    borderColor: '#374151',
+    backgroundColor: '#374151',
+    justifyContent: 'center',
   },
   iconPreview: {
-    fontSize: 24,
-    marginRight: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   iconLabel: {
     color: '#f8fafc',
@@ -161,12 +165,8 @@ const styles = StyleSheet.create({
     borderColor: 'transparent',
   },
   selectedIcon: {
-    borderColor: '#2e7d32',
-    backgroundColor: '#2e7d3244',
-  },
-  iconText: {
-    fontSize: 32,
-    marginBottom: 8,
+    borderColor: '#3b82f6',
+    backgroundColor: '#3b82f644',
   },
   iconLabelText: {
     color: '#f8fafc',

@@ -326,6 +326,7 @@ function TemplateFormSheet({
           options={options}
           onSelect={opt => setSelectedCategoryId(opt.id || null)}
           placeholder="Select a category (optional)"
+          iconColor="#3b82f6"
         />
       </View>
     </FormBottomSheet>

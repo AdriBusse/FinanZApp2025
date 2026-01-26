@@ -21,7 +21,7 @@ export const useCategoryMetadata = () => {
     return Array.isArray(list)
       ? list
           .map((i: any) => ({
-            icon: i?.icon,
+            icon: i?.icon ?? i?.keyword ?? i?.label,
             label: i?.label ?? undefined,
             keyword: i?.keyword ?? undefined,
           }))
