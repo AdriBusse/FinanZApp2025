@@ -18,8 +18,8 @@ const isReactNativeFile = (value: any) =>
   (typeof value.name === 'string' || typeof value.type === 'string');
 
 const uploadLink = createUploadLink({
-  //uri: "https://apifinanzv2.ghettohippy.de/graphql",
-  uri: "http://192.168.100.187:4000/graphql",
+  uri: "https://apifinanzv2.ghettohippy.de/graphql",
+  //uri: "http://192.168.100.187:4000/graphql",
   isExtractableFile: isReactNativeFile,
 }) as unknown as ApolloLink;
 
