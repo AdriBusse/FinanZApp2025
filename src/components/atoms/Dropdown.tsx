@@ -8,6 +8,7 @@ import {
   FlatList,
   ActivityIndicator,
 } from 'react-native';
+import IconSymbol from './IconSymbol';
 
 interface DropdownOption {
   id: string;
@@ -24,6 +25,7 @@ interface DropdownProps {
   placeholder?: string;
   loading?: boolean;
   disabled?: boolean;
+  iconColor?: string;
 }
 
 export default function Dropdown({
@@ -34,6 +36,7 @@ export default function Dropdown({
   placeholder = 'Select an option',
   loading = false,
   disabled = false,
+  iconColor = '#3b82f6',
 }: DropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
   const selectedOption = options.find(option => option.id === value);
@@ -64,7 +67,9 @@ export default function Dropdown({
         ) : selectedOption ? (
           <View style={styles.selectedContainer}>
             {selectedOption.icon && (
-              <Text style={styles.optionIcon}>{selectedOption.icon}</Text>
+              <View style={styles.optionIcon}>
+                <IconSymbol name={selectedOption.icon} size={18} color={iconColor} />
+              </View>
             )}
             <Text style={styles.selectedText}>{selectedOption.label}</Text>
             {selectedOption.color && (
@@ -114,7 +119,9 @@ export default function Dropdown({
                 >
                   <View style={styles.optionContent}>
                     {item.icon && (
-                      <Text style={styles.optionIcon}>{item.icon}</Text>
+                      <View style={styles.optionIcon}>
+                        <IconSymbol name={item.icon} size={18} color={iconColor} />
+                      </View>
                     )}
                     <Text
                       style={[
@@ -266,9 +273,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   optionIcon: {
-    color: '#94a3b8',
     marginRight: 12,
-    fontSize: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   optionText: {
     color: '#f8fafc',

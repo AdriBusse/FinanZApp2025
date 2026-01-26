@@ -220,6 +220,7 @@ export default function EditExpenseTransactionSheet({
             placeholder="Select category"
             loading={loading}
             disabled={loading}
+            iconColor="#3b82f6"
           />
 
           <View>

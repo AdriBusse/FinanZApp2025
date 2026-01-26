@@ -14,6 +14,7 @@ import ScreenWrapper from '../components/layout/ScreenWrapper';
 import FABSpeedDial from '../components/FABSpeedDial';
 import { useExpenses } from '../hooks/useExpenses';
 import InfoModal from '../components/atoms/InfoModal';
+import IconSymbol from '../components/atoms/IconSymbol';
 
 export default function Categories() {
   const navigation = useNavigation<any>();
@@ -86,7 +87,11 @@ export default function Categories() {
       ]}
     >
       <View style={styles.categoryContent}>
-        {item.icon && <Text style={styles.categoryIcon}>{item.icon}</Text>}
+        {item.icon && (
+          <View style={styles.categoryIcon}>
+            <IconSymbol name={item.icon} size={20} color={item.color || '#f8fafc'} />
+          </View>
+        )}
         <View style={styles.categoryInfo}>
           <Text style={styles.categoryName}>{item.name}</Text>
         </View>
@@ -301,8 +306,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   categoryIcon: {
-    fontSize: 24,
     marginRight: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   categoryInfo: {
     flex: 1,

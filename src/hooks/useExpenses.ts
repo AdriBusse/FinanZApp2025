@@ -295,7 +295,7 @@ export const useExpenses = (options?: UseExpensesOptions) => {
     const icons = Array.isArray(iconsList)
       ? iconsList
           .map((i: any) => ({
-            icon: i?.icon,
+            icon: i?.icon ?? i?.keyword ?? i?.label,
             label: i?.label ?? undefined,
             keyword: i?.keyword ?? undefined,
           }))

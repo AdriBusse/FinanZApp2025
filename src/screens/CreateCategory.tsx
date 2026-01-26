@@ -12,6 +12,7 @@ import ScreenWrapper from '../components/layout/ScreenWrapper';
 import Input from '../components/atoms/Input';
 import ColorPicker from '../components/atoms/ColorPicker';
 import IconPicker from '../components/atoms/IconPicker';
+import IconSymbol from '../components/atoms/IconSymbol';
 import { useExpenses } from '../hooks/useExpenses';
 
 export default function CreateCategory() {
@@ -21,7 +22,7 @@ export default function CreateCategory() {
 
   const [name, setName] = useState('');
   const [selectedColor, setSelectedColor] = useState('#3b82f6');
-  const [selectedIcon, setSelectedIcon] = useState('📌');
+  const [selectedIcon, setSelectedIcon] = useState('pin');
   const {
     categoryMetadataQuery,
     createCategory,
@@ -47,7 +48,7 @@ export default function CreateCategory() {
     if (categoryToEdit) {
       setName(categoryToEdit.name);
       setSelectedColor(categoryToEdit.color || '#3b82f6');
-      setSelectedIcon(categoryToEdit.icon || '📌');
+      setSelectedIcon(categoryToEdit.icon || 'pin');
     }
   }, [categoryToEdit]);
 
@@ -162,7 +163,9 @@ export default function CreateCategory() {
           <View style={styles.preview}>
             <Text style={styles.previewTitle}>Preview</Text>
             <View style={styles.previewItem}>
-              <Text style={styles.previewIcon}>{selectedIcon}</Text>
+              <View style={styles.previewIcon}>
+                <IconSymbol name={selectedIcon} size={24} color={selectedColor} />
+              </View>
               <Text style={[styles.previewName, { color: selectedColor }]}>
                 {name || 'Category Name'}
               </Text>
@@ -263,8 +266,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   previewIcon: {
-    fontSize: 24,
     marginRight: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   previewName: {
     fontSize: 16,
