@@ -1,9 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Text, Alert, View, TextInput, StyleSheet } from 'react-native';
-import FormBottomSheet, {
-  formStyles as commonFormStyles,
-} from '../../FormBottomSheet';
-import Input from '../../atoms/Input';
+import FormBottomSheet from '../../FormBottomSheet';
 
 export default function CreateTransactionSheet({
   open,
@@ -59,27 +56,33 @@ export default function CreateTransactionSheet({
       }}
     >
       <View style={styles.sheetContent}>
-        <Text style={styles.sectionLabel}>Amount</Text>
-        <View style={styles.amountRow}>
-          <Text style={styles.amountCurrency}>{currency || '€'}</Text>
-          <TextInput
-            ref={amountInputRef}
-            value={amount}
-            onChangeText={setAmount}
-            keyboardType="numeric"
-            placeholder="0.00"
-            placeholderTextColor="#6b7280"
-            style={styles.amountInput}
-          />
+        <View>
+          <Text style={styles.amountLabel}>Amount</Text>
+          <View style={styles.amountRow}>
+            <Text style={styles.amountCurrency}>{currency || '€'}</Text>
+            <TextInput
+              ref={amountInputRef}
+              value={amount}
+              onChangeText={setAmount}
+              keyboardType="numeric"
+              placeholder="0.00"
+              placeholderTextColor="#6b7280"
+              style={styles.amountInput}
+            />
+          </View>
         </View>
 
-        <View style={{ marginTop: 12 }}>
+        <View>
           <Text style={styles.sectionLabel}>Title</Text>
-          <Input
-            value={describtion}
-            onChangeText={setDescribtion}
-            placeholder="What is this?"
-          />
+          <View style={styles.titleRow}>
+            <TextInput
+              value={describtion}
+              onChangeText={setDescribtion}
+              placeholder="What is this?"
+              placeholderTextColor="#6b7280"
+              style={styles.titleInput}
+            />
+          </View>
         </View>
       </View>
     </FormBottomSheet>
@@ -89,16 +92,22 @@ export default function CreateTransactionSheet({
 const styles = StyleSheet.create({
   sheetContent: {
     flex: 1,
+    gap: 16,
   },
   sectionLabel: {
     color: '#94a3b8',
     fontSize: 14,
-    marginBottom: 6,
+    marginBottom: 4,
+  },
+  amountLabel: {
+    color: '#94a3b8',
+    fontSize: 14,
+    marginBottom: 2,
   },
   amountRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#111827',
+    backgroundColor: '#1f2937',
     borderRadius: 14,
     paddingHorizontal: 16,
     paddingVertical: 12,
@@ -114,5 +123,16 @@ const styles = StyleSheet.create({
     color: '#f8fafc',
     fontSize: 40,
     fontWeight: '800',
+  },
+  titleRow: {
+    backgroundColor: '#1f2937',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  titleInput: {
+    color: '#f8fafc',
+    fontSize: 18,
+    fontWeight: '600',
   },
 });
