@@ -100,6 +100,20 @@ jobs:
           name: finanz-apk-v${{ env.VERSION }}
           path: android/app/build/outputs/apk/release/FinanZ-v${{ env.VERSION }}.apk
 
+      - name: Notify n8n (APK ready)
+        if: success()
+        run: |
+          curl -X POST "${{ secrets.N8N_WEBHOOK_URL }}" \
+            -H "Content-Type: application/json" \
+            -H "X-N8N-SECRET: ${{ secrets.N8N_SHARED_SECRET }}" \
+            -d '{
+              "repo": "'"${{ github.repository }}"'",
+              "run_id": "'"${{ github.run_id }}"'",
+              "sha": "'"${{ github.sha }}"'",
+              "gdrive_folder_id": "'"${{ secrets.GDRIVE_FOLDER_ID }}"'",
+              "artifact_name": "apk"
+            }'
+
       # Optional: also build a signed AAB for Play Store uploads
       - name: Build signed App Bundle (AAB)
         if: ${{ github.event_name != 'pull_request' }} # skip on PRs if desired
