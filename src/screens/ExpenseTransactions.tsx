@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -6,6 +6,7 @@ import {
   FlatList,
   TouchableOpacity,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import ScreenWrapper from '../components/layout/ScreenWrapper';
@@ -60,13 +61,19 @@ export default function ExpenseTransactions() {
   const [isSpeedDialOpen, setIsSpeedDialOpen] = useState(false);
   const [editExpenseOpen, setEditExpenseOpen] = useState(false);
   const [infoOpen, setInfoOpen] = useState(false);
+  const [pendingCreates, setPendingCreates] = useState<any[]>([]);
+  const [pendingUpdates, setPendingUpdates] = useState<Record<string, any>>({});
+  const [pendingDeletes, setPendingDeletes] = useState<Record<string, true>>({});
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const expenseId: string = route.params?.expenseId ?? '';
-  const { expenseQuery, deleteExpenseTransaction } = useExpenses({
-    expenseId,
-  });
-  const { data, loading, error, refetch } = expenseQuery;
+  const {
+    expenseQuery,
+    deleteExpenseTransaction,
+    createExpenseTransaction,
+    updateExpenseTransaction,
+  } = useExpenses({ expenseId });
+  const { data, refetch, loading } = expenseQuery;
   const expense = data?.getExpense;
 
   // Open create sheet when navigated with { openCreate: true }
@@ -77,7 +84,7 @@ export default function ExpenseTransactions() {
       // clear the flag so it doesn't reopen on re-render
       try {
         (navigation as any)?.setParams?.({ openCreate: false });
-      } catch {}
+      } catch { }
     }
   }, [route, navigation]);
 
@@ -93,7 +100,7 @@ export default function ExpenseTransactions() {
       setEditOpen(true);
       try {
         (navigation as any)?.setParams?.({ openTransactionId: null });
-      } catch {}
+      } catch { }
     }
   }, [route, expense?.transactions, navigation, expense]);
 
@@ -103,9 +110,17 @@ export default function ExpenseTransactions() {
     return unsub;
   }, [navigation]);
 
+  const displayTransactions = useMemo(() => {
+    const base = expense?.transactions ?? [];
+    const merged = base.map(t =>
+      pendingUpdates[t.id] ? { ...t, ...pendingUpdates[t.id] } : t,
+    );
+    return [...pendingCreates, ...merged];
+  }, [expense?.transactions, pendingCreates, pendingUpdates]);
+
   const grouped = useMemo(
-    () => groupByDate(expense?.transactions ?? []),
-    [expense?.transactions],
+    () => groupByDate(displayTransactions),
+    [displayTransactions],
   );
   const total =
     expense?.sum ??
@@ -116,6 +131,129 @@ export default function ExpenseTransactions() {
   const spent = Number(total ?? 0);
   const ratio = spendingLimit > 0 ? spent / spendingLimit : 0;
   const barColor = ratio >= 0.9 ? '#f87171' : '#60a5fa'; // darker red when within 10% of the limit, darker blue otherwise
+
+  const pendingCreateIds = useMemo(
+    () => new Set(pendingCreates.map(t => t.id)),
+    [pendingCreates],
+  );
+  const pendingUpdateIds = useMemo(
+    () => new Set(Object.keys(pendingUpdates)),
+    [pendingUpdates],
+  );
+  const pendingDeleteIds = useMemo(
+    () => new Set(Object.keys(pendingDeletes)),
+    [pendingDeletes],
+  );
+
+  const handleCreate = useCallback(
+    async (
+      amount: number,
+      describtion: string,
+      categoryId: string,
+      dateMs: number,
+      autoCategorize?: boolean,
+    ) => {
+      const tempId = `temp-${Date.now()}-${Math.random()
+        .toString(16)
+        .slice(2)}`;
+      const tempTx = {
+        id: tempId,
+        amount,
+        describtion,
+        createdAt: new Date(dateMs || Date.now()).toISOString(),
+      };
+      setPendingCreates(prev => [tempTx, ...prev]);
+      try {
+        await createExpenseTransaction(
+          expenseId,
+          amount,
+          describtion,
+          categoryId || undefined,
+          dateMs,
+          autoCategorize,
+        );
+      } catch (err) {
+        console.error('Error creating transaction:', err);
+        setPendingCreates(prev => prev.filter(t => t.id !== tempId));
+      }
+    },
+    [createExpenseTransaction, expenseId],
+  );
+
+  useEffect(() => {
+    if (!expense?.transactions?.length || pendingCreates.length === 0) return;
+    const dateKey = (value?: string) =>
+      (value ? new Date(value) : new Date()).toISOString().slice(0, 10);
+    setPendingCreates(prev =>
+      prev.filter(pending => {
+        const pendingKey = dateKey(pending.createdAt);
+        const match = expense.transactions.some(tx => {
+          return (
+            tx.amount === pending.amount &&
+            tx.describtion === pending.describtion &&
+            dateKey(tx.createdAt) === pendingKey
+          );
+        });
+        return !match;
+      }),
+    );
+  }, [expense?.transactions, pendingCreates.length]);
+
+  useEffect(() => {
+    if (Object.keys(pendingDeletes).length === 0) return;
+    const existing = new Set(
+      (expense?.transactions ?? []).map(t => `${t.id}`),
+    );
+    setPendingDeletes(prev => {
+      let changed = false;
+      const next: Record<string, true> = { ...prev };
+      for (const id of Object.keys(prev)) {
+        if (!existing.has(id)) {
+          delete next[id];
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [expense?.transactions, pendingDeletes]);
+
+  const handleUpdate = useCallback(
+    async (payload: {
+      id: string;
+      amount: number;
+      describtion: string;
+      categoryId: string | null;
+      dateIso: string;
+    }) => {
+      setPendingUpdates(prev => ({
+        ...prev,
+        [payload.id]: {
+          amount: payload.amount,
+          describtion: payload.describtion,
+          createdAt: payload.dateIso,
+        },
+      }));
+      try {
+        await updateExpenseTransaction(
+          payload.id,
+          expenseId,
+          payload.amount,
+          payload.describtion,
+          payload.categoryId,
+          payload.dateIso,
+        );
+      } catch (err) {
+        console.error('Error updating transaction:', err);
+      } finally {
+        setPendingUpdates(prev => {
+          const next = { ...prev };
+          delete next[payload.id];
+          return next;
+        });
+      }
+    },
+    [updateExpenseTransaction, expenseId],
+  );
 
   return (
     <ScreenWrapper scrollable={false}>
@@ -145,14 +283,13 @@ export default function ExpenseTransactions() {
         </View>
 
         <Text style={styles.total}>
-          {`${Number(total ?? 0).toLocaleString()}${
-            expense?.currency ? ` ${expense.currency}` : ''
-          }`}
+          {`${Number(total ?? 0).toLocaleString()}${expense?.currency ? ` ${expense.currency}` : ''
+            }`}
         </Text>
 
         {/* Spending limit progress bar */}
         {typeof expense?.spendingLimit === 'number' &&
-        (expense?.spendingLimit ?? 0) > 0 ? (
+          (expense?.spendingLimit ?? 0) > 0 ? (
           <>
             <Text style={styles.diagCaption}>Limit:</Text>
             <HorizontalBar
@@ -162,11 +299,9 @@ export default function ExpenseTransactions() {
               fillColor={barColor}
               trackColor="#1f2937"
               labelColor="#cbd5e1"
-              labelText={`${Number(spent).toLocaleString()}${
-                expense?.currency ? ` ${expense.currency}` : ''
-              } / ${Number(spendingLimit).toLocaleString()}${
-                expense?.currency ? ` ${expense.currency}` : ''
-              }`}
+              labelText={`${Number(spent).toLocaleString()}${expense?.currency ? ` ${expense.currency}` : ''
+                } / ${Number(spendingLimit).toLocaleString()}${expense?.currency ? ` ${expense.currency}` : ''
+                }`}
               style={{ marginTop: 4 }}
             />
           </>
@@ -176,28 +311,48 @@ export default function ExpenseTransactions() {
           contentContainerStyle={styles.listContent}
           data={grouped}
           keyExtractor={([day]) => day}
-          ListEmptyComponent={() => (
-            <View style={styles.emptyWrap}>
-              <Text style={styles.emptyTitle}>No transactions yet</Text>
-              <Text style={styles.emptySub}>
-                Add your first transaction to this expense.
-              </Text>
-              <TouchableOpacity
-                onPress={() => setInfoOpen(true)}
-                activeOpacity={0.7}
-              >
-                <Text style={{ color: '#93c5fd', fontWeight: '700' }}>
-                  What is this?
+          ListHeaderComponent={
+            loading && grouped.length > 0 ? (
+              <View style={styles.loadingWrap}>
+                <ActivityIndicator size="small" color="#60a5fa" />
+                <Text style={styles.loadingText}>Updating...</Text>
+              </View>
+            ) : null
+          }
+          ListEmptyComponent={() => {
+            if (loading) {
+              return (
+                <View style={styles.emptyWrap}>
+                  <ActivityIndicator size="large" color="#60a5fa" />
+                  <Text style={[styles.emptySub, { marginTop: 12 }]}>
+                    Loading transactions...
+                  </Text>
+                </View>
+              );
+            }
+            return (
+              <View style={styles.emptyWrap}>
+                <Text style={styles.emptyTitle}>No transactions yet</Text>
+                <Text style={styles.emptySub}>
+                  Add your first transaction to this expense.
                 </Text>
-              </TouchableOpacity>
-              <RoundedButton
-                title="Add Transaction"
-                onPress={() => setCreateOpen(true)}
-                fullWidth
-                style={{ marginTop: 12 }}
-              />
-            </View>
-          )}
+                <TouchableOpacity
+                  onPress={() => setInfoOpen(true)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={{ color: '#93c5fd', fontWeight: '700' }}>
+                    What is this?
+                  </Text>
+                </TouchableOpacity>
+                <RoundedButton
+                  title="Add Transaction"
+                  onPress={() => setCreateOpen(true)}
+                  fullWidth
+                  style={{ marginTop: 12 }}
+                />
+              </View>
+            );
+          }}
           renderItem={({ item: [day, list] }) => (
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>{formatDate(day)}</Text>
@@ -209,34 +364,64 @@ export default function ExpenseTransactions() {
                   subtitle={formatDate(t.createdAt)}
                   amount={t.amount}
                   currency={expense?.currency ?? undefined}
+                  loading={
+                    pendingCreateIds.has(t.id) ||
+                    pendingUpdateIds.has(t.id) ||
+                    pendingDeleteIds.has(t.id)
+                  }
                   onPress={() => {
-                    // Prevent editing temp transactions until reconciled
-                    if (t.id?.startsWith('temp-')) {
+                    if (
+                      pendingCreateIds.has(t.id) ||
+                      pendingUpdateIds.has(t.id) ||
+                      pendingDeleteIds.has(t.id)
+                    ) {
                       Alert.alert('Please wait', 'This transaction is still syncing. Try again in a moment.');
                       return;
                     }
                     setSelectedTransaction(t);
                     setEditOpen(true);
                   }}
-                  onDelete={async id => {
-                    Alert.alert(
-                      'Delete Transaction',
-                      'Are you sure you want to delete this transaction?',
-                      [
-                        { text: 'Cancel', style: 'cancel' },
-                        {
-                          text: 'Delete',
-                          style: 'destructive',
-                          onPress: async () => {
-                            console.log("in function");
-                            console.log({expenseId, id});
-                            
-                            await deleteExpenseTransaction(id, expenseId);
-                          },
-                        },
-                      ],
-                    );
-                  }}
+                  onDelete={
+                    pendingCreateIds.has(t.id) ||
+                      pendingUpdateIds.has(t.id) ||
+                      pendingDeleteIds.has(t.id)
+                      ? undefined
+                      : async id => {
+                        Alert.alert(
+                          'Delete Transaction',
+                          'Are you sure you want to delete this transaction?',
+                          [
+                            { text: 'Cancel', style: 'cancel' },
+                            {
+                              text: 'Delete',
+                              style: 'destructive',
+                              onPress: async () => {
+                                setPendingDeletes(prev => ({
+                                  ...prev,
+                                  [id]: true,
+                                }));
+                                try {
+                                  await deleteExpenseTransaction(
+                                    id,
+                                    expenseId,
+                                  );
+                                } catch (err) {
+                                  console.error(
+                                    'Error deleting transaction:',
+                                    err,
+                                  );
+                                  setPendingDeletes(prev => {
+                                    const next = { ...prev };
+                                    delete next[id];
+                                    return next;
+                                  });
+                                }
+                              },
+                            },
+                          ],
+                        );
+                      }
+                  }
                 />
               ))}
             </View>
@@ -271,7 +456,7 @@ export default function ExpenseTransactions() {
           onClose={() => setCreateOpen(false)}
           expenseId={expenseId}
           currency={expense?.currency}
-          onCreate={() => {}}
+          onCreate={handleCreate}
         />
 
         <EditExpenseTransactionSheet
@@ -283,7 +468,7 @@ export default function ExpenseTransactions() {
           transaction={selectedTransaction}
           currency={expense?.currency}
           expenseId={expenseId}
-          onUpdate={refetch}
+          onSave={handleUpdate}
         />
 
         <EditExpenseSheet
@@ -355,5 +540,16 @@ const styles = StyleSheet.create({
     marginTop: 6,
     marginBottom: 12,
     textAlign: 'center',
+  },
+  loadingWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 8,
+  },
+  loadingText: {
+    color: '#94a3b8',
+    fontSize: 14,
+    fontWeight: '600',
   },
 });

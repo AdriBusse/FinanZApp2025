@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { useMutation } from '@apollo/client';
 import { useNavigation } from '@react-navigation/native';
-import AudioRecorderPlayer from 'react-native-audio-recorder-player';
+import Sound from 'react-native-nitro-sound';
 import { Mic, Square, Loader2, Play, Pause, CheckCircle } from 'lucide-react-native';
 import ScreenWrapper from '../components/layout/ScreenWrapper';
 import Dropdown from '../components/atoms/Dropdown';
@@ -67,7 +67,7 @@ function formatDuration(ms: number) {
 
 export default function Record() {
   const navigation = useNavigation<any>();
-  const recorder = useRef(new AudioRecorderPlayer()).current;
+  const recorder = useRef(new Sound()).current;
   const listRef = useRef<FlatList<VoiceMessage>>(null);
   const [isRecording, setIsRecording] = useState(false);
   const [recordDuration, setRecordDuration] = useState(0);

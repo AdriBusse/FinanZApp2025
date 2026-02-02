@@ -1,5 +1,11 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ActivityIndicator,
+} from 'react-native';
 import { Trash2 } from 'lucide-react-native';
 
 export interface TransactionListItemProps {
@@ -8,6 +14,7 @@ export interface TransactionListItemProps {
   subtitle?: string;
   amount?: number;
   currency?: string;
+  loading?: boolean;
   onPress?: () => void;
   onDelete?: (id: string) => void;
 }
@@ -18,14 +25,13 @@ export default function TransactionListItem({
   subtitle,
   amount,
   currency,
+  loading,
   onPress,
   onDelete,
 }: TransactionListItemProps) {
-  console.log({id, title});
-  
   return (
     <TouchableOpacity
-      style={styles.row}
+      style={[styles.row, loading && styles.rowLoading]}
       onPress={onPress}
       activeOpacity={onPress ? 0.7 : 1}
     >
@@ -40,7 +46,9 @@ export default function TransactionListItem({
           }`}
         </Text>
       )}
-      {!!onDelete && (
+      {loading ? (
+        <ActivityIndicator size="small" color="#60a5fa" />
+      ) : !!onDelete ? (
         <TouchableOpacity
           accessibilityRole="button"
           accessibilityLabel="Delete transaction"
@@ -50,7 +58,7 @@ export default function TransactionListItem({
         >
           <Trash2 color="#ef4444" size={20} style={{ opacity: 0.8 }} />
         </TouchableOpacity>
-      )}
+      ) : null}
     </TouchableOpacity>
   );
 }
@@ -64,6 +72,9 @@ const styles = StyleSheet.create({
     padding: 10,
     borderRadius: 10,
     marginBottom: 6,
+  },
+  rowLoading: {
+    opacity: 0.7,
   },
   rowTitle: { color: '#f8fafc', fontSize: 16, fontWeight: '700' },
   rowSub: { color: '#94a3b8', marginTop: 2 },

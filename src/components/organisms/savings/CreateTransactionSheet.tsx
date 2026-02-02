@@ -10,7 +10,7 @@ export default function CreateTransactionSheet({
 }: {
   open: boolean;
   onClose: () => void;
-  onCreate: (amount: number, describtion: string) => Promise<void>;
+  onCreate: (amount: number, describtion: string) => void | Promise<void>;
   currency?: string;
 }) {
   const [amount, setAmount] = useState('');
@@ -28,6 +28,8 @@ export default function CreateTransactionSheet({
     if (!open) {
       setAmount('');
       setDescribtion('');
+      setSubmitting(false);
+      submittingRef.current = false;
     } else {
       setTimeout(() => amountInputRef.current?.focus(), 50);
     }
@@ -44,14 +46,21 @@ export default function CreateTransactionSheet({
         submittingRef.current = true;
         setSubmitting(true);
         try {
-          await onCreate(Number(amount), describtion);
-          setAmount('');
-          setDescribtion('');
+          onClose();
+          void (async () => {
+            try {
+              await onCreate(Number(amount), describtion);
+            } catch (e) {
+              Alert.alert('Error', 'Failed to create transaction.');
+            } finally {
+              setAmount('');
+              setDescribtion('');
+              submittingRef.current = false;
+              setSubmitting(false);
+            }
+          })();
         } catch (e) {
           Alert.alert('Error', 'Failed to create transaction.');
-        } finally {
-          submittingRef.current = false;
-          setSubmitting(false);
         }
       }}
     >

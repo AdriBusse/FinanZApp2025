@@ -145,7 +145,6 @@ export const useExpenses = (options?: UseExpensesOptions) => {
         { query: GETEXPENSES },
         { query: GETEXPENSE, variables: { id: expenseId } },
       ],
-      awaitRefetchQueries: true,
     });
   };
 

@@ -87,7 +87,6 @@ export const useSavings = (options?: UseSavingsOptions) => {
         { query: GETDEPOTS },
         { query: GETDEPOT, variables: { id: depotId } },
       ],
-      awaitRefetchQueries: true,
     });
   };
 

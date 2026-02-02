@@ -2,7 +2,6 @@ import React, { useMemo, useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
-  ActivityIndicator,
   StyleSheet,
   Modal,
   TouchableOpacity,
@@ -32,14 +31,20 @@ interface Transaction {
 export default function EditExpenseTransactionSheet({
   open,
   onClose,
-  onUpdate,
+  onSave,
   transaction,
   currency,
   expenseId,
 }: {
   open: boolean;
   onClose: () => void;
-  onUpdate: () => Promise<void>;
+  onSave: (payload: {
+    id: string;
+    amount: number;
+    describtion: string;
+    categoryId: string | null;
+    dateIso: string;
+  }) => void | Promise<void>;
   transaction: Transaction | null;
   currency?: string;
   expenseId: string;
@@ -59,7 +64,7 @@ export default function EditExpenseTransactionSheet({
   const [categoryOpen, setCategoryOpen] = useState(false);
   const amountInputRef = useRef<TextInput | null>(null);
 
-  const { categoriesQuery, updateExpenseTransaction } = useExpenses({
+  const { categoriesQuery } = useExpenses({
     includeCategories: true,
     expenseId,
   });
@@ -88,6 +93,12 @@ export default function EditExpenseTransactionSheet({
       setTimeout(() => amountInputRef.current?.focus(), 50);
     }
   }, [open, transaction, refetch]);
+
+  useEffect(() => {
+    if (!open) {
+      setUpdating(false);
+    }
+  }, [open]);
 
   // Clamp day when month/year changes
   useEffect(() => {
@@ -138,31 +149,30 @@ export default function EditExpenseTransactionSheet({
       setUpdating(true);
       const newAmount = Number(amount);
       const newDateIso = selectedDate.toISOString();
-
-      await updateExpenseTransaction(
-        transaction.id,
-        expenseId,
-        newAmount,
-        describtion,
-        selectedCategoryId || null,
-        newDateIso,
-      );
-
-      // Reset form
-      setAmount('');
-      setDescribtion('');
-      setSelectedCategoryId(null);
-      const t = new Date();
-      setYear(t.getFullYear());
-      setMonth(t.getMonth());
-      setDay(t.getDate());
-
-      await onUpdate();
       onClose();
+      void (async () => {
+        try {
+          await onSave({
+            id: transaction.id,
+            amount: newAmount,
+            describtion,
+            categoryId: selectedCategoryId || null,
+            dateIso: newDateIso,
+          });
+        } finally {
+          // Reset form
+          setAmount('');
+          setDescribtion('');
+          setSelectedCategoryId(null);
+          const t = new Date();
+          setYear(t.getFullYear());
+          setMonth(t.getMonth());
+          setDay(t.getDate());
+          setUpdating(false);
+        }
+      })();
     } catch (error) {
       console.error('Error updating transaction:', error);
-    } finally {
-      setUpdating(false);
     }
   };
 

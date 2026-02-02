@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -6,6 +6,7 @@ import {
   FlatList,
   TouchableOpacity,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { useSavings } from '../hooks/useSavings';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -61,6 +62,9 @@ export default function SavingTransactions() {
   const [selectedTransaction, setSelectedTransaction] = useState<any>(null);
   const [isSpeedDialOpen, setIsSpeedDialOpen] = useState(false);
   const [infoOpen, setInfoOpen] = useState(false);
+  const [pendingCreates, setPendingCreates] = useState<any[]>([]);
+  const [pendingUpdates, setPendingUpdates] = useState<Record<string, any>>({});
+  const [pendingDeletes, setPendingDeletes] = useState<Record<string, true>>({});
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const depotId: string = route.params?.depotId ?? '';
@@ -68,13 +72,22 @@ export default function SavingTransactions() {
     depotQuery,
     createSavingTransaction,
     deleteSavingTransaction,
+    updateSavingTransaction,
   } = useSavings({ depotId });
-  const { data, loading, error, refetch } = depotQuery;
+  const { data, refetch, loading } = depotQuery;
   const depot = data?.getSavingDepot;
 
+  const displayTransactions = useMemo(() => {
+    const base = depot?.transactions ?? [];
+    const merged = base.map(t =>
+      pendingUpdates[t.id] ? { ...t, ...pendingUpdates[t.id] } : t,
+    );
+    return [...pendingCreates, ...merged];
+  }, [depot?.transactions, pendingCreates, pendingUpdates]);
+
   const grouped = useMemo(
-    () => groupByDate(depot?.transactions ?? []),
-    [depot?.transactions],
+    () => groupByDate(displayTransactions),
+    [displayTransactions],
   );
   const total = (depot?.transactions ?? []).reduce(
     (s, t) => s + (t.amount || 0),
@@ -88,6 +101,107 @@ export default function SavingTransactions() {
     );
     return unsub;
   }, [navigation]);
+
+  const pendingCreateIds = useMemo(
+    () => new Set(pendingCreates.map(t => t.id)),
+    [pendingCreates],
+  );
+  const pendingUpdateIds = useMemo(
+    () => new Set(Object.keys(pendingUpdates)),
+    [pendingUpdates],
+  );
+  const pendingDeleteIds = useMemo(
+    () => new Set(Object.keys(pendingDeletes)),
+    [pendingDeletes],
+  );
+
+  const handleCreate = useCallback(
+    async (amount: number, describtion: string) => {
+      const tempId = `temp-${Date.now()}-${Math.random()
+        .toString(16)
+        .slice(2)}`;
+      const tempTx = {
+        id: tempId,
+        amount,
+        describtion,
+        createdAt: new Date().toISOString(),
+      };
+      setPendingCreates(prev => [tempTx, ...prev]);
+      try {
+        await createSavingTransaction(depotId, amount, describtion);
+      } catch (err) {
+        console.error('Error creating transaction:', err);
+        setPendingCreates(prev => prev.filter(t => t.id !== tempId));
+      }
+    },
+    [createSavingTransaction, depotId],
+  );
+
+  useEffect(() => {
+    if (!depot?.transactions?.length || pendingCreates.length === 0) return;
+    const dateKey = (value?: string) =>
+      (value ? new Date(value) : new Date()).toISOString().slice(0, 10);
+    setPendingCreates(prev =>
+      prev.filter(pending => {
+        const pendingKey = dateKey(pending.createdAt);
+        const match = depot.transactions.some(tx => {
+          return (
+            tx.amount === pending.amount &&
+            tx.describtion === pending.describtion &&
+            dateKey(tx.createdAt) === pendingKey
+          );
+        });
+        return !match;
+      }),
+    );
+  }, [depot?.transactions, pendingCreates.length]);
+
+  useEffect(() => {
+    if (Object.keys(pendingDeletes).length === 0) return;
+    const existing = new Set(
+      (depot?.transactions ?? []).map(t => `${t.id}`),
+    );
+    setPendingDeletes(prev => {
+      let changed = false;
+      const next: Record<string, true> = { ...prev };
+      for (const id of Object.keys(prev)) {
+        if (!existing.has(id)) {
+          delete next[id];
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [depot?.transactions, pendingDeletes]);
+
+  const handleUpdate = useCallback(
+    async (payload: { id: string; amount: number; describtion: string }) => {
+      setPendingUpdates(prev => ({
+        ...prev,
+        [payload.id]: {
+          amount: payload.amount,
+          describtion: payload.describtion,
+        },
+      }));
+      try {
+        await updateSavingTransaction(
+          payload.id,
+          depotId,
+          payload.amount,
+          payload.describtion,
+        );
+      } catch (err) {
+        console.error('Error updating transaction:', err);
+      } finally {
+        setPendingUpdates(prev => {
+          const next = { ...prev };
+          delete next[payload.id];
+          return next;
+        });
+      }
+    },
+    [updateSavingTransaction, depotId],
+  );
 
   return (
     <ScreenWrapper scrollable={false}>
@@ -153,6 +267,14 @@ export default function SavingTransactions() {
           contentContainerStyle={{ paddingBottom: 160 }}
           data={grouped}
           keyExtractor={([day]) => day}
+          ListHeaderComponent={
+            loading ? (
+              <View style={styles.loadingWrap}>
+                <ActivityIndicator size="small" color="#60a5fa" />
+                <Text style={styles.loadingText}>Loading transactions…</Text>
+              </View>
+            ) : null
+          }
           ListEmptyComponent={() => (
             <View style={styles.emptyWrap}>
               <Text style={styles.emptyTitle}>No transactions yet</Text>
@@ -186,28 +308,64 @@ export default function SavingTransactions() {
                   subtitle={formatDate(t.createdAt)}
                   amount={t.amount}
                   currency={depot?.currency || undefined}
+                  loading={
+                    pendingCreateIds.has(t.id) ||
+                    pendingUpdateIds.has(t.id) ||
+                    pendingDeleteIds.has(t.id)
+                  }
                   onPress={() => {
+                    if (
+                      pendingCreateIds.has(t.id) ||
+                      pendingUpdateIds.has(t.id) ||
+                      pendingDeleteIds.has(t.id)
+                    ) {
+                      Alert.alert(
+                        'Please wait',
+                        'This transaction is still syncing. Try again in a moment.',
+                      );
+                      return;
+                    }
                     setSelectedTransaction(t);
                     setEditOpen(true);
                   }}
-                  onDelete={id => {
-                    Alert.alert(
-                      'Delete Transaction',
-                      'Are you sure you want to delete this transaction?',
-                      [
-                        { text: 'Cancel', style: 'cancel' },
-                        {
-                          text: 'Delete',
-                          style: 'destructive',
-                          onPress: async () => {
-                            try {
-                              await deleteSavingTransaction(id, depotId);
-                            } catch {}
-                          },
-                        },
-                      ],
-                    );
-                  }}
+                  onDelete={
+                    pendingCreateIds.has(t.id) ||
+                    pendingUpdateIds.has(t.id) ||
+                    pendingDeleteIds.has(t.id)
+                      ? undefined
+                      : id => {
+                          Alert.alert(
+                            'Delete Transaction',
+                            'Are you sure you want to delete this transaction?',
+                            [
+                              { text: 'Cancel', style: 'cancel' },
+                              {
+                                text: 'Delete',
+                                style: 'destructive',
+                                onPress: async () => {
+                                  setPendingDeletes(prev => ({
+                                    ...prev,
+                                    [id]: true,
+                                  }));
+                                  try {
+                                    await deleteSavingTransaction(id, depotId);
+                                  } catch (err) {
+                                    console.error(
+                                      'Error deleting transaction:',
+                                      err,
+                                    );
+                                    setPendingDeletes(prev => {
+                                      const next = { ...prev };
+                                      delete next[id];
+                                      return next;
+                                    });
+                                  }
+                                },
+                              },
+                            ],
+                          );
+                        }
+                  }
                 />
               ))}
             </View>
@@ -235,10 +393,7 @@ export default function SavingTransactions() {
           open={createOpen}
           onClose={() => setCreateOpen(false)}
           currency={depot?.currency}
-          onCreate={async (amount, describtion) => {
-            await createSavingTransaction(depotId, amount, describtion);
-            setCreateOpen(false);
-          }}
+          onCreate={handleCreate}
         />
 
         {/* Edit Transaction Bottom Sheet */}
@@ -251,7 +406,7 @@ export default function SavingTransactions() {
           transaction={selectedTransaction}
           currency={depot?.currency}
           depotId={depotId}
-          onUpdate={refetch}
+          onSave={handleUpdate}
         />
 
         {/* Edit Depot Bottom Sheet */}
@@ -339,5 +494,16 @@ const styles = StyleSheet.create({
     marginTop: 6,
     marginBottom: 12,
     textAlign: 'center',
+  },
+  loadingWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 8,
+  },
+  loadingText: {
+    color: '#94a3b8',
+    fontSize: 14,
+    fontWeight: '600',
   },
 });
