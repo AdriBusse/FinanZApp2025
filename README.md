@@ -109,3 +109,17 @@ From `package.json`:
 
 The following section is the standard React Native getting-started reference kept for convenience.
 
+## Build apk or ABB
+
+Mac:
+
+cd android
+./gradlew clean
+
+APK:
+
+./gradlew assembleRelease
+
+AAB:
+
+./gradlew bundleRelease
