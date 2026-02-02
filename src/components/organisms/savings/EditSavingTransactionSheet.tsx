@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, TextInput } from 'react-native';
 import FormBottomSheet from '../../FormBottomSheet';
-import { useSavings } from '../../../hooks/useSavings';
 // Legacy finance store removed; rely on Apollo cache only
 
 interface Transaction {
@@ -11,25 +10,26 @@ interface Transaction {
   createdAt?: string;
 }
 
-export default function EditSavingTransactionSheet({
-  open,
-  onClose,
-  onUpdate,
-  transaction,
-  currency,
-  depotId,
-}: {
+type EditSavingTransactionSheetProps = {
   open: boolean;
   onClose: () => void;
-  onUpdate: () => Promise<void>;
+  onSave: (payload: {
+    id: string;
+    amount: number;
+    describtion: string;
+  }) => void | Promise<void>;
   transaction: Transaction | null;
   currency?: string;
   depotId: string;
-}) {
+};
+
+export default function EditSavingTransactionSheet(
+  props: EditSavingTransactionSheetProps,
+) {
+  const { open, onClose, onSave, transaction, currency } = props;
   const [amount, setAmount] = useState('');
   const [describtion, setDescribtion] = useState('');
   const amountInputRef = useRef<TextInput | null>(null);
-  const { updateSavingTransaction } = useSavings({ depotId });
   const [updating, setUpdating] = useState(false);
 
   // Initialize form with transaction data when modal opens
@@ -40,6 +40,12 @@ export default function EditSavingTransactionSheet({
       setTimeout(() => amountInputRef.current?.focus(), 50);
     }
   }, [open, transaction]);
+
+  useEffect(() => {
+    if (!open) {
+      setUpdating(false);
+    }
+  }, [open]);
 
   const isValid =
     amount.trim().length > 0 &&
@@ -52,25 +58,22 @@ export default function EditSavingTransactionSheet({
     try {
       setUpdating(true);
       const nextAmount = Number(amount);
-      await updateSavingTransaction(
-        transaction.id,
-        depotId,
-        nextAmount,
-        describtion,
-      );
-
-      // Zustand mirror removed
-
-      // Reset form
-      setAmount('');
-      setDescribtion('');
-
-      await onUpdate();
       onClose();
+      void (async () => {
+        try {
+          await onSave({
+            id: transaction.id,
+            amount: nextAmount,
+            describtion,
+          });
+        } finally {
+          setAmount('');
+          setDescribtion('');
+          setUpdating(false);
+        }
+      })();
     } catch (error) {
       console.error('Error updating transaction:', error);
-    } finally {
-      setUpdating(false);
     }
   };
 

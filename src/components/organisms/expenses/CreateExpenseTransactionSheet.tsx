@@ -30,6 +30,8 @@ export default function CreateExpenseTransactionSheet({
     amount: number,
     describtion: string,
     categoryId: string,
+    dateMs: number,
+    autoCategorize?: boolean,
   ) => void | Promise<void>;
   expenseId: string;
   currency?: string;
@@ -47,7 +49,7 @@ export default function CreateExpenseTransactionSheet({
   const [month, setMonth] = useState(now.getMonth()); // 0-11
   const [day, setDay] = useState(now.getDate());
 
-  const { categoriesQuery, createExpenseTransaction } = useExpenses({
+  const { categoriesQuery } = useExpenses({
     includeCategories: true,
     expenseId,
   });
@@ -82,6 +84,7 @@ export default function CreateExpenseTransactionSheet({
       setAmount('');
       setDescribtion('');
       setSelectedCategoryId(null);
+      setSubmitting(false);
       const t = new Date();
       setYear(t.getFullYear());
       setMonth(t.getMonth());
@@ -133,34 +136,29 @@ export default function CreateExpenseTransactionSheet({
 
   const handleSubmit = async () => {
     if (!isValid) return;
-    try {
-      setSubmitting(true);
-      const createdAmount = Number(amount);
-      const createdDesc = describtion;
-      const createdCategoryId = selectedCategoryId || '';
-      // dateMs will be sent to store; no need to compute ISO here
+    const createdAmount = Number(amount);
+    const createdDesc = describtion;
+    const createdCategoryId = selectedCategoryId || '';
+    const createdDateMs = Math.floor(selectedDate.getTime());
 
-      // Delegate creation + optimistic/caching to store
-      await createExpenseTransaction(
-        expenseId,
-        createdAmount,
-        createdDesc,
-        selectedCategoryId || undefined,
-        Math.floor(selectedDate.getTime()),
-        autoCategorize,
-      );
-      // Close immediately after positive response to prevent repeated taps
-      onClose();
-      // Fire and forget any follow-up logic (e.g., refetch, toast)
-      void onCreate?.(createdAmount, createdDesc, createdCategoryId);
-      // Persist preference for next time
-      void preferences.setTxAutoCategorizeDefault(autoCategorize);
-      // Do not manually reset; the sheet's close effect resets fields
-    } catch (error) {
-      console.error('Error creating transaction:', error);
-    } finally {
-      setSubmitting(false);
-    }
+    onClose();
+    setSubmitting(true);
+    void preferences.setTxAutoCategorizeDefault(autoCategorize);
+    void (async () => {
+      try {
+        await onCreate?.(
+          createdAmount,
+          createdDesc,
+          createdCategoryId,
+          createdDateMs,
+          autoCategorize,
+        );
+      } catch (error) {
+        console.error('Error creating transaction:', error);
+      } finally {
+        setSubmitting(false);
+      }
+    })();
   };
 
   const formattedDate = `${String(selectedDate.getDate()).padStart(2, '0')}.${String(
