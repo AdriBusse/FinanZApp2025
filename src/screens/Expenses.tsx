@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -26,6 +26,7 @@ export default function Expenses() {
   const {
     expensesQuery,
     archivedExpensesQuery,
+    createExpense,
     deleteExpense,
   } = useExpenses({ includeArchived: true });
   const {
@@ -44,12 +45,28 @@ export default function Expenses() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
   const [infoOpen, setInfoOpen] = useState(false);
+  const [pendingCreates, setPendingCreates] = useState<any[]>([]);
+  const [pendingDeletes, setPendingDeletes] = useState<Record<string, true>>({});
   const isLoading = showArchived ? archivedLoading : expensesLoading;
 
   const displayedExpenses = useMemo(
     () => (showArchived ? archivedExpenses : activeExpenses),
     [activeExpenses, archivedExpenses, showArchived],
   );
+
+  const pendingCreateIds = useMemo(
+    () => new Set(pendingCreates.map(e => e.id)),
+    [pendingCreates],
+  );
+  const pendingDeleteIds = useMemo(
+    () => new Set(Object.keys(pendingDeletes)),
+    [pendingDeletes],
+  );
+
+  const displayList = useMemo(() => {
+    if (showArchived) return displayedExpenses;
+    return [...pendingCreates, ...displayedExpenses];
+  }, [displayedExpenses, pendingCreates, showArchived]);
 
   useEffect(() => {
     if (!activeExpenses.length) void refetchExpenses();
@@ -60,6 +77,80 @@ export default function Expenses() {
       void refetchArchivedExpenses();
     }
   }, [archivedExpenses.length, refetchArchivedExpenses, showArchived]);
+
+  const handleCreateExpense = useCallback(
+    async (payload: {
+      title: string;
+      currency?: string | null;
+      monthlyRecurring?: boolean;
+      spendingLimit?: number | null;
+      skipTemplateIds?: string[];
+    }) => {
+      const tempId = `temp-${Date.now()}-${Math.random()
+        .toString(16)
+        .slice(2)}`;
+      const tempExpense = {
+        id: tempId,
+        title: payload.title,
+        currency: payload.currency ?? undefined,
+        monthlyRecurring: payload.monthlyRecurring ?? false,
+        spendingLimit: payload.spendingLimit ?? null,
+        archived: false,
+        sum: 0,
+        transactions: [],
+      };
+      setPendingCreates(prev => [tempExpense, ...prev]);
+      try {
+        await createExpense(
+          payload.title,
+          payload.currency ?? null,
+          payload.monthlyRecurring,
+          payload.spendingLimit ?? null,
+          payload.skipTemplateIds,
+        );
+      } catch (err) {
+        console.error('Error creating expense:', err);
+        setPendingCreates(prev => prev.filter(e => e.id !== tempId));
+      }
+    },
+    [createExpense],
+  );
+
+  useEffect(() => {
+    if (pendingCreates.length === 0 || activeExpenses.length === 0) return;
+    setPendingCreates(prev =>
+      prev.filter(pending => {
+        const match = activeExpenses.some(expense => {
+          return (
+            expense.title === pending.title &&
+            (expense.currency || null) === (pending.currency || null) &&
+            (expense.spendingLimit ?? null) ===
+              (pending.spendingLimit ?? null) &&
+            !!expense.monthlyRecurring === !!pending.monthlyRecurring &&
+            (expense.sum ?? 0) === 0 &&
+            (expense.transactions?.length ?? 0) === 0
+          );
+        });
+        return !match;
+      }),
+    );
+  }, [activeExpenses, pendingCreates.length]);
+
+  useEffect(() => {
+    if (Object.keys(pendingDeletes).length === 0) return;
+    const existing = new Set(activeExpenses.map(e => `${e.id}`));
+    setPendingDeletes(prev => {
+      let changed = false;
+      const next: Record<string, true> = { ...prev };
+      for (const id of Object.keys(prev)) {
+        if (!existing.has(id)) {
+          delete next[id];
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [activeExpenses, pendingDeletes]);
 
   // Load persisted preference once
   useEffect(() => {
@@ -129,7 +220,7 @@ export default function Expenses() {
           </View>
         ) : (
           <FlatList
-            data={displayedExpenses}
+            data={displayList}
             keyExtractor={e => e.id}
             ItemSeparatorComponent={() => <View style={styles.sep} />}
             contentContainerStyle={styles.listContent}
@@ -159,17 +250,29 @@ export default function Expenses() {
                 />
               </View>
             )}
-            renderItem={({ item }) => (
+            renderItem={({ item }) => {
+              const isPending = pendingCreateIds.has(item.id);
+              const isDeleting = pendingDeleteIds.has(item.id);
+              const isBlocked = isPending || isDeleting;
+              return (
               <TouchableOpacity
                 style={[
                   styles.expenseItem,
                   showArchived && item.archived ? styles.archivedItem : null,
+                  isBlocked ? styles.loadingItem : null,
                 ]}
-                onPress={() =>
+                onPress={() => {
+                  if (isBlocked) {
+                    Alert.alert(
+                      'Please wait',
+                      'This expense is still syncing. Try again in a moment.',
+                    );
+                    return;
+                  }
                   navigation.navigate('ExpenseTransactions', {
                     expenseId: item.id,
-                  })
-                }
+                  });
+                }}
               >
                 <View>
                   <Text style={styles.expenseName}>{item.title}</Text>
@@ -183,37 +286,60 @@ export default function Expenses() {
                   ).toLocaleString()}${
                     item.currency ? ` ${item.currency}` : ''
                   }`}</Text>
-                  <TouchableOpacity
-                    accessibilityLabel="Delete expense"
-                    onPress={() => {
-                      Alert.alert(
-                        'Delete Expense',
-                        `Are you sure you want to delete "${item.title}"?`,
-                        [
-                          { text: 'Cancel', style: 'cancel' },
-                          {
-                            text: 'Delete',
-                            style: 'destructive',
-                            onPress: async () => {
-                              try {
-                                await deleteExpense(item.id);
-                              } catch {}
-                            },
-                          },
-                        ],
-                      );
-                    }}
-                    style={{ marginLeft: 12, padding: 6 }}
-                  >
-                    <Trash2
-                      color="#ef4444"
-                      size={20}
-                      style={{ opacity: 0.8 }}
+                  {isBlocked ? (
+                    <ActivityIndicator
+                      size="small"
+                      color="#60a5fa"
+                      style={{ marginLeft: 12 }}
                     />
-                  </TouchableOpacity>
+                  ) : (
+                    <TouchableOpacity
+                      accessibilityLabel="Delete expense"
+                      onPress={() => {
+                        Alert.alert(
+                          'Delete Expense',
+                          `Are you sure you want to delete "${item.title}"?`,
+                          [
+                            { text: 'Cancel', style: 'cancel' },
+                            {
+                              text: 'Delete',
+                              style: 'destructive',
+                              onPress: async () => {
+                                setPendingDeletes(prev => ({
+                                  ...prev,
+                                  [item.id]: true,
+                                }));
+                                try {
+                                  await deleteExpense(item.id);
+                                } catch (err) {
+                                  console.error(
+                                    'Error deleting expense:',
+                                    err,
+                                  );
+                                  setPendingDeletes(prev => {
+                                    const next = { ...prev };
+                                    delete next[item.id];
+                                    return next;
+                                  });
+                                }
+                              },
+                            },
+                          ],
+                        );
+                      }}
+                      style={{ marginLeft: 12, padding: 6 }}
+                    >
+                      <Trash2
+                        color="#ef4444"
+                        size={20}
+                        style={{ opacity: 0.8 }}
+                      />
+                    </TouchableOpacity>
+                  )}
                 </View>
               </TouchableOpacity>
-            )}
+              );
+            }}
           />
         )}
 
@@ -262,9 +388,7 @@ export default function Expenses() {
         <CreateExpenseModal
           visible={isCreateModalOpen}
           onClose={() => setIsCreateModalOpen(false)}
-          onCreated={() => {
-            setIsCreateModalOpen(false);
-          }}
+          onCreate={handleCreateExpense}
         />
 
         <InfoModal
@@ -306,11 +430,17 @@ That’s it — Buckets organize your spending, limits keep you on track, catego
 function CreateExpenseModal({
   visible,
   onClose,
-  onCreated,
+  onCreate,
 }: {
   visible: boolean;
   onClose: () => void;
-  onCreated: () => void;
+  onCreate: (payload: {
+    title: string;
+    currency?: string | null;
+    monthlyRecurring?: boolean;
+    spendingLimit?: number | null;
+    skipTemplateIds?: string[];
+  }) => void | Promise<void>;
 }) {
   const [title, setTitle] = useState('');
   const [currency, setCurrency] = useState('€');
@@ -325,7 +455,7 @@ function CreateExpenseModal({
   >([]);
   const [selectedTemplateIds, setSelectedTemplateIds] = useState<string[]>([]);
 
-  const { createExpense, expenseTemplatesQuery } = useExpenses({
+  const { expenseTemplatesQuery } = useExpenses({
     includeTemplates: monthlyRecurring,
   });
   const { refetch: refetchTemplates, loading: templatesLoading } =
@@ -380,39 +510,40 @@ function CreateExpenseModal({
       submitDisabled={!isValid || isSubmitting}
       onSubmit={async () => {
         if (!isValid) return;
-        try {
-          setIsSubmitting(true);
-          const skipTemplateIds =
-            monthlyRecurring && templates.length > 0
-              ? templates
-                  .filter(t => !selectedTemplateIds.includes(t.id))
-                  .map(t => t.id)
-              : undefined;
-          const parsedLimit =
-            spendingLimit.trim() && !Number.isNaN(Number(spendingLimit))
-              ? parseInt(spendingLimit, 10)
-              : null;
-          await createExpense(
-            title.trim(),
-            currency.trim() || null,
-            monthlyRecurring,
-            parsedLimit,
-            skipTemplateIds,
-          );
-
-          if (monthlyRecurring) {
-            await preferences.setSelectedExpenseTemplateIds(
-              selectedTemplateIds,
-            );
+        onClose();
+        setIsSubmitting(true);
+        const skipTemplateIds =
+          monthlyRecurring && templates.length > 0
+            ? templates
+                .filter(t => !selectedTemplateIds.includes(t.id))
+                .map(t => t.id)
+            : undefined;
+        const parsedLimit =
+          spendingLimit.trim() && !Number.isNaN(Number(spendingLimit))
+            ? parseInt(spendingLimit, 10)
+            : null;
+        void (async () => {
+          try {
+            await onCreate({
+              title: title.trim(),
+              currency: currency.trim() || null,
+              monthlyRecurring,
+              spendingLimit: parsedLimit,
+              skipTemplateIds,
+            });
+            if (monthlyRecurring) {
+              await preferences.setSelectedExpenseTemplateIds(
+                selectedTemplateIds,
+              );
+            }
+          } finally {
+            setIsSubmitting(false);
+            setTitle('');
+            setCurrency('€');
+            setMonthlyRecurring(false);
+            setSpendingLimit('');
           }
-          setTitle('');
-          setCurrency('€');
-          setMonthlyRecurring(false);
-          setSpendingLimit('');
-          onCreated();
-        } finally {
-          setIsSubmitting(false);
-        }
+        })();
       }}
     >
       <Text style={styles.modalLabel}>Title</Text>
@@ -526,6 +657,7 @@ const styles = StyleSheet.create({
   modalLabel: { color: '#cbd5e1', fontSize: 12, marginBottom: 6 },
   listContent: { paddingBottom: 160 },
   archivedItem: { opacity: 0.6 },
+  loadingItem: { opacity: 0.7 },
   emptyWrap: {
     alignItems: 'center',
     justifyContent: 'center',
