@@ -6,6 +6,7 @@ import {
   FlatList,
   TouchableOpacity,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { useSavings } from '../hooks/useSavings';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -73,7 +74,7 @@ export default function SavingTransactions() {
     deleteSavingTransaction,
     updateSavingTransaction,
   } = useSavings({ depotId });
-  const { data, refetch } = depotQuery;
+  const { data, refetch, loading } = depotQuery;
   const depot = data?.getSavingDepot;
 
   const displayTransactions = useMemo(() => {
@@ -266,6 +267,14 @@ export default function SavingTransactions() {
           contentContainerStyle={{ paddingBottom: 160 }}
           data={grouped}
           keyExtractor={([day]) => day}
+          ListHeaderComponent={
+            loading ? (
+              <View style={styles.loadingWrap}>
+                <ActivityIndicator size="small" color="#60a5fa" />
+                <Text style={styles.loadingText}>Loading transactions…</Text>
+              </View>
+            ) : null
+          }
           ListEmptyComponent={() => (
             <View style={styles.emptyWrap}>
               <Text style={styles.emptyTitle}>No transactions yet</Text>
@@ -485,5 +494,16 @@ const styles = StyleSheet.create({
     marginTop: 6,
     marginBottom: 12,
     textAlign: 'center',
+  },
+  loadingWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 8,
+  },
+  loadingText: {
+    color: '#94a3b8',
+    fontSize: 14,
+    fontWeight: '600',
   },
 });

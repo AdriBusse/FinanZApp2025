@@ -6,6 +6,7 @@ import {
   FlatList,
   TouchableOpacity,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import ScreenWrapper from '../components/layout/ScreenWrapper';
@@ -72,7 +73,7 @@ export default function ExpenseTransactions() {
     createExpenseTransaction,
     updateExpenseTransaction,
   } = useExpenses({ expenseId });
-  const { data, refetch } = expenseQuery;
+  const { data, refetch, loading } = expenseQuery;
   const expense = data?.getExpense;
 
   // Open create sheet when navigated with { openCreate: true }
@@ -83,7 +84,7 @@ export default function ExpenseTransactions() {
       // clear the flag so it doesn't reopen on re-render
       try {
         (navigation as any)?.setParams?.({ openCreate: false });
-      } catch {}
+      } catch { }
     }
   }, [route, navigation]);
 
@@ -99,7 +100,7 @@ export default function ExpenseTransactions() {
       setEditOpen(true);
       try {
         (navigation as any)?.setParams?.({ openTransactionId: null });
-      } catch {}
+      } catch { }
     }
   }, [route, expense?.transactions, navigation, expense]);
 
@@ -282,14 +283,13 @@ export default function ExpenseTransactions() {
         </View>
 
         <Text style={styles.total}>
-          {`${Number(total ?? 0).toLocaleString()}${
-            expense?.currency ? ` ${expense.currency}` : ''
-          }`}
+          {`${Number(total ?? 0).toLocaleString()}${expense?.currency ? ` ${expense.currency}` : ''
+            }`}
         </Text>
 
         {/* Spending limit progress bar */}
         {typeof expense?.spendingLimit === 'number' &&
-        (expense?.spendingLimit ?? 0) > 0 ? (
+          (expense?.spendingLimit ?? 0) > 0 ? (
           <>
             <Text style={styles.diagCaption}>Limit:</Text>
             <HorizontalBar
@@ -299,11 +299,9 @@ export default function ExpenseTransactions() {
               fillColor={barColor}
               trackColor="#1f2937"
               labelColor="#cbd5e1"
-              labelText={`${Number(spent).toLocaleString()}${
-                expense?.currency ? ` ${expense.currency}` : ''
-              } / ${Number(spendingLimit).toLocaleString()}${
-                expense?.currency ? ` ${expense.currency}` : ''
-              }`}
+              labelText={`${Number(spent).toLocaleString()}${expense?.currency ? ` ${expense.currency}` : ''
+                } / ${Number(spendingLimit).toLocaleString()}${expense?.currency ? ` ${expense.currency}` : ''
+                }`}
               style={{ marginTop: 4 }}
             />
           </>
@@ -313,28 +311,48 @@ export default function ExpenseTransactions() {
           contentContainerStyle={styles.listContent}
           data={grouped}
           keyExtractor={([day]) => day}
-          ListEmptyComponent={() => (
-            <View style={styles.emptyWrap}>
-              <Text style={styles.emptyTitle}>No transactions yet</Text>
-              <Text style={styles.emptySub}>
-                Add your first transaction to this expense.
-              </Text>
-              <TouchableOpacity
-                onPress={() => setInfoOpen(true)}
-                activeOpacity={0.7}
-              >
-                <Text style={{ color: '#93c5fd', fontWeight: '700' }}>
-                  What is this?
+          ListHeaderComponent={
+            loading && grouped.length > 0 ? (
+              <View style={styles.loadingWrap}>
+                <ActivityIndicator size="small" color="#60a5fa" />
+                <Text style={styles.loadingText}>Updating...</Text>
+              </View>
+            ) : null
+          }
+          ListEmptyComponent={() => {
+            if (loading) {
+              return (
+                <View style={styles.emptyWrap}>
+                  <ActivityIndicator size="large" color="#60a5fa" />
+                  <Text style={[styles.emptySub, { marginTop: 12 }]}>
+                    Loading transactions...
+                  </Text>
+                </View>
+              );
+            }
+            return (
+              <View style={styles.emptyWrap}>
+                <Text style={styles.emptyTitle}>No transactions yet</Text>
+                <Text style={styles.emptySub}>
+                  Add your first transaction to this expense.
                 </Text>
-              </TouchableOpacity>
-              <RoundedButton
-                title="Add Transaction"
-                onPress={() => setCreateOpen(true)}
-                fullWidth
-                style={{ marginTop: 12 }}
-              />
-            </View>
-          )}
+                <TouchableOpacity
+                  onPress={() => setInfoOpen(true)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={{ color: '#93c5fd', fontWeight: '700' }}>
+                    What is this?
+                  </Text>
+                </TouchableOpacity>
+                <RoundedButton
+                  title="Add Transaction"
+                  onPress={() => setCreateOpen(true)}
+                  fullWidth
+                  style={{ marginTop: 12 }}
+                />
+              </View>
+            );
+          }}
           renderItem={({ item: [day, list] }) => (
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>{formatDate(day)}</Text>
@@ -365,44 +383,44 @@ export default function ExpenseTransactions() {
                   }}
                   onDelete={
                     pendingCreateIds.has(t.id) ||
-                    pendingUpdateIds.has(t.id) ||
-                    pendingDeleteIds.has(t.id)
+                      pendingUpdateIds.has(t.id) ||
+                      pendingDeleteIds.has(t.id)
                       ? undefined
                       : async id => {
-                          Alert.alert(
-                            'Delete Transaction',
-                            'Are you sure you want to delete this transaction?',
-                            [
-                              { text: 'Cancel', style: 'cancel' },
-                              {
-                                text: 'Delete',
-                                style: 'destructive',
-                                onPress: async () => {
-                                  setPendingDeletes(prev => ({
-                                    ...prev,
-                                    [id]: true,
-                                  }));
-                                  try {
-                                    await deleteExpenseTransaction(
-                                      id,
-                                      expenseId,
-                                    );
-                                  } catch (err) {
-                                    console.error(
-                                      'Error deleting transaction:',
-                                      err,
-                                    );
-                                    setPendingDeletes(prev => {
-                                      const next = { ...prev };
-                                      delete next[id];
-                                      return next;
-                                    });
-                                  }
-                                },
+                        Alert.alert(
+                          'Delete Transaction',
+                          'Are you sure you want to delete this transaction?',
+                          [
+                            { text: 'Cancel', style: 'cancel' },
+                            {
+                              text: 'Delete',
+                              style: 'destructive',
+                              onPress: async () => {
+                                setPendingDeletes(prev => ({
+                                  ...prev,
+                                  [id]: true,
+                                }));
+                                try {
+                                  await deleteExpenseTransaction(
+                                    id,
+                                    expenseId,
+                                  );
+                                } catch (err) {
+                                  console.error(
+                                    'Error deleting transaction:',
+                                    err,
+                                  );
+                                  setPendingDeletes(prev => {
+                                    const next = { ...prev };
+                                    delete next[id];
+                                    return next;
+                                  });
+                                }
                               },
-                            ],
-                          );
-                        }
+                            },
+                          ],
+                        );
+                      }
                   }
                 />
               ))}
@@ -522,5 +540,16 @@ const styles = StyleSheet.create({
     marginTop: 6,
     marginBottom: 12,
     textAlign: 'center',
+  },
+  loadingWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 8,
+  },
+  loadingText: {
+    color: '#94a3b8',
+    fontSize: 14,
+    fontWeight: '600',
   },
 });
