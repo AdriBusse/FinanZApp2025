@@ -8,6 +8,7 @@ export const GETEXPENSES = gql`
       sum
       currency
       archived
+      createdAt
       monthlyRecurring
       spendingLimit
       transactions {

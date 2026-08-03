@@ -41,7 +41,7 @@ export default function TransactionListItem({
       </View>
       {typeof amount === 'number' && (
         <Text style={styles.rowAmount}>
-          {`${Math.round(amount).toLocaleString()}${
+          {`${amount.toLocaleString()}${
             currency ? ` ${currency}` : ''
           }`}
         </Text>

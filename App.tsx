@@ -51,6 +51,7 @@ configureGoogleAuth();
 const AuthStack = createNativeStackNavigator();
 const SavingsStack = createNativeStackNavigator();
 const ExpensesStack = createNativeStackNavigator();
+const DashboardStack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 const DARK_BACKGROUND = '#0e0f14';
 
@@ -66,6 +67,23 @@ const AppNavigationTheme = {
     notification: '#2e7d32',
   },
 };
+
+function DashboardStackScreen() {
+  return (
+    <DashboardStack.Navigator screenOptions={{ headerShown: false }}>
+      <DashboardStack.Screen
+        name="Dashboard"
+        component={Dashboard}
+        options={{ title: 'Dashboard' }}
+      />
+      <DashboardStack.Screen
+        name="Record"
+        component={Record}
+        options={{ title: 'Record' }}
+      />
+    </DashboardStack.Navigator>
+  );
+}
 
 function SavingsStackScreen() {
   return (
@@ -193,8 +211,6 @@ function AppTabs() {
               return <ReceiptText {...iconProps} />;
             case 'ReportTab':
               return <PieChart {...iconProps} />;
-            case 'RecordTab':
-              return <Mic {...iconProps} />;
             case 'ProfileTab':
               return <User {...iconProps} />;
             default:
@@ -237,7 +253,7 @@ function AppTabs() {
       {/* Center: Dashboard with custom button */}
       <Tab.Screen
         name="DashboardTab"
-        component={Dashboard}
+        component={DashboardStackScreen}
         options={{
           title: 'Dashboard',
           tabBarButton: props => <CenterTabBarButton {...props} />,
@@ -249,11 +265,6 @@ function AppTabs() {
         name="ReportTab"
         component={Report}
         options={{ title: 'Report' }}
-      />
-      <Tab.Screen
-        name="RecordTab"
-        component={Record}
-        options={{ title: 'Record' }}
       />
       <Tab.Screen
         name="ProfileTab"

@@ -22,6 +22,7 @@ import {
   ExternalLink,
   GripVertical,
   Info,
+  Mic,
 } from 'lucide-react-native';
 import DashboardGrid from '../components/dashboard/DashboardGrid';
 import InfoModal from '../components/atoms/InfoModal';
@@ -327,6 +328,16 @@ export default function Dashboard() {
             <Info color="#94a3b8" size={20} />
           </TouchableOpacity>
         </View>
+
+        {/* Full width button to Record screen */}
+        <TouchableOpacity
+          style={styles.recordFullButton}
+          onPress={() => navigation.navigate('Record')}
+          activeOpacity={0.8}
+        >
+          <Mic color="#ffffff" size={20} style={{ marginRight: 10 }} />
+          <Text style={styles.recordFullButtonText}>Record Voice Transaction</Text>
+        </TouchableOpacity>
 
         {/* Customizable dashboard grid */}
         <View style={styles.gridHeader}>
@@ -771,4 +782,24 @@ const styles = StyleSheet.create({
     borderBottomColor: '#1f2937',
   },
   addItemText: { color: '#e5e7eb', fontSize: 16 },
+  recordFullButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#2563eb',
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: 14,
+    marginBottom: 12,
+    shadowColor: '#2563eb',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  recordFullButtonText: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: '700',
+  },
 });
