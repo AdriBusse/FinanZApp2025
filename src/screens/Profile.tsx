@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { useAuthStore } from '../store/auth';
 import ScreenWrapper from '../components/layout/ScreenWrapper';
-import { useQuery, useMutation } from '@apollo/client';
+import { useQuery, useMutation } from '@apollo/client/react';
 import { ME_QUERY } from '../queries/auth/me';
 import { CHANGE_PASSWORD } from '../queries/mutations/auth/changePassword';
 

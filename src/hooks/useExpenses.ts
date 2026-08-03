@@ -1,5 +1,5 @@
 import { useCallback, useMemo } from 'react';
-import { useMutation, useQuery } from '@apollo/client';
+import { useMutation, useQuery } from '@apollo/client/react';
 import { GETEXPENSES } from '../queries/GetExpenses';
 import { GETARCHIVEDEXPENSES } from '../queries/GetArchivedExpenses';
 import { GETEXPENSE } from '../queries/GetExpense';
@@ -177,7 +177,7 @@ export const useExpenses = (options?: UseExpensesOptions) => {
     expenseId: string,
   ) => {
     console.log("delete ", transactionId);
-    
+
     await deleteExpenseTransactionMutation({
       variables: { id: transactionId },
       refetchQueries: [
@@ -293,12 +293,12 @@ export const useExpenses = (options?: UseExpensesOptions) => {
       : [];
     const icons = Array.isArray(iconsList)
       ? iconsList
-          .map((i: any) => ({
-            icon: i?.icon ?? i?.keyword ?? i?.label,
-            label: i?.label ?? undefined,
-            keyword: i?.keyword ?? undefined,
-          }))
-          .filter(x => !!x.icon)
+        .map((i: any) => ({
+          icon: i?.icon ?? i?.keyword ?? i?.label,
+          label: i?.label ?? undefined,
+          keyword: i?.keyword ?? undefined,
+        }))
+        .filter(x => !!x.icon)
       : [];
     return { colors, icons };
   }, [categoryMetadataQuery.data]);

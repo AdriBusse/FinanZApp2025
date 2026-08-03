@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import { useQuery } from '@apollo/client';
+import { useQuery } from '@apollo/client/react';
 import { SUMMARY_QUERY } from '../queries/Summary';
 import { GETDEPOTS } from '../queries/GetDepots';
 import { GETEXPENSES } from '../queries/GetExpenses';

@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import { useMutation, useQuery } from '@apollo/client';
+import { useMutation, useQuery } from '@apollo/client/react';
 import { GETDEPOTS } from '../queries/GetDepots';
 import { GETDEPOT } from '../queries/GetDepot';
 import { CREATESAVINGDEPOT } from '../queries/mutations/Savings/CreateSavingDepot';

@@ -1,4 +1,4 @@
-import { useMutation } from '@apollo/client';
+import { useMutation } from '@apollo/client/react';
 
 import { GETEXPENSE } from '../queries/GetExpense';
 import { GETDEPOT } from '../queries/GetDepot';

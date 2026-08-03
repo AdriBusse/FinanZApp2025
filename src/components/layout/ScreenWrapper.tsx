@@ -12,6 +12,8 @@ import {
 } from 'react-native';
 import { useAuthStore } from '../../store/auth';
 
+const DEFAULT_BACKGROUND = '#0e0f14';
+
 export type ScreenWrapperProps = {
   children: React.ReactNode;
   scrollable?: boolean; // if true, wraps content in ScrollView; if false, just a View
@@ -24,7 +26,7 @@ export default function ScreenWrapper({
   children,
   scrollable = true,
   contentContainerStyle,
-  backgroundColor,
+  backgroundColor = DEFAULT_BACKGROUND,
   keyboardOffset = 0,
 }: ScreenWrapperProps) {
   const Container = scrollable ? ScrollView : View;
@@ -57,7 +59,7 @@ export default function ScreenWrapper({
             style={[
               StyleSheet.absoluteFillObject,
               styles.loadingOverlay,
-              { backgroundColor: backgroundColor || '#0e0f14' },
+              { backgroundColor },
             ]}
           >
             <ActivityIndicator size="large" color="#93c5fd" />
@@ -69,7 +71,7 @@ export default function ScreenWrapper({
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1 },
+  safeArea: { flex: 1, backgroundColor: DEFAULT_BACKGROUND },
   flex: { flex: 1 },
   scrollContent: { flexGrow: 1 },
   loadingOverlay: {

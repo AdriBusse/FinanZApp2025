@@ -1,8 +1,9 @@
-import { ApolloClient, InMemoryCache, from, ApolloLink } from '@apollo/client';
-import { onError } from '@apollo/client/link/error';
-import { setContext } from '@apollo/client/link/context';
+import { ApolloClient, InMemoryCache, ApolloLink } from '@apollo/client';
+import { SetContextLink } from '@apollo/client/link/context';
 // Use the ESM entry directly (package exports only .mjs files)
-import createUploadLink from 'apollo-upload-client/createUploadLink.mjs';
+import defaultIsExtractableFile from 'extract-files/isExtractableFile.mjs';
+import UploadHttpLink from "apollo-upload-client/UploadHttpLink.mjs";
+
 import { getAuthToken } from '../store/auth';
 
 // NOTE: Update this URL to your backend GraphQL endpoint.
@@ -11,66 +12,58 @@ import { getAuthToken } from '../store/auth';
 // If you have a different endpoint, set it here or provide via native config.
 console.log(process.env.API_URL);
 
-const isReactNativeFile = (value: any) =>
-  value &&
-  typeof value === 'object' &&
-  typeof value.uri === 'string' &&
-  (typeof value.name === 'string' || typeof value.type === 'string');
 
-const uploadLink = createUploadLink({
-  uri: "https://apifinanzv2.ghettohippy.de/graphql",
-  //uri: "http://192.168.100.187:4000/graphql",
-  isExtractableFile: isReactNativeFile,
-}) as unknown as ApolloLink;
 
-let isLoggingOut = false;
-const errorLink = onError(({ graphQLErrors, networkError }) => {
-  try {
-    if (graphQLErrors && graphQLErrors.length) {
-      // Surface GraphQL errors to debug console to aid diagnosis
-      // Each item may contain message, locations, path, and extensions
-      // eslint-disable-next-line no-console
-      console.error('[Apollo] GraphQL errors:', graphQLErrors);
-    }
-    if (networkError) {
-      // eslint-disable-next-line no-console
-      console.error('[Apollo] Network error:', networkError);
-    }
-  } catch {}
-  const hasUnauth =
-    (graphQLErrors || []).some((e: any) => {
-      const code = e?.extensions?.code;
-      return code === 'UNAUTHENTICATED' || code === 'FORBIDDEN';
-    }) ||
-    (networkError as any)?.statusCode === 401;
-  if (hasUnauth) {
-    if (isLoggingOut) return;
-    isLoggingOut = true;
-    try {
-      // Lazy import to avoid circular deps
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
-      const { useAuthStore } = require('../store/auth');
-      Promise.resolve(useAuthStore.getState().logout()).finally(() => {
-        isLoggingOut = false;
-      });
-    } catch {
-      isLoggingOut = false;
-    }
+const isReactNativeFile = (value: any) => {
+  const isCustomFile = !!(
+    value &&
+    typeof value === 'object' &&
+    value.uri &&
+    value.name &&
+    value.type
+  );
+
+  const isFile = isCustomFile || defaultIsExtractableFile(value);
+
+  // Only log if it looks like our file, to avoid log spam on every GraphQL node
+  if (isCustomFile) {
+    console.log('[Apollo] isExtractableFile evaluated true for:', value.uri);
   }
+
+  return isFile;
+};
+
+const uploadLink = new UploadHttpLink({
+  //uri: "https://apifinanzv2.ghettohippy.de/graphql",
+  uri: "http://10.1.0.148:4000/graphql",
+  //isExtractableFile: isReactNativeFile,
 });
 
-const authLink = setContext(async (_, { headers }) => {
+const authLink = new SetContextLink(async ({ headers }) => {
+  // get the authentication token from local storage if it exists
   const token = await getAuthToken();
   return {
     headers: {
       ...headers,
+      'apollo-require-preflight': 'true',
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
   };
 });
 
+
 export const apolloClient = new ApolloClient({
-  link: from([errorLink, authLink, uploadLink]),
+  link: ApolloLink.from([
+    authLink, uploadLink
+  ]),
+  defaultOptions: {
+    watchQuery: {
+      fetchPolicy: 'cache-and-network',
+    },
+    query: {
+      fetchPolicy: 'cache-first',
+    },
+  },
   cache: new InMemoryCache({
     typePolicies: {
       Query: {
@@ -120,3 +113,5 @@ export const apolloClient = new ApolloClient({
     },
   }),
 });
+
+

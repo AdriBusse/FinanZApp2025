@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Formik } from 'formik';
 import * as Yup from 'yup';
-import { useMutation } from '@apollo/client';
+import { useMutation } from '@apollo/client/react';
 import ScreenWrapper from '../components/layout/ScreenWrapper';
 import Input from '../components/atoms/Input';
 import RoundedButton from '../components/atoms/RoundedButton';
@@ -30,7 +30,12 @@ export default function RegisterScreen() {
       <View style={styles.container}>
         <Text style={styles.title}>Create an account</Text>
         <Formik
-          initialValues={{ username: '', email: '', password: '', confirmPassword: '' }}
+          initialValues={{
+            username: '',
+            email: '',
+            password: '',
+            confirmPassword: '',
+          }}
           validationSchema={RegisterSchema}
           validateOnMount
           onSubmit={async (values, { setSubmitting }) => {
@@ -150,10 +155,20 @@ export default function RegisterScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16, paddingTop: 56 },
+  container: {
+    flex: 1,
+    padding: 16,
+    paddingTop: 56,
+    backgroundColor: '#0e0f14',
+  },
   title: { fontSize: 24, fontWeight: '700', marginBottom: 24, color: '#fff' },
   error: { color: 'crimson', marginBottom: 12 },
-  smallError: { color: 'crimson', fontSize: 12, marginTop: -6, marginBottom: 12 },
+  smallError: {
+    color: 'crimson',
+    fontSize: 12,
+    marginTop: -6,
+    marginBottom: 12,
+  },
   linkRow: { flexDirection: 'row', alignItems: 'center', marginTop: 16 },
   linkHint: { color: '#cbd5e1' },
   link: { color: '#2e7d32', fontWeight: '700' },

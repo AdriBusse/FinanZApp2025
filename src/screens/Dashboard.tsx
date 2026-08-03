@@ -60,10 +60,6 @@ export default function Dashboard() {
   const saveTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const [infoOpen, setInfoOpen] = useState(false);
 
-  useEffect(() => {
-    // Initial data load
-    void refetchAll();
-  }, [refetchAll]);
 
   // Load dashboard layout (per user)
   useEffect(() => {

@@ -108,7 +108,8 @@ From `package.json`:
 ## React Native Reference
 
 The following section is the standard React Native getting-started reference kept for convenience.
-
+## Clean Build
+cd android && ./gradlew clean && cd .. && npm run android
 ## Build apk or ABB
 
 Mac:

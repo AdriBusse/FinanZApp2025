@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -35,6 +35,14 @@ type TemplateCategory = {
   color?: string | null;
 };
 
+type ExpenseTemplatesData = {
+  getExpenseTransactionTemplates?: TemplateItem[];
+};
+
+type ExpenseCategoriesData = {
+  getExpenseCategories?: TemplateCategory[];
+};
+
 export default function ExpenseTemplates() {
   const navigation = useNavigation<any>();
   const insets = useSafeAreaInsets();
@@ -50,14 +58,20 @@ export default function ExpenseTemplates() {
     deleteTemplate,
   } = useExpenses({ includeTemplates: true, includeCategories: true });
   const { data: templatesData, refetch: refetchTemplates } =
-    expenseTemplatesQuery;
-  const { data: categoriesData } = categoriesQuery;
+    expenseTemplatesQuery as typeof expenseTemplatesQuery & {
+      data?: ExpenseTemplatesData;
+    };
+  const { data: categoriesData } = categoriesQuery as typeof categoriesQuery & {
+    data?: ExpenseCategoriesData;
+  };
   const categories = categoriesData?.getExpenseCategories ?? [];
 
-  const load = async () => {
-    const { data } = await refetchTemplates();
+  const load = useCallback(async () => {
+    const { data } = (await refetchTemplates()) as {
+      data?: ExpenseTemplatesData;
+    };
     setTemplates(data?.getExpenseTransactionTemplates ?? []);
-  };
+  }, [refetchTemplates]);
 
   useEffect(() => {
     if (templatesData?.getExpenseTransactionTemplates) {
@@ -67,7 +81,7 @@ export default function ExpenseTemplates() {
 
   useEffect(() => {
     void load();
-  }, []);
+  }, [load]);
 
   return (
     <ScreenWrapper scrollable={false}>
@@ -265,7 +279,7 @@ function TemplateFormSheet({
         setSelectedCategoryId(null);
       }
     }
-  }, [open, initial, categories.length, refetch]);
+  }, [open, initial, categories.length, onRefreshCategories]);
 
   const options = useMemo(() => {
     return [

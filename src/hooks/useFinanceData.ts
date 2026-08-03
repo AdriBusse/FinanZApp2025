@@ -1,4 +1,4 @@
-import { useQuery } from '@apollo/client';
+import { useQuery } from '@apollo/client/react';
 import { GETDEPOTS } from '../queries/GetDepots';
 import { SUMMARY_QUERY } from '../queries/Summary';
 import { GETEXPENSES } from '../queries/GetExpenses';

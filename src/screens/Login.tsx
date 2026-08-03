@@ -31,7 +31,7 @@ export default function LoginScreen() {
   if (isInitializing) {
     return (
       <View style={styles.containerCenter}>
-        <ActivityIndicator />
+        <ActivityIndicator color="#93c5fd" />
       </View>
     );
   }
@@ -47,7 +47,7 @@ export default function LoginScreen() {
             setError(null);
             try {
               await login(values.username.trim(), values.password);
-            } catch (e: any) {
+            } catch {
               // Show generic error message without revealing whether username or password was incorrect
               setError('Invalid username or password');
             } finally {
@@ -114,8 +114,18 @@ export default function LoginScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16, paddingTop: 56 },
-  containerCenter: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  container: {
+    flex: 1,
+    padding: 16,
+    paddingTop: 56,
+    backgroundColor: '#0e0f14',
+  },
+  containerCenter: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#0e0f14',
+  },
   title: { fontSize: 24, fontWeight: '700', marginBottom: 24, color: '#fff' },
   input: {
     borderWidth: 1,

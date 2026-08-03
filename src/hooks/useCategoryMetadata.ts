@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { useQuery } from '@apollo/client';
+import { useQuery } from '@apollo/client/react';
 import { CATEGORY_METADATA_QUERY } from '../queries/GetCategoryMetadata';
 
 export type IconMeta = { icon: string; label?: string; keyword?: string };
@@ -20,12 +20,12 @@ export const useCategoryMetadata = () => {
     const list = q.data?.categoryMetadata?.icons ?? [];
     return Array.isArray(list)
       ? list
-          .map((i: any) => ({
-            icon: i?.icon ?? i?.keyword ?? i?.label,
-            label: i?.label ?? undefined,
-            keyword: i?.keyword ?? undefined,
-          }))
-          .filter(x => !!x.icon)
+        .map((i: any) => ({
+          icon: i?.icon ?? i?.keyword ?? i?.label,
+          label: i?.label ?? undefined,
+          keyword: i?.keyword ?? undefined,
+        }))
+        .filter(x => !!x.icon)
       : [];
   }, [q.data]);
 

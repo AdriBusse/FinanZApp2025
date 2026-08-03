@@ -21,14 +21,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     padding: 16,
+    backgroundColor: '#0e0f14',
   },
   title: {
     fontSize: 24,
     fontWeight: '600',
     marginBottom: 8,
+    color: '#f8fafc',
   },
   subtitle: {
     fontSize: 14,
-    color: '#666',
+    color: '#94a3b8',
   },
 });

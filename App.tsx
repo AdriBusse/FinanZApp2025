@@ -2,7 +2,6 @@ import React from 'react';
 import {
   StatusBar,
   StyleSheet,
-  useColorScheme,
   View,
   Pressable,
   ActivityIndicator,
@@ -12,7 +11,7 @@ import {
   useSafeAreaInsets,
 } from 'react-native-safe-area-context';
 import { Platform } from 'react-native';
-import { ApolloProvider } from '@apollo/client';
+import { ApolloProvider } from '@apollo/client/react';
 import Dashboard from './src/screens/Dashboard';
 import Login from './src/screens/Login';
 import Register from './src/screens/Register';
@@ -29,11 +28,7 @@ import Report from './src/screens/Report';
 import Record from './src/screens/Record';
 import { useAuthStore } from './src/store/auth';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import {
-  NavigationContainer,
-  DefaultTheme,
-  DarkTheme,
-} from '@react-navigation/native';
+import { NavigationContainer, DarkTheme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import {
   createBottomTabNavigator,
@@ -53,6 +48,20 @@ const AuthStack = createNativeStackNavigator();
 const SavingsStack = createNativeStackNavigator();
 const ExpensesStack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
+const DARK_BACKGROUND = '#0e0f14';
+
+const AppNavigationTheme = {
+  ...DarkTheme,
+  colors: {
+    ...DarkTheme.colors,
+    primary: '#2e7d32',
+    background: DARK_BACKGROUND,
+    card: '#141821',
+    text: '#f8fafc',
+    border: '#1f2937',
+    notification: '#2e7d32',
+  },
+};
 
 function SavingsStackScreen() {
   return (
@@ -119,6 +128,7 @@ function AppTabs() {
       accessibilityLabel,
       accessibilityRole,
       testID,
+      children,
     } = props;
     const selected = Boolean(accessibilityState?.selected);
 
@@ -143,8 +153,8 @@ function AppTabs() {
           style={{
             borderRadius: 40,
             borderWidth: selected ? 6 : 2,
-            borderColor: selected ? '#2e7d32' : 'rgba(0,0,0,0.75)',
-            backgroundColor: selected ? 'rgba(46,125,50,0.08)' : 'white',
+            borderColor: selected ? '#2e7d32' : '#1f2937',
+            backgroundColor: selected ? 'rgba(46,125,50,0.16)' : '#141821',
             width: 68,
             height: 68,
             justifyContent: 'center',
@@ -156,7 +166,7 @@ function AppTabs() {
             shadowOffset: { width: 0, height: 3 },
           }}
         >
-          <Home color={selected ? '#2e7d32' : '#444'} size={30} />
+          {children}
         </View>
       </Pressable>
     );
@@ -190,10 +200,22 @@ function AppTabs() {
         headerShown: false,
         tabBarShowLabel: true,
         tabBarActiveTintColor: '#2e7d32',
+        tabBarInactiveTintColor: '#94a3b8',
+        sceneContainerStyle: {
+          backgroundColor: DARK_BACKGROUND,
+        },
         tabBarStyle: {
           height: 64 + (insets.bottom || 0),
           paddingTop: 6,
           paddingBottom: Math.max(8, insets.bottom || 0),
+          backgroundColor: '#141821',
+          borderTopColor: '#1f2937',
+          borderTopWidth: StyleSheet.hairlineWidth,
+          elevation: 0,
+        },
+        tabBarLabelStyle: {
+          fontSize: 12,
+          fontWeight: '600',
         },
       })}
     >
@@ -214,10 +236,7 @@ function AppTabs() {
         component={Dashboard}
         options={{
           title: 'Dashboard',
-          // Render our own button so we can show active green border
           tabBarButton: props => <CenterTabBarButton {...props} />,
-          // Avoid rendering the default icon/label as children of tabBarButton
-          tabBarIcon: () => null,
           tabBarLabel: () => null,
         }}
       />
@@ -242,7 +261,6 @@ function AppTabs() {
 }
 
 function AppInner() {
-  const isDarkMode = useColorScheme() === 'dark';
   const { token, initFromStorage, isInitializing, user } = useAuthStore();
   const insets = useSafeAreaInsets();
 
@@ -257,10 +275,10 @@ function AppInner() {
         { paddingTop: Platform.OS === 'android' ? insets.top : 0 },
       ]}
     >
-      <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
+      <StatusBar barStyle="light-content" backgroundColor={DARK_BACKGROUND} />
       <NavigationContainer
         key={token ? `auth:${user?.id ?? 'unknown'}` : 'auth:guest'}
-        theme={isDarkMode ? DarkTheme : DefaultTheme}
+        theme={AppNavigationTheme}
       >
         {isInitializing ? (
           <View
@@ -268,7 +286,7 @@ function AppInner() {
               flex: 1,
               alignItems: 'center',
               justifyContent: 'center',
-              backgroundColor: '#0e0f14',
+              backgroundColor: DARK_BACKGROUND,
             }}
           >
             <ActivityIndicator size="large" color="#93c5fd" />
@@ -276,17 +294,14 @@ function AppInner() {
         ) : token ? (
           <AppTabs />
         ) : (
-          <AuthStack.Navigator>
-            <AuthStack.Screen
-              name="Login"
-              component={Login}
-              options={{ headerShown: false }}
-            />
-            <AuthStack.Screen
-              name="Register"
-              component={Register}
-              options={{ headerShown: false }}
-            />
+          <AuthStack.Navigator
+            screenOptions={{
+              headerShown: false,
+              contentStyle: { backgroundColor: DARK_BACKGROUND },
+            }}
+          >
+            <AuthStack.Screen name="Login" component={Login} />
+            <AuthStack.Screen name="Register" component={Register} />
           </AuthStack.Navigator>
         )}
       </NavigationContainer>
@@ -296,9 +311,9 @@ function AppInner() {
 
 function App() {
   return (
-    <GestureHandlerRootView>
+    <GestureHandlerRootView style={styles.container}>
       <ApolloProvider client={apolloClient}>
-        <GestureHandlerRootView style={{ flex: 1 }}>
+        <GestureHandlerRootView style={styles.container}>
           <SafeAreaProvider>
             <AppInner />
           </SafeAreaProvider>
@@ -311,6 +326,7 @@ function App() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: DARK_BACKGROUND,
   },
 });
 

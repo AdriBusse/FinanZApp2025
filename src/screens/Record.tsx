@@ -11,9 +11,11 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { useMutation } from '@apollo/client';
+
+import { useMutation } from '@apollo/client/react';
 import { useNavigation } from '@react-navigation/native';
 import Sound from 'react-native-nitro-sound';
+import RNFS from 'react-native-fs';
 import { Mic, Square, Loader2, Play, Pause, CheckCircle } from 'lucide-react-native';
 import ScreenWrapper from '../components/layout/ScreenWrapper';
 import Dropdown from '../components/atoms/Dropdown';
@@ -67,7 +69,6 @@ function formatDuration(ms: number) {
 
 export default function Record() {
   const navigation = useNavigation<any>();
-  const recorder = useRef(new Sound()).current;
   const listRef = useRef<FlatList<VoiceMessage>>(null);
   const [isRecording, setIsRecording] = useState(false);
   const [recordDuration, setRecordDuration] = useState(0);
@@ -97,27 +98,45 @@ export default function Record() {
   );
   const [confirmVoiceMutation] = useMutation(CONFIRM_VOICE_TRANSACTION);
 
-  // Cleanup recorder on unmount
+  // Cleanup on unmount
   useEffect(() => {
     return () => {
-      recorder.stopRecorder().catch(() => {});
-      recorder.removeRecordBackListener();
-      recorder.stopPlayer().catch(() => {});
-      recorder.removePlayBackListener();
+      Sound.stopRecorder().catch(() => { });
+      Sound.removeRecordBackListener();
+      Sound.stopPlayer().catch(() => { });
+      Sound.removePlayBackListener();
+      Sound.removePlaybackEndListener();
     };
-  }, [recorder]);
+  }, []);
 
-  const requestMicrophonePermission = async () => {
+  const requestPermissions = async () => {
     if (Platform.OS !== 'android') return true;
-    const granted = await PermissionsAndroid.request(
+
+    console.log('--- Requesting All Audio & Storage Permissions ---');
+
+    const permissions = [
       PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
-      {
-        title: 'Microphone Permission',
-        message: 'FinanZ needs access to your microphone to record expenses.',
-        buttonPositive: 'Allow',
-      },
-    );
-    return granted === PermissionsAndroid.RESULTS.GRANTED;
+      PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE,
+      PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE,
+      (PermissionsAndroid.PERMISSIONS as any).READ_MEDIA_AUDIO,
+    ].filter(Boolean);
+
+    const granted = await PermissionsAndroid.requestMultiple(permissions);
+
+    const isAudioAllowed = granted[PermissionsAndroid.PERMISSIONS.RECORD_AUDIO] === PermissionsAndroid.RESULTS.GRANTED;
+
+    // Storage is allowed if ANY relevant storage permission is granted
+    const isStorageAllowed =
+      granted[PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE] === PermissionsAndroid.RESULTS.GRANTED ||
+      granted[(PermissionsAndroid.PERMISSIONS as any).READ_MEDIA_AUDIO] === PermissionsAndroid.RESULTS.GRANTED;
+
+    console.log('Permission Results:', {
+      isAudioAllowed,
+      isStorageAllowed,
+      details: granted
+    });
+
+    return isAudioAllowed && isStorageAllowed;
   };
 
   const startRecording = async () => {
@@ -125,7 +144,7 @@ export default function Record() {
       Alert.alert('Select an expense', 'Please choose an expense before recording.');
       return;
     }
-    const allowed = await requestMicrophonePermission();
+    const allowed = await requestPermissions();
     if (!allowed) {
       Alert.alert('Permission required', 'Microphone access is needed to record audio.');
       return;
@@ -133,11 +152,14 @@ export default function Record() {
     try {
       setRecordDuration(0);
       setIsRecording(true);
-      await recorder.startRecorder();
-      recorder.addRecordBackListener(e => {
-        setRecordDuration(Math.floor(e.current_position));
-        return;
+
+      // Register listener BEFORE starting, as per documentation
+      Sound.addRecordBackListener(e => {
+        setRecordDuration(e.currentPosition);
       });
+
+      await Sound.startRecorder();
+      console.log('Recording started');
     } catch (error) {
       console.error('Failed to start recording', error);
       setIsRecording(false);
@@ -147,12 +169,15 @@ export default function Record() {
 
   const stopRecording = async () => {
     try {
-      const uri = await recorder.stopRecorder();
-      recorder.removeRecordBackListener();
+      const uri = await Sound.stopRecorder();
+      console.log("result recorder: ", uri);
+
+      Sound.removeRecordBackListener();
       setIsRecording(false);
-      if (uri) {
-        void handleProcessUpload(uri, recordDuration, selectedExpenseId as string);
-      }
+
+      console.log('Recording stopped:', uri);
+      handleProcessUpload(uri, recordDuration, selectedExpenseId as string);
+
     } catch (error) {
       console.error('Failed to stop recording', error);
       setIsRecording(false);
@@ -180,66 +205,50 @@ export default function Record() {
     ]);
     setIsProcessingUpload(true);
     try {
-      const file = {
-        uri,
-        name: `voice-${Date.now()}.m4a`,
-        type: 'audio/m4a',
-      } as const;
+
+      const base64File = await RNFS.readFile(uri, 'base64');
+      const fileExtension = uri.split('.').pop() || 'm4a';
+
       const { data } = await processVoiceMutation({
         variables: {
+          base64File,
+          fileExtension,
           expenseId,
-          file,
           language: selectedLanguage === 'auto' ? undefined : selectedLanguage,
         },
       });
-      const result = data?.processVoiceExpense;
-      setMessages(prev => {
-        const updated = prev.map(msg =>
-          msg.id === audioId && msg.type === 'audio'
-            ? { ...msg, status: 'done' }
-            : msg,
-        );
-        if (!result) return updated;
-        return [
-          ...updated,
-          {
-            id: result.id,
-            type: 'system',
-            expenseId,
-            title: result.title,
-            amount: result.amount,
-            suggestedCategoryId: result.suggestedCategoryId ?? null,
-            suggestedCategoryName: result.suggestedCategoryName ?? null,
-            categoryId: result.suggestedCategoryId ?? null,
-            categoryName: result.suggestedCategoryName ?? null,
-            titleInput: result.title,
-            amountInput: `${result.amount}`,
-            recordedAt,
-          },
-        ];
-      });
-    } catch (error: any) {
-      const errMsg =
-        error instanceof Error
-          ? error.message
-          : typeof error?.message === 'string'
-          ? error.message
-          : 'Upload failed';
-      console.error('processVoiceExpense failed', error);
+      console.log({ data });
+
+      if (data?.processVoiceExpense) {
+        const result = data.processVoiceExpense;
+        setMessages(prev => {
+          const updated = prev.map(m =>
+            m.id === audioId ? { ...m, status: 'done' as const } : m
+          );
+          return [
+            ...updated,
+            {
+              id: `sys-${Date.now()}`,
+              type: 'system',
+              expenseId,
+              title: result.title || '',
+              amount: result.amount || 0,
+              suggestedCategoryId: result.suggestedCategoryId,
+              suggestedCategoryName: result.suggestedCategoryName,
+              titleInput: result.title || '',
+              amountInput: String(result.amount || ''),
+              recordedAt: Date.now(),
+            },
+          ];
+        });
+      }
+
+    } catch (e: any) {
+      console.log("Something went wrong while uploading the file.", e);
       setMessages(prev =>
-        prev.map(msg =>
-          msg.id === audioId && msg.type === 'audio'
-            ? {
-                ...msg,
-                status: 'error',
-                error: errMsg,
-              }
-            : msg,
-        ),
-      );
-      Alert.alert(
-        'Processing failed',
-        errMsg || 'Unable to process the recording. Please try again.',
+        prev.map(m =>
+          m.id === audioId ? { ...m, status: 'error' as const, error: e.message || 'Upload failed' } : m
+        )
       );
     } finally {
       setIsProcessingUpload(false);
@@ -284,8 +293,8 @@ export default function Record() {
         error instanceof Error
           ? error.message
           : typeof error?.message === 'string'
-          ? error.message
-          : 'Saving the transaction failed. Please try again.';
+            ? error.message
+            : 'Saving the transaction failed. Please try again.';
       console.error('confirmVoiceTransaction failed', error);
       Alert.alert('Could not confirm', errMsg);
       setMessages(prev =>
@@ -312,7 +321,7 @@ export default function Record() {
       await recorder.startPlayer(message.uri);
       recorder.addPlayBackListener(e => {
         if (e.currentPosition >= e.duration) {
-          recorder.stopPlayer().catch(() => {});
+          recorder.stopPlayer().catch(() => { });
           recorder.removePlayBackListener();
           setPlayingId(null);
         }
@@ -332,7 +341,7 @@ export default function Record() {
   const scrollToBottom = () => {
     try {
       listRef.current?.scrollToEnd({ animated: true });
-    } catch {}
+    } catch { }
   };
 
   useEffect(() => {
@@ -425,8 +434,8 @@ export default function Record() {
     const statusStyle = item.transactionId
       ? styles.successBubble
       : item.rejected
-      ? styles.rejectedBubble
-      : null;
+        ? styles.rejectedBubble
+        : null;
 
     // Condensed pill when finalized
     if (finalized) {
@@ -520,7 +529,7 @@ export default function Record() {
               placeholder="Select category"
             />
           ) : null}
-            <Text style={styles.metaText}>{formatTimestamp(item.recordedAt)}</Text>
+          <Text style={styles.metaText}>{formatTimestamp(item.recordedAt)}</Text>
 
           <View style={styles.actionRow}>
             <RoundedButton
@@ -616,8 +625,8 @@ export default function Record() {
                   {isRecording
                     ? `Recording... ${formatDuration(recordDuration)}`
                     : isProcessingVoice || isProcessingUpload
-                    ? 'Processing recording...'
-                    : 'Ready'}
+                      ? 'Processing recording...'
+                      : 'Ready'}
                 </Text>
               </View>
               <TouchableOpacity
@@ -626,7 +635,7 @@ export default function Record() {
                   styles.recordButton,
                   isRecording && styles.recording,
                   (!selectedExpenseId || isProcessingVoice || isProcessingUpload) &&
-                    styles.recordDisabled,
+                  styles.recordDisabled,
                 ]}
                 onPress={isRecording ? stopRecording : startRecording}
                 disabled={!selectedExpenseId || isProcessingVoice || isProcessingUpload}
@@ -736,7 +745,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
     marginTop: 4,
-    },
+  },
   playButton: {
     marginTop: 10,
     alignSelf: 'flex-end',
