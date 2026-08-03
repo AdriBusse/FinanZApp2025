@@ -13,6 +13,7 @@ import { useAuthStore } from '../store/auth';
 import RoundedButton from '../components/atoms/RoundedButton';
 import { useNavigation } from '@react-navigation/native';
 import ScreenWrapper from '../components/layout/ScreenWrapper';
+import { authenticateWithGoogle } from '../services/googleAuth';
 
 const LoginSchema = Yup.object().shape({
   username: Yup.string().trim().required('Username is required'),
@@ -20,8 +21,10 @@ const LoginSchema = Yup.object().shape({
 });
 
 export default function LoginScreen() {
-  const { login, initFromStorage, isInitializing } = useAuthStore();
+  const { login, googleLogin, initFromStorage, isInitializing } =
+    useAuthStore();
   const [error, setError] = useState<string | null>(null);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const navigation = useNavigation<any>();
 
   useEffect(() => {
@@ -35,6 +38,30 @@ export default function LoginScreen() {
       </View>
     );
   }
+
+  const onGoogleLogin = async () => {
+    setError(null);
+    setGoogleLoading(true);
+    try {
+      const authentication = await authenticateWithGoogle();
+      if (authentication.type === 'cancelled') return;
+      const result = await googleLogin(authentication.idToken);
+      if (result.status === 'REGISTRATION_REQUIRED') {
+        navigation.navigate('GoogleSignup', {
+          idToken: authentication.idToken,
+          verifiedEmail: result.verifiedEmail,
+        });
+      } else if (result.status === 'LINK_REQUIRED') {
+        setError(
+          'An account already uses this email. Log in with your username and password, then connect Google from Profile.',
+        );
+      }
+    } catch (googleError: any) {
+      setError(googleError?.message || 'Google Sign-In failed.');
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
 
   return (
     <ScreenWrapper>
@@ -97,6 +124,20 @@ export default function LoginScreen() {
                 style={{ marginTop: 8 }}
               />
 
+              <View style={styles.dividerRow}>
+                <View style={styles.divider} />
+                <Text style={styles.dividerLabel}>or</Text>
+                <View style={styles.divider} />
+              </View>
+
+              <RoundedButton
+                title={googleLoading ? 'Connecting...' : 'Continue with Google'}
+                onPress={onGoogleLogin}
+                loading={googleLoading}
+                variant="outline"
+                fullWidth
+              />
+
               <View style={styles.linkRow}>
                 <Text style={styles.linkHint}>Don't have an account?</Text>
                 <TouchableOpacity
@@ -138,4 +179,15 @@ const styles = StyleSheet.create({
   linkRow: { flexDirection: 'row', alignItems: 'center', marginTop: 16 },
   linkHint: { color: '#cbd5e1' },
   link: { color: '#2e7d32', fontWeight: '700' },
+  dividerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 18,
+  },
+  divider: {
+    flex: 1,
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: '#475569',
+  },
+  dividerLabel: { color: '#94a3b8', marginHorizontal: 12 },
 });

@@ -15,6 +15,7 @@ import { ApolloProvider } from '@apollo/client/react';
 import Dashboard from './src/screens/Dashboard';
 import Login from './src/screens/Login';
 import Register from './src/screens/Register';
+import GoogleSignup from './src/screens/GoogleSignup';
 import SavingsList from './src/screens/SavingsList';
 import SavingTransactions from './src/screens/SavingTransactions';
 import Expenses from './src/screens/Expenses';
@@ -43,6 +44,9 @@ import {
   Mic,
 } from 'lucide-react-native';
 import { apolloClient } from './src/apollo/client';
+import { configureGoogleAuth } from './src/services/googleAuth';
+
+configureGoogleAuth();
 
 const AuthStack = createNativeStackNavigator();
 const SavingsStack = createNativeStackNavigator();
@@ -302,6 +306,7 @@ function AppInner() {
           >
             <AuthStack.Screen name="Login" component={Login} />
             <AuthStack.Screen name="Register" component={Register} />
+            <AuthStack.Screen name="GoogleSignup" component={GoogleSignup} />
           </AuthStack.Navigator>
         )}
       </NavigationContainer>

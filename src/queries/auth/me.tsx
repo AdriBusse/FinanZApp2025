@@ -7,6 +7,8 @@ export const ME_QUERY = gql`
       username
       firstName
       email
+      linkedProviders
+      hasPassword
     }
   }
 `;

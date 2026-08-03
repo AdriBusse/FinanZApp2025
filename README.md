@@ -66,6 +66,23 @@ const GRAPHQL_URL = 'localhost...';
 - Auth: a bearer token is injected via `Authorization: Bearer <token>` using `getAuthToken()` and stored with `react-native-keychain`. Biometrics may be required to access it.
 - Optional: If you use GraphQL Codegen, adjust the `codegen` script in `package.json` to point `GRAPHQL_ENDPOINT` at your server before running.
 
+### Google Sign-In setup
+
+Google authentication uses the free Original API from the public
+`@react-native-google-signin/google-signin` npm package. Install dependencies
+normally with `npm ci`; no private-registry token is required.
+
+1. Put the web and iOS OAuth client IDs in `app.json`. The backend must use the
+   same web client ID as `GOOGLE_WEB_CLIENT_ID`.
+2. Register Android OAuth clients for package `com.finanz` with the SHA-1 of
+   every debug, release, CI, and Google Play signing certificate.
+3. Register the iOS client for bundle ID `com.finanz`, and provide its reversed
+   client ID to Xcode as the `GOOGLE_IOS_REVERSED_CLIENT_ID` build setting.
+4. Run `bundle exec pod install` from `ios/` and rebuild both native apps.
+
+OAuth client IDs are identifiers, not secrets. Do not commit OAuth client
+secrets, signing keys, or backend credentials.
+
 ## Scripts
 From `package.json`:
 

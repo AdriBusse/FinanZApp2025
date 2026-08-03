@@ -1,4 +1,8 @@
 {
   "name": "FinanZ",
-  "displayName": "FinanZ"
+  "displayName": "FinanZ",
+  "googleAuth": {
+    "webClientId": "206091257357-c60jofeh3qhk8a91an7gkrdbd2grmh06.apps.googleusercontent.com",
+    "iosClientId": "206091257357-t8k4p4st67rpa1jo1298hm8hnsnf855j.apps.googleusercontent.com"
+  }
 }

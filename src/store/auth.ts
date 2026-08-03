@@ -5,18 +5,30 @@ import {
   resetSecureToken,
 } from '../services/secureToken';
 import { ME_QUERY } from '../queries/auth/me';
+import { signOutFromGoogle } from '../services/googleAuth';
 
 export interface User {
   id: string;
   username?: string;
   email?: string;
+  linkedProviders: Array<'GOOGLE'>;
+  hasPassword: boolean;
 }
+
+export type GoogleLoginResult =
+  | { status: 'AUTHENTICATED' }
+  | {
+      status: 'REGISTRATION_REQUIRED' | 'LINK_REQUIRED';
+      verifiedEmail: string;
+    };
 
 interface AuthState {
   token: string | null;
   user: User | null;
   isInitializing: boolean;
   login: (username: string, password: string) => Promise<void>;
+  googleLogin: (idToken: string) => Promise<GoogleLoginResult>;
+  completeGoogleSignup: (idToken: string, username: string) => Promise<void>;
   logout: () => Promise<void>;
   initFromStorage: () => Promise<void>;
 }
@@ -26,7 +38,6 @@ const USER_KEY = 'auth.user';
 // Safe AsyncStorage access for test environments
 const getStorage = () => {
   try {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
     const mod = require('@react-native-async-storage/async-storage');
     return mod.default || mod;
   } catch {
@@ -43,6 +54,41 @@ const getStorage = () => {
         });
       },
     } as const;
+  }
+};
+
+const persistAuthenticatedSession = async (
+  set: (state: Partial<AuthState>) => void,
+  token: string,
+): Promise<void> => {
+  const storage = getStorage();
+  // Set first so Apollo includes the new session in Me verification.
+  set({ token });
+  await setSecureToken(token);
+
+  try {
+    // Lazy import avoids the Apollo/auth-store module cycle during startup.
+    const { apolloClient } = require('../apollo/client');
+    await apolloClient.clearStore();
+    const meRes = await apolloClient.query({
+      query: ME_QUERY,
+      fetchPolicy: 'no-cache',
+    });
+    const me: User | null = meRes?.data?.me ?? null;
+    if (!me) throw new Error('Verification failed');
+    await storage.setItem(USER_KEY, JSON.stringify(me));
+    set({ token, user: me });
+  } catch (error) {
+    try {
+      const { apolloClient } = require('../apollo/client');
+      await Promise.all([
+        resetSecureToken(),
+        storage.multiRemove([USER_KEY]),
+        apolloClient.clearStore(),
+      ]);
+    } catch {}
+    set({ token: null, user: null });
+    throw error;
   }
 };
 
@@ -100,22 +146,20 @@ export const useAuthStore = create<AuthState>(set => ({
       }
 
       set({ isInitializing: false });
-    } catch (e) {
+    } catch {
       set({ token: null, user: null, isInitializing: false });
     }
   },
   login: async (username: string, password: string) => {
-    const storage = getStorage();
     const uname = (username ?? '').trim();
     const pwd = password ?? '';
     if (!uname || !pwd) throw new Error('Invalid username or password');
 
-      // Execute GraphQL LOGIN mutation against backend
+    // Execute GraphQL LOGIN mutation against backend
     try {
       // Lazy import to avoid circular deps in native envs
       const { apolloClient } = require('../apollo/client');
       const { LOGIN } = require('../queries/mutations/auth/login');
-      const { ME_QUERY } = require('../queries/auth/me');
 
       const result = await apolloClient.mutate({
         mutation: LOGIN,
@@ -128,31 +172,7 @@ export const useAuthStore = create<AuthState>(set => ({
         throw new Error('Invalid login response');
       }
 
-      // Put token in memory immediately so subsequent requests (Me) include Authorization
-      set({ token: payload.token });
-
-      // Store token securely (Keychain/Keystore) with biometric protection (with fallbacks)
-      await setSecureToken(payload.token);
-
-      // Verify token strictly: if Me fails, force logout and abort login
-      try {
-        const meRes = await apolloClient.query({
-          query: ME_QUERY,
-          fetchPolicy: 'no-cache', // No cache for auth verification
-        });
-        const me: User | null = meRes?.data?.me ?? null;
-        if (!me) throw new Error('Verification failed');
-        await storage.setItem(USER_KEY, JSON.stringify(me));
-        set({ token: payload.token, user: me });
-      } catch {
-        try {
-          await resetSecureToken();
-          await storage.multiRemove([USER_KEY]);
-          await apolloClient.clearStore();
-        } catch {}
-        set({ token: null, user: null });
-        throw new Error('Invalid username or password');
-      }
+      await persistAuthenticatedSession(set, payload.token);
 
       // After successful login, let components load data as needed
       // This prevents blocking the login flow with unnecessary data loading
@@ -169,12 +189,58 @@ export const useAuthStore = create<AuthState>(set => ({
       throw new Error('Invalid username or password');
     }
   },
+  googleLogin: async (idToken: string) => {
+    const { apolloClient } = require('../apollo/client');
+    const { GOOGLE_LOGIN } = require('../queries/mutations/auth/googleAuth');
+    const result = await apolloClient.mutate({
+      mutation: GOOGLE_LOGIN,
+      variables: { idToken },
+      fetchPolicy: 'no-cache',
+    });
+    const payload = result?.data?.googleLogin;
+    if (!payload?.status) throw new Error('Invalid Google login response');
+
+    if (payload.status === 'AUTHENTICATED') {
+      if (!payload.token) throw new Error('Invalid Google login response');
+      await persistAuthenticatedSession(set, payload.token);
+      return { status: 'AUTHENTICATED' } as const;
+    }
+    if (
+      payload.status === 'REGISTRATION_REQUIRED' ||
+      payload.status === 'LINK_REQUIRED'
+    ) {
+      return {
+        status: payload.status,
+        verifiedEmail: payload.verifiedEmail,
+      } as GoogleLoginResult;
+    }
+    throw new Error('Unsupported Google login response');
+  },
+  completeGoogleSignup: async (idToken: string, username: string) => {
+    const { apolloClient } = require('../apollo/client');
+    const {
+      COMPLETE_GOOGLE_SIGNUP,
+    } = require('../queries/mutations/auth/googleAuth');
+    const result = await apolloClient.mutate({
+      mutation: COMPLETE_GOOGLE_SIGNUP,
+      variables: { idToken, username: username.trim() },
+      fetchPolicy: 'no-cache',
+    });
+    const payload = result?.data?.completeGoogleSignup;
+    if (payload?.status !== 'AUTHENTICATED' || !payload.token) {
+      throw new Error('Google signup failed');
+    }
+    await persistAuthenticatedSession(set, payload.token);
+  },
   logout: async () => {
     const storage = getStorage();
-    await resetSecureToken();
-    await storage.multiRemove([USER_KEY]);
     // Clear in-memory auth first so subsequent operations don't use a stale token
     set({ token: null, user: null });
+    await Promise.all([
+      resetSecureToken(),
+      storage.multiRemove([USER_KEY]),
+      signOutFromGoogle(),
+    ]);
 
     // Also clear Apollo cache to wipe user-specific cached data
     try {

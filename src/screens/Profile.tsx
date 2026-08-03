@@ -13,24 +13,56 @@ import ScreenWrapper from '../components/layout/ScreenWrapper';
 import { useQuery, useMutation } from '@apollo/client/react';
 import { ME_QUERY } from '../queries/auth/me';
 import { CHANGE_PASSWORD } from '../queries/mutations/auth/changePassword';
+import {
+  LINK_GOOGLE_ACCOUNT,
+  SET_PASSWORD_FOR_GOOGLE_ACCOUNT,
+} from '../queries/mutations/auth/googleAuth';
+import { authenticateWithGoogle } from '../services/googleAuth';
+
+type MeData = {
+  me: {
+    email?: string;
+    linkedProviders: string[];
+    hasPassword: boolean;
+  } | null;
+};
 
 export default function Profile() {
   const { user, logout } = useAuthStore();
-  const { data } = useQuery(ME_QUERY, { fetchPolicy: 'cache-first' });
+  const { data, refetch } = useQuery<MeData>(ME_QUERY, {
+    fetchPolicy: 'cache-first',
+  });
   const [expanded, setExpanded] = React.useState(false);
   const [currentPassword, setCurrentPassword] = React.useState('');
   const [newPassword, setNewPassword] = React.useState('');
   const [confirmNewPassword, setConfirmNewPassword] = React.useState('');
-  const [changePassword, { loading }] = useMutation(CHANGE_PASSWORD);
+  const [changePassword, { loading }] = useMutation<{
+    changePassword: boolean;
+  }>(CHANGE_PASSWORD);
+  const [linkGoogleAccount, { loading: linkingGoogle }] = useMutation<{
+    linkGoogleAccount: boolean;
+  }>(LINK_GOOGLE_ACCOUNT);
+  const [setPasswordForGoogleAccount, { loading: settingPassword }] =
+    useMutation<{ setPasswordForGoogleAccount: boolean }>(
+      SET_PASSWORD_FOR_GOOGLE_ACCOUNT,
+    );
 
   // Read version from package.json (Metro supports JSON require)
   const pkg = require('../../package.json');
   const version: string = pkg?.version ?? '0.0.0';
 
   const email = data?.me?.email ?? user?.email ?? '—';
+  const linkedProviders: string[] =
+    data?.me?.linkedProviders ?? user?.linkedProviders ?? [];
+  const googleConnected = linkedProviders.includes('GOOGLE');
+  const hasPassword = data?.me?.hasPassword ?? user?.hasPassword ?? true;
 
   const onSubmit = async () => {
-    if (!currentPassword || !newPassword || !confirmNewPassword) {
+    if (
+      (hasPassword && !currentPassword) ||
+      !newPassword ||
+      !confirmNewPassword
+    ) {
       Alert.alert('Missing fields', 'Please fill in all password fields.');
       return;
     }
@@ -42,11 +74,32 @@ export default function Profile() {
       return;
     }
     try {
-      const res = await changePassword({
-        variables: { currentPassword, newPassword },
-      });
-      if (res?.data?.changePassword) {
-        Alert.alert('Success', 'Password changed successfully.');
+      let passwordUpdated = false;
+      if (hasPassword) {
+        const res = await changePassword({
+          variables: { currentPassword, newPassword },
+        });
+        passwordUpdated = Boolean(res?.data?.changePassword);
+      } else {
+        const authentication = await authenticateWithGoogle(true);
+        if (authentication.type === 'cancelled') return;
+        const res = await setPasswordForGoogleAccount({
+          variables: {
+            idToken: authentication.idToken,
+            newPassword,
+          },
+        });
+        passwordUpdated = Boolean(res?.data?.setPasswordForGoogleAccount);
+      }
+
+      if (passwordUpdated) {
+        await refetch();
+        Alert.alert(
+          'Success',
+          hasPassword
+            ? 'Password changed successfully.'
+            : 'Password set successfully.',
+        );
         setCurrentPassword('');
         setNewPassword('');
         setConfirmNewPassword('');
@@ -56,6 +109,25 @@ export default function Profile() {
       }
     } catch (e: any) {
       Alert.alert('Error', e?.message ?? 'Failed to change password');
+    }
+  };
+
+  const onConnectGoogle = async () => {
+    try {
+      const authentication = await authenticateWithGoogle(true);
+      if (authentication.type === 'cancelled') return;
+      const result = await linkGoogleAccount({
+        variables: { idToken: authentication.idToken },
+      });
+      if (result?.data?.linkGoogleAccount) {
+        await refetch();
+        Alert.alert('Connected', 'Your Google account is now connected.');
+      }
+    } catch (linkError: any) {
+      Alert.alert(
+        'Could not connect Google',
+        linkError?.message || 'Google account linking failed.',
+      );
     }
   };
 
@@ -78,6 +150,29 @@ export default function Profile() {
           </Text>
         </View>
 
+        <View style={styles.box}>
+          <Text style={styles.boxTitle}>Connected accounts</Text>
+          <View style={styles.connectedRow}>
+            <View>
+              <Text style={styles.providerName}>Google</Text>
+              <Text style={styles.providerStatus}>
+                {googleConnected ? 'Connected' : 'Not connected'}
+              </Text>
+            </View>
+            {googleConnected ? (
+              <Text style={styles.connectedBadge}>Connected</Text>
+            ) : (
+              <Button
+                title={
+                  linkingGoogle ? 'Connecting...' : 'Connect Google account'
+                }
+                onPress={onConnectGoogle}
+                disabled={linkingGoogle}
+              />
+            )}
+          </View>
+        </View>
+
         {/* Change Password Box with Accordion */}
         <View style={styles.box}>
           <TouchableOpacity
@@ -85,20 +180,29 @@ export default function Profile() {
             style={styles.accordionHeader}
             accessibilityRole="button"
           >
-            <Text style={styles.accordionTitle}>Change Password</Text>
+            <Text style={styles.accordionTitle}>
+              {hasPassword ? 'Change Password' : 'Set Password'}
+            </Text>
             <Text style={styles.accordionChevron}>{expanded ? '▲' : '▼'}</Text>
           </TouchableOpacity>
           {expanded && (
             <View style={styles.accordionBody}>
-              <TextInput
-                style={styles.input}
-                value={currentPassword}
-                onChangeText={setCurrentPassword}
-                placeholder="Current password"
-                placeholderTextColor="#7c8591"
-                secureTextEntry
-                autoCapitalize="none"
-              />
+              {hasPassword ? (
+                <TextInput
+                  style={styles.input}
+                  value={currentPassword}
+                  onChangeText={setCurrentPassword}
+                  placeholder="Current password"
+                  placeholderTextColor="#7c8591"
+                  secureTextEntry
+                  autoCapitalize="none"
+                />
+              ) : (
+                <Text style={styles.reauthenticationHint}>
+                  Google will ask you to verify the connected account before the
+                  password is set.
+                </Text>
+              )}
               <TextInput
                 style={styles.input}
                 value={newPassword}
@@ -119,9 +223,15 @@ export default function Profile() {
               />
               <View style={{ height: 8 }} />
               <Button
-                title={loading ? 'Updating...' : 'Update Password'}
+                title={
+                  loading || settingPassword
+                    ? 'Updating...'
+                    : hasPassword
+                    ? 'Update Password'
+                    : 'Set Password'
+                }
                 onPress={onSubmit}
-                disabled={loading}
+                disabled={loading || settingPassword}
               />
             </View>
           )}
@@ -166,6 +276,15 @@ const styles = StyleSheet.create({
   accordionTitle: { fontSize: 16, fontWeight: '600' },
   accordionChevron: { fontSize: 16, color: '#666' },
   accordionBody: { paddingTop: 12 },
+  connectedRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  providerName: { color: '#f8fafc', fontSize: 16, fontWeight: '600' },
+  providerStatus: { color: '#94a3b8', marginTop: 3 },
+  connectedBadge: { color: '#86efac', fontWeight: '700' },
+  reauthenticationHint: { color: '#cbd5e1', lineHeight: 20, marginBottom: 12 },
   input: {
     padding: 12,
     borderWidth: 1,
