@@ -2,25 +2,18 @@ import { ApolloClient, InMemoryCache, ApolloLink } from '@apollo/client';
 import { SetContextLink } from '@apollo/client/link/context';
 // Use the ESM entry directly (package exports only .mjs files)
 import defaultIsExtractableFile from 'extract-files/isExtractableFile.mjs';
-import UploadHttpLink from "apollo-upload-client/UploadHttpLink.mjs";
+import UploadHttpLink from 'apollo-upload-client/UploadHttpLink.mjs';
+import { API_URL } from '@env';
 
 import { getAuthToken } from '../store/auth';
 
-// NOTE: Update this URL to your backend GraphQL endpoint.
-// The schema is located at .ai/backend_graphql_schema.json
-// Following the guidelines in .ai/project_description.md, the app will use Apollo Client.
-// If you have a different endpoint, set it here or provide via native config.
-console.log(process.env.API_URL);
-
-
-
-const isReactNativeFile = (value: any) => {
+const isReactNativeFile = (value: unknown): value is any => {
   const isCustomFile = !!(
     value &&
     typeof value === 'object' &&
-    value.uri &&
-    value.name &&
-    value.type
+    'uri' in value &&
+    'name' in value &&
+    'type' in value
   );
 
   const isFile = isCustomFile || defaultIsExtractableFile(value);
@@ -34,9 +27,8 @@ const isReactNativeFile = (value: any) => {
 };
 
 const uploadLink = new UploadHttpLink({
-  //uri: "https://apifinanzv2.ghettohippy.de/graphql",
-  uri: "http://10.1.0.148:4000/graphql",
-  //isExtractableFile: isReactNativeFile,
+  uri: API_URL,
+  isExtractableFile: isReactNativeFile,
 });
 
 const authLink = new SetContextLink(async ({ headers }) => {
@@ -51,11 +43,8 @@ const authLink = new SetContextLink(async ({ headers }) => {
   };
 });
 
-
 export const apolloClient = new ApolloClient({
-  link: ApolloLink.from([
-    authLink, uploadLink
-  ]),
+  link: ApolloLink.from([authLink, uploadLink]),
   defaultOptions: {
     watchQuery: {
       fetchPolicy: 'cache-and-network',
@@ -113,5 +102,3 @@ export const apolloClient = new ApolloClient({
     },
   }),
 });
-
-
