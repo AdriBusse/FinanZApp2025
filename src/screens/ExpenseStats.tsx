@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,9 @@ import ScreenWrapper from '../components/layout/ScreenWrapper';
 import { useExpenses } from '../hooks/useExpenses';
 import { PieChart, BarChart } from 'react-native-gifted-charts';
 
+const EMPTY_CATEGORIES: any[] = [];
+const EMPTY_TRANSACTIONS: any[] = [];
+
 function toDateKey(d: Date) {
   return d.toISOString().slice(0, 10);
 }
@@ -21,16 +24,13 @@ export default function ExpenseStats() {
   const expenseId: string = route.params?.expenseId ?? '';
   const { expenseQuery, categoriesQuery } = useExpenses({
     expenseId,
+    includeList: false,
     includeCategories: true,
   });
-  const categories = categoriesQuery.data?.getExpenseCategories || [];
+  const categories = categoriesQuery.data?.getExpenseCategories ?? EMPTY_CATEGORIES;
   const expense = expenseQuery.data?.getExpense;
 
-  useEffect(() => {
-    void categoriesQuery.refetch();
-  }, [categoriesQuery.refetch]);
-
-  const transactions = expense?.transactions ?? ([] as any[]);
+  const transactions = expense?.transactions ?? EMPTY_TRANSACTIONS;
   const total = transactions.reduce(
     (s: number, t: any) => s + Number(t.amount || 0),
     0,

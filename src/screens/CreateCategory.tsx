@@ -28,7 +28,7 @@ export default function CreateCategory() {
     createCategory,
     updateCategory,
     categoryMeta,
-  } = useExpenses({ includeCategoryMetadata: true });
+  } = useExpenses({ includeList: false, includeCategoryMetadata: true });
   const {
     loading: metaLoading,
     error: metaError,

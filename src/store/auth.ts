@@ -181,8 +181,8 @@ export const useAuthStore = create<AuthState>(set => ({
       try {
         console.error('[Auth] Login error', {
           message: err?.message,
-          graphQLErrors: err?.graphQLErrors,
-          networkError: err?.networkError,
+          name: err?.name,
+          error: err,
         });
       } catch {}
       // Always return a generic error to avoid leaking whether username or password was incorrect

@@ -16,6 +16,8 @@ import { useExpenses } from '../../../hooks/useExpenses';
 import IconSymbol from '../../atoms/IconSymbol';
 // Legacy finance store removed; rely on Apollo cache only
 
+const EMPTY_CATEGORIES: any[] = [];
+
 interface Transaction {
   id: string;
   amount: number;
@@ -34,7 +36,6 @@ export default function EditExpenseTransactionSheet({
   onSave,
   transaction,
   currency,
-  expenseId,
 }: {
   open: boolean;
   onClose: () => void;
@@ -47,7 +48,6 @@ export default function EditExpenseTransactionSheet({
   }) => void | Promise<void>;
   transaction: Transaction | null;
   currency?: string;
-  expenseId: string;
 }) {
   const navigation = useNavigation<any>();
   const [amount, setAmount] = useState('');
@@ -65,11 +65,11 @@ export default function EditExpenseTransactionSheet({
   const amountInputRef = useRef<TextInput | null>(null);
 
   const { categoriesQuery } = useExpenses({
-    includeCategories: true,
-    expenseId,
+    includeCategories: open,
+    includeList: false,
   });
-  const { data: categoriesData, loading, refetch } = categoriesQuery;
-  const categories = categoriesData?.getExpenseCategories || [];
+  const { data: categoriesData, loading } = categoriesQuery;
+  const categories = categoriesData?.getExpenseCategories ?? EMPTY_CATEGORIES;
   const [updating, setUpdating] = useState(false);
 
   // Initialize form with transaction data when modal opens
@@ -83,7 +83,6 @@ export default function EditExpenseTransactionSheet({
           transaction.categoryId ||
           null,
       );
-      refetch();
       const base = transaction?.createdAt
         ? new Date(transaction.createdAt)
         : new Date();
@@ -92,7 +91,7 @@ export default function EditExpenseTransactionSheet({
       setDay(base.getDate());
       setTimeout(() => amountInputRef.current?.focus(), 50);
     }
-  }, [open, transaction, refetch]);
+  }, [open, transaction]);
 
   useEffect(() => {
     if (!open) {
@@ -116,7 +115,7 @@ export default function EditExpenseTransactionSheet({
       color: cat.color || undefined,
     }));
     return categoryOptions;
-  }, [categories, loading]);
+  }, [categories]);
   const selectedCategory = useMemo(
     () => categories.find(cat => cat.id === selectedCategoryId) || null,
     [categories, selectedCategoryId],

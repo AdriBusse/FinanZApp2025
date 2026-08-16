@@ -10,7 +10,6 @@ interface IExpense {
   archived: boolean;
   createdAt: string;
   transactions: ITransactions[];
-  expenseByCategory: IExpenseByCategory[];
 }
 
 export interface ITransactions {
@@ -23,10 +22,4 @@ export interface ITransactions {
     id: string;
     name: string;
   };
-}
-export interface IExpenseByCategory {
-  name: string;
-  amount: number;
-  icon: string;
-  color: string;
 }

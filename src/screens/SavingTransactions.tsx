@@ -73,7 +73,7 @@ export default function SavingTransactions() {
     createSavingTransaction,
     deleteSavingTransaction,
     updateSavingTransaction,
-  } = useSavings({ depotId });
+  } = useSavings({ depotId, includeList: false });
   const { data, refetch, loading } = depotQuery;
   const depot = data?.getSavingDepot;
 

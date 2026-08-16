@@ -19,6 +19,7 @@ export const UPDATESAVINGDEPOT = gql`
       short
       currency
       savinggoal
+      sum
     }
   }
 `;

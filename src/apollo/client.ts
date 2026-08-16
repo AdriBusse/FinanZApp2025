@@ -1,5 +1,6 @@
 import { ApolloClient, InMemoryCache, ApolloLink } from '@apollo/client';
 import { SetContextLink } from '@apollo/client/link/context';
+import { ErrorLink } from '@apollo/client/link/error';
 // Use the ESM entry directly (package exports only .mjs files)
 import defaultIsExtractableFile from 'extract-files/isExtractableFile.mjs';
 import UploadHttpLink from 'apollo-upload-client/UploadHttpLink.mjs';
@@ -43,8 +44,27 @@ const authLink = new SetContextLink(async ({ headers }) => {
   };
 });
 
+const requestLogLink = new ApolloLink((operation, forward) => {
+  if (__DEV__) {
+    console.log('[Apollo] Sending GraphQL request', {
+      operation: operation.operationName || 'anonymous',
+      url: API_URL,
+    });
+  }
+
+  return forward(operation);
+});
+
+const errorLogLink = new ErrorLink(({ error, operation }) => {
+  console.error('[Apollo] GraphQL request failed', {
+    operation: operation.operationName || 'anonymous',
+    url: API_URL,
+    error,
+  });
+});
+
 export const apolloClient = new ApolloClient({
-  link: ApolloLink.from([authLink, uploadLink]),
+  link: ApolloLink.from([requestLogLink, errorLogLink, authLink, uploadLink]),
   defaultOptions: {
     watchQuery: {
       fetchPolicy: 'cache-and-network',

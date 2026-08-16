@@ -20,6 +20,7 @@ export default function Categories() {
   const navigation = useNavigation<any>();
   const [isSpeedDialOpen, setIsSpeedDialOpen] = useState(false);
   const { categoriesQuery, deleteCategory } = useExpenses({
+    includeList: false,
     includeCategories: true,
   });
   const {

@@ -7,4 +7,5 @@ interface IExpense {
   title: string;
   sum: number;
   currency: string;
+  transactionCount: number;
 }

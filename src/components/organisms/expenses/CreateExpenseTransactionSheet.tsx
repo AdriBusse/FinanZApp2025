@@ -17,11 +17,12 @@ import { preferences } from '../../../services/preferences';
 import { useExpenses } from '../../../hooks/useExpenses';
 import IconSymbol from '../../atoms/IconSymbol';
 
+const EMPTY_CATEGORIES: any[] = [];
+
 export default function CreateExpenseTransactionSheet({
   open,
   onClose,
   onCreate,
-  expenseId,
   currency,
 }: {
   open: boolean;
@@ -33,7 +34,6 @@ export default function CreateExpenseTransactionSheet({
     dateMs: number,
     autoCategorize?: boolean,
   ) => void | Promise<void>;
-  expenseId: string;
   currency?: string;
 }) {
   const navigation = useNavigation<any>();
@@ -50,22 +50,15 @@ export default function CreateExpenseTransactionSheet({
   const [day, setDay] = useState(now.getDate());
 
   const { categoriesQuery } = useExpenses({
-    includeCategories: true,
-    expenseId,
+    includeCategories: open,
+    includeList: false,
   });
-  const { data: categoriesData, loading, refetch } = categoriesQuery;
-  const categories = categoriesData?.getExpenseCategories || [];
+  const { data: categoriesData, loading } = categoriesQuery;
+  const categories = categoriesData?.getExpenseCategories ?? EMPTY_CATEGORIES;
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [categoryOpen, setCategoryOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const amountInputRef = useRef<TextInput | null>(null);
-
-  // Fetch categories when modal opens
-  useEffect(() => {
-    if (open) {
-      refetch();
-    }
-  }, [open, refetch]);
 
   // Load persisted autocategorize default when opening
   useEffect(() => {
@@ -108,7 +101,7 @@ export default function CreateExpenseTransactionSheet({
       color: cat.color || undefined,
     }));
     return categoryOptions;
-  }, [categories, loading]);
+  }, [categories]);
   const selectedCategory = useMemo(
     () => categories.find(cat => cat.id === selectedCategoryId) || null,
     [categories, selectedCategoryId],

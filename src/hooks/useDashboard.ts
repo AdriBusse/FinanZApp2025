@@ -2,7 +2,7 @@ import { useCallback } from 'react';
 import { useQuery } from '@apollo/client/react';
 import { SUMMARY_QUERY } from '../queries/Summary';
 import { GETDEPOTS } from '../queries/GetDepots';
-import { GETEXPENSES } from '../queries/GetExpenses';
+import { GET_DASHBOARD_EXPENSES } from '../queries/GetDashboardExpenses';
 
 export const useDashboard = () => {
   const summaryQuery = useQuery(SUMMARY_QUERY, {
@@ -12,21 +12,16 @@ export const useDashboard = () => {
   const depotsQuery = useQuery(GETDEPOTS, {
     notifyOnNetworkStatusChange: true,
   });
-  const expensesQuery = useQuery(GETEXPENSES, {
+  const expensesQuery = useQuery(GET_DASHBOARD_EXPENSES, {
     notifyOnNetworkStatusChange: true,
   });
+  const { refetch: refetchSummary } = summaryQuery;
+  const { refetch: refetchDepots } = depotsQuery;
+  const { refetch: refetchExpenses } = expensesQuery;
 
   const refetchAll = useCallback(async () => {
-    await Promise.all([
-      summaryQuery.refetch(),
-      depotsQuery.refetch(),
-      expensesQuery.refetch(),
-    ]);
-  }, [
-    summaryQuery.refetch,
-    depotsQuery.refetch,
-    expensesQuery.refetch,
-  ]);
+    await Promise.all([refetchSummary(), refetchDepots(), refetchExpenses()]);
+  }, [refetchDepots, refetchExpenses, refetchSummary]);
 
   return {
     summary: summaryQuery.data?.summary ?? null,

@@ -23,6 +23,9 @@ export const UPDATEEXPENSE = gql`
       archived
       monthlyRecurring
       spendingLimit
+      sum
+      transactionCount
+      createdAt
     }
   }
 `;

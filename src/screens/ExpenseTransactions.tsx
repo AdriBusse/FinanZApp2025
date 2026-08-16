@@ -72,7 +72,7 @@ export default function ExpenseTransactions() {
     deleteExpenseTransaction,
     createExpenseTransaction,
     updateExpenseTransaction,
-  } = useExpenses({ expenseId });
+  } = useExpenses({ expenseId, includeList: false });
   const { data, refetch, loading } = expenseQuery;
   const expense = data?.getExpense;
 
@@ -454,7 +454,6 @@ export default function ExpenseTransactions() {
         <CreateExpenseTransactionSheet
           open={createOpen}
           onClose={() => setCreateOpen(false)}
-          expenseId={expenseId}
           currency={expense?.currency}
           onCreate={handleCreate}
         />
@@ -467,7 +466,6 @@ export default function ExpenseTransactions() {
           }}
           transaction={selectedTransaction}
           currency={expense?.currency}
-          expenseId={expenseId}
           onSave={handleUpdate}
         />
 

@@ -277,7 +277,7 @@ export default function Expenses() {
                 <View>
                   <Text style={styles.expenseName}>{item.title}</Text>
                   <Text style={styles.expenseSub}>
-                    {(item.transactions?.length ?? 0).toLocaleString()} entries
+                    {(item.transactionCount ?? 0).toLocaleString()} entries
                   </Text>
                 </View>
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>

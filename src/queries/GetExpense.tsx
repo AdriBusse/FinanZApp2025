@@ -19,12 +19,6 @@ export const GETEXPENSE = gql`
           name
         }
       }
-      expenseByCategory {
-        name
-        amount
-        color
-        icon
-      }
     }
   }
 `;

@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
+  Animated,
+  Easing,
   FlatList,
   ListRenderItemInfo,
   PermissionsAndroid,
@@ -23,7 +25,6 @@ import RoundedButton from '../components/atoms/RoundedButton';
 import { useExpenses } from '../hooks/useExpenses';
 import { PROCESS_VOICE_EXPENSE } from '../queries/mutations/Expenses/ProcessVoiceExpense';
 import { CONFIRM_VOICE_TRANSACTION } from '../queries/mutations/Expenses/ConfirmVoiceTransaction';
-import { GETEXPENSES } from '../queries/GetExpenses';
 import { GETEXPENSE } from '../queries/GetExpense';
 
 type AudioMessage = {
@@ -56,6 +57,41 @@ type SystemMessage = {
 };
 
 type VoiceMessage = AudioMessage | SystemMessage;
+
+function ProcessingSpinner() {
+  const rotation = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const animation = Animated.loop(
+      Animated.timing(rotation, {
+        toValue: 1,
+        duration: 900,
+        easing: Easing.linear,
+        useNativeDriver: true,
+      }),
+    );
+
+    animation.start();
+    return () => animation.stop();
+  }, [rotation]);
+
+  return (
+    <Animated.View
+      style={{
+        transform: [
+          {
+            rotate: rotation.interpolate({
+              inputRange: [0, 1],
+              outputRange: ['0deg', '360deg'],
+            }),
+          },
+        ],
+      }}
+    >
+      <Loader2 color="#fbbf24" size={14} />
+    </Animated.View>
+  );
+}
 
 function formatDuration(ms: number) {
   if (!ms) return '0:00';
@@ -270,11 +306,39 @@ export default function Record() {
           amount: message.amount,
           categoryId: message.suggestedCategoryId ?? null,
         },
-        refetchQueries: [
-          { query: GETEXPENSES },
-          { query: GETEXPENSE, variables: { id: message.expenseId } },
-        ],
-        awaitRefetchQueries: true,
+          update: (cache, { data: mutationData }) => {
+            const transaction = mutationData?.confirmVoiceTransaction;
+          if (!transaction) return;
+
+          cache.updateQuery(
+            { query: GETEXPENSE, variables: { id: message.expenseId } },
+            existing => {
+              if (!existing?.getExpense) return existing;
+              return {
+                ...existing,
+                getExpense: {
+                  ...existing.getExpense,
+                  transactions: [
+                    transaction,
+                    ...existing.getExpense.transactions,
+                  ],
+                },
+              };
+            },
+          );
+          const cacheId = cache.identify({
+            __typename: 'Expense',
+            id: message.expenseId,
+          });
+          if (!cacheId) return;
+          cache.modify({
+            id: cacheId,
+            fields: {
+              sum: existing => Number(existing ?? 0) + Number(transaction.amount),
+              transactionCount: existing => Number(existing ?? 0) + 1,
+            },
+          });
+        },
       });
       const tx = data?.confirmVoiceTransaction;
       if (tx?.id) {
@@ -405,7 +469,7 @@ export default function Record() {
               </View>
               {item.status === 'processing' ? (
                 <View style={[styles.bubbleFooterRow, { marginTop: 0 }]}>
-                  <Loader2 color="#fbbf24" size={14} />
+                  <ProcessingSpinner />
                   <Text style={styles.bubbleHint}>Processing...</Text>
                 </View>
               ) : item.status === 'error' ? (

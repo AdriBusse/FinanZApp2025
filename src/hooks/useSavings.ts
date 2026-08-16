@@ -10,11 +10,13 @@ import { UPDATESAVINGDEPOT } from '../queries/mutations/Savings/UpdateSavingDepo
 import { UPDATESAVINGTRANSACTION } from '../queries/mutations/Savings/UpdateSavingTransaction';
 
 type UseSavingsOptions = {
+  includeList?: boolean;
   depotId?: string;
 };
 
 export const useSavings = (options?: UseSavingsOptions) => {
   const depotsQuery = useQuery(GETDEPOTS, {
+    skip: options?.includeList === false,
     notifyOnNetworkStatusChange: true,
   });
 
@@ -23,6 +25,8 @@ export const useSavings = (options?: UseSavingsOptions) => {
     skip: !options?.depotId,
     notifyOnNetworkStatusChange: true,
   });
+  const { refetch: refetchDepots } = depotsQuery;
+  const { refetch: refetchDepot } = depotQuery;
 
   const [createSavingDepotMutation] = useMutation(CREATESAVINGDEPOT);
   const [updateSavingDepotMutation] = useMutation(UPDATESAVINGDEPOT);
@@ -46,8 +50,21 @@ export const useSavings = (options?: UseSavingsOptions) => {
   ) => {
     await createSavingDepotMutation({
       variables: { name, short, currency, savinggoal },
-      refetchQueries: [{ query: GETDEPOTS }],
-      awaitRefetchQueries: true,
+      update: (cache, { data }) => {
+        const depot = data?.createSavingDepot;
+        if (!depot) return;
+
+        cache.updateQuery({ query: GETDEPOTS }, existing => {
+          if (!existing) return existing;
+          return {
+            ...existing,
+            getSavingDepots: [
+              depot,
+              ...existing.getSavingDepots.filter(item => item.id !== depot.id),
+            ],
+          };
+        });
+      },
     });
   };
 
@@ -58,21 +75,28 @@ export const useSavings = (options?: UseSavingsOptions) => {
     currency?: string | null,
     savinggoal?: number | null,
   ) => {
-    const depotRefetch = options?.depotId
-      ? [{ query: GETDEPOT, variables: { id: options.depotId } }]
-      : [];
     await updateSavingDepotMutation({
       variables: { id, name, short, currency, savinggoal },
-      refetchQueries: [{ query: GETDEPOTS }, ...depotRefetch],
-      awaitRefetchQueries: true,
     });
   };
 
   const deleteSavingDepot = async (id: string) => {
     await deleteSavingDepotMutation({
       variables: { id },
-      refetchQueries: [{ query: GETDEPOTS }],
-      awaitRefetchQueries: true,
+      update: cache => {
+        cache.updateQuery({ query: GETDEPOTS }, existing => {
+          if (!existing) return existing;
+          return {
+            ...existing,
+            getSavingDepots: existing.getSavingDepots.filter(
+              item => item.id !== id,
+            ),
+          };
+        });
+        const cacheId = cache.identify({ __typename: 'SavingDepot', id });
+        if (cacheId) cache.evict({ id: cacheId });
+        cache.gc();
+      },
     });
   };
 
@@ -83,10 +107,38 @@ export const useSavings = (options?: UseSavingsOptions) => {
   ) => {
     await createSavingTransactionMutation({
       variables: { depotId, amount, describtion },
-      refetchQueries: [
-        { query: GETDEPOTS },
-        { query: GETDEPOT, variables: { id: depotId } },
-      ],
+      update: (cache, { data }) => {
+        const transaction = data?.createSavingTransaction;
+        if (!transaction) return;
+
+        cache.updateQuery(
+          { query: GETDEPOT, variables: { id: depotId } },
+          existing => {
+            if (!existing?.getSavingDepot) return existing;
+            return {
+              ...existing,
+              getSavingDepot: {
+                ...existing.getSavingDepot,
+                transactions: [
+                  transaction,
+                  ...existing.getSavingDepot.transactions,
+                ],
+              },
+            };
+          },
+        );
+        const cacheId = cache.identify({
+          __typename: 'SavingDepot',
+          id: depotId,
+        });
+        if (!cacheId) return;
+        cache.modify({
+          id: cacheId,
+          fields: {
+            sum: existing => Number(existing ?? 0) + Number(transaction.amount),
+          },
+        });
+      },
     });
   };
 
@@ -104,11 +156,44 @@ export const useSavings = (options?: UseSavingsOptions) => {
         describtion,
         date,
       },
-      refetchQueries: [
-        { query: GETDEPOTS },
-        { query: GETDEPOT, variables: { id: depotId } },
-      ],
-      awaitRefetchQueries: true,
+      update: (cache, { data }) => {
+        const transaction = data?.updateSavingTransaction;
+        if (!transaction) return;
+
+        let previousAmount: number | undefined;
+        cache.updateQuery(
+          { query: GETDEPOT, variables: { id: depotId } },
+          existing => {
+            if (!existing?.getSavingDepot) return existing;
+            const transactions = existing.getSavingDepot.transactions.map(
+              item => {
+                if (item.id !== transaction.id) return item;
+                previousAmount = Number(item.amount);
+                return { ...item, ...transaction };
+              },
+            );
+            return {
+              ...existing,
+              getSavingDepot: { ...existing.getSavingDepot, transactions },
+            };
+          },
+        );
+        if (previousAmount === undefined) return;
+        const cacheId = cache.identify({
+          __typename: 'SavingDepot',
+          id: depotId,
+        });
+        if (!cacheId) return;
+        cache.modify({
+          id: cacheId,
+          fields: {
+            sum: existing =>
+              Number(existing ?? 0) +
+              Number(transaction.amount) -
+              previousAmount!,
+          },
+        });
+      },
     });
   };
 
@@ -118,21 +203,56 @@ export const useSavings = (options?: UseSavingsOptions) => {
   ) => {
     await deleteSavingTransactionMutation({
       variables: { id: transactionId },
-      refetchQueries: [
-        { query: GETDEPOTS },
-        { query: GETDEPOT, variables: { id: depotId } },
-      ],
-      awaitRefetchQueries: true,
+      update: cache => {
+        let deletedAmount: number | undefined;
+        cache.updateQuery(
+          { query: GETDEPOT, variables: { id: depotId } },
+          existing => {
+            if (!existing?.getSavingDepot) return existing;
+            const transactions = existing.getSavingDepot.transactions.filter(
+              item => {
+                if (item.id === transactionId)
+                  deletedAmount = Number(item.amount);
+                return item.id !== transactionId;
+              },
+            );
+            return {
+              ...existing,
+              getSavingDepot: { ...existing.getSavingDepot, transactions },
+            };
+          },
+        );
+        const cacheId = cache.identify({
+          __typename: 'SavingDepot',
+          id: depotId,
+        });
+        if (cacheId && deletedAmount !== undefined) {
+          cache.modify({
+            id: cacheId,
+            fields: {
+              sum: existing => Number(existing ?? 0) - deletedAmount!,
+            },
+          });
+        }
+        const transactionCacheId = cache.identify({
+          __typename: 'SavingTransaction',
+          id: transactionId,
+        });
+        if (transactionCacheId) cache.evict({ id: transactionCacheId });
+      },
     });
   };
 
   const refetchAll = useCallback(async () => {
-    const promises = [depotsQuery.refetch()];
+    const promises = [];
+    if (options?.includeList !== false) {
+      promises.push(refetchDepots());
+    }
     if (options?.depotId) {
-      promises.push(depotQuery.refetch());
+      promises.push(refetchDepot());
     }
     await Promise.all(promises);
-  }, [depotsQuery.refetch, depotQuery.refetch, options?.depotId]);
+  }, [options?.depotId, options?.includeList, refetchDepot, refetchDepots]);
 
   return {
     depotsQuery,

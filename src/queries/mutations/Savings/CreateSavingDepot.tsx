@@ -18,6 +18,7 @@ export const CREATESAVINGDEPOT = gql`
       short
       currency
       savinggoal
+      sum
     }
   }
 `;

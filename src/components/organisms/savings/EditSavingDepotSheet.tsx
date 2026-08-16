@@ -30,7 +30,7 @@ export default function EditSavingDepotSheet({
   const [short, setShort] = useState('');
   const [currency, setCurrency] = useState('');
   const [savingGoal, setSavingGoal] = useState('');
-  const { updateSavingDepot } = useSavings({ depotId: depot?.id });
+  const { updateSavingDepot } = useSavings({ includeList: false });
   const [updating, setUpdating] = useState(false);
 
   // Initialize form with depot data when modal opens

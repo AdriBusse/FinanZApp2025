@@ -32,9 +32,7 @@ export default function EditExpenseSheet({
   const [archived, setArchived] = useState(false);
   const [monthlyRecurring, setMonthlyRecurring] = useState(false);
   const [spendingLimit, setSpendingLimit] = useState('');
-  const { updateExpense } = useExpenses({
-    expenseId: expense?.id,
-  });
+  const { updateExpense } = useExpenses({ includeList: false });
   const [updating, setUpdating] = useState(false);
 
   // Initialize form when opening

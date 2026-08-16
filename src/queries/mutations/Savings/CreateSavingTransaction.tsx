@@ -12,6 +12,9 @@ export const CREATESAVINGTRANSACTION = gql`
       depotId: $depotId
     ) {
       id
+      describtion
+      amount
+      createdAt
     }
   }
 `;

@@ -15,18 +15,28 @@ import { useNavigation } from '@react-navigation/native';
 import { useSavingsUIStore } from '../store/savingsUI';
 import FABSpeedDial from '../components/FABSpeedDial';
 import FormBottomSheet from '../components/FormBottomSheet';
-import { Trash2, Info } from 'lucide-react-native';
+import { Info, Trash2 } from 'lucide-react-native';
 import ScreenWrapper from '../components/layout/ScreenWrapper';
 import InfoModal from '../components/atoms/InfoModal';
+import IncludedSavingsTotal, {
+  SavingDepotSummary,
+} from '../components/organisms/savings/IncludedSavingsTotal';
 
 export default function SavingsList() {
   const { depotsQuery, deleteSavingDepot, createSavingDepot } = useSavings();
-  const { data, loading, error, refetch } = depotsQuery;
-  const depots = data?.getSavingDepots || [];
+  const { data, loading, refetch } = depotsQuery;
+  const depots = React.useMemo(
+    () =>
+      (data as { getSavingDepots?: SavingDepotSummary[] } | undefined)
+        ?.getSavingDepots ?? [],
+    [data],
+  );
   const navigation = useNavigation<any>();
   const [infoOpen, setInfoOpen] = React.useState(false);
   const [pendingCreates, setPendingCreates] = React.useState<any[]>([]);
-  const [pendingDeletes, setPendingDeletes] = React.useState<Record<string, true>>({});
+  const [pendingDeletes, setPendingDeletes] = React.useState<
+    Record<string, true>
+  >({});
 
   useEffect(() => {
     if (!depots || depots.length === 0) void refetch();
@@ -151,6 +161,7 @@ export default function SavingsList() {
             </TouchableOpacity>
           </View>
         </View>
+        <IncludedSavingsTotal depots={depots} />
         {loading && depots.length === 0 ? (
           <View style={styles.center}>
             <ActivityIndicator />
@@ -188,83 +199,86 @@ export default function SavingsList() {
               const isDeleting = pendingDeleteIds.has(item.id);
               const isBlocked = isPending || isDeleting;
               return (
-              <TouchableOpacity
-                style={[styles.depotItem, isBlocked ? styles.loadingItem : null]}
-                onPress={() => {
-                  if (isBlocked) {
-                    Alert.alert(
-                      'Please wait',
-                      'This depot is still syncing. Try again in a moment.',
-                    );
-                    return;
-                  }
-                  navigation.navigate('SavingTransactions', {
-                    depotId: item.id,
-                  });
-                }}
-              >
-                <View>
-                  <Text style={styles.depotName}>{item.name}</Text>
-                  <Text
-                    style={[
-                      styles.depotSub,
-                      { color: (item.sum ?? 0) >= 0 ? '#16a34a' : '#ef4444' },
-                    ]}
-                  >
-                    {`Total: ${(item.sum ?? 0).toLocaleString()}${
-                      item.currency ? ` ${item.currency}` : ''
-                    }`}
-                  </Text>
-                </View>
-                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  {isBlocked ? (
-                    <ActivityIndicator
-                      size="small"
-                      color="#60a5fa"
-                      style={{ marginLeft: 12 }}
-                    />
-                  ) : (
-                    <TouchableOpacity
-                      accessibilityLabel="Delete depot"
-                      onPress={() => {
-                        Alert.alert(
-                          'Delete Depot',
-                          `Are you sure you want to delete "${item.name}"?`,
-                          [
-                            { text: 'Cancel', style: 'cancel' },
-                            {
-                              text: 'Delete',
-                              style: 'destructive',
-                              onPress: async () => {
-                                setPendingDeletes(prev => ({
-                                  ...prev,
-                                  [item.id]: true,
-                                }));
-                                try {
-                                  await deleteSavingDepot(item.id);
-                                } catch {
-                                  setPendingDeletes(prev => {
-                                    const next = { ...prev };
-                                    delete next[item.id];
-                                    return next;
-                                  });
-                                }
-                              },
-                            },
-                          ],
-                        );
-                      }}
-                      style={{ marginLeft: 12, padding: 6 }}
+                <TouchableOpacity
+                  style={[
+                    styles.depotItem,
+                    isBlocked ? styles.loadingItem : null,
+                  ]}
+                  onPress={() => {
+                    if (isBlocked) {
+                      Alert.alert(
+                        'Please wait',
+                        'This depot is still syncing. Try again in a moment.',
+                      );
+                      return;
+                    }
+                    navigation.navigate('SavingTransactions', {
+                      depotId: item.id,
+                    });
+                  }}
+                >
+                  <View>
+                    <Text style={styles.depotName}>{item.name}</Text>
+                    <Text
+                      style={[
+                        styles.depotSub,
+                        { color: (item.sum ?? 0) >= 0 ? '#16a34a' : '#ef4444' },
+                      ]}
                     >
-                      <Trash2
-                        color="#ef4444"
-                        size={20}
-                        style={{ opacity: 0.8 }}
+                      {`Total: ${(item.sum ?? 0).toLocaleString()}${
+                        item.currency ? ` ${item.currency}` : ''
+                      }`}
+                    </Text>
+                  </View>
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    {isBlocked ? (
+                      <ActivityIndicator
+                        size="small"
+                        color="#60a5fa"
+                        style={{ marginLeft: 12 }}
                       />
-                    </TouchableOpacity>
-                  )}
-                </View>
-              </TouchableOpacity>
+                    ) : (
+                      <TouchableOpacity
+                        accessibilityLabel="Delete depot"
+                        onPress={() => {
+                          Alert.alert(
+                            'Delete Depot',
+                            `Are you sure you want to delete "${item.name}"?`,
+                            [
+                              { text: 'Cancel', style: 'cancel' },
+                              {
+                                text: 'Delete',
+                                style: 'destructive',
+                                onPress: async () => {
+                                  setPendingDeletes(prev => ({
+                                    ...prev,
+                                    [item.id]: true,
+                                  }));
+                                  try {
+                                    await deleteSavingDepot(item.id);
+                                  } catch {
+                                    setPendingDeletes(prev => {
+                                      const next = { ...prev };
+                                      delete next[item.id];
+                                      return next;
+                                    });
+                                  }
+                                },
+                              },
+                            ],
+                          );
+                        }}
+                        style={{ marginLeft: 12, padding: 6 }}
+                      >
+                        <Trash2
+                          color="#ef4444"
+                          size={20}
+                          style={{ opacity: 0.8 }}
+                        />
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                </TouchableOpacity>
               );
             }}
           />

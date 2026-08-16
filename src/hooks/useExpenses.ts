@@ -20,6 +20,7 @@ import { UPDATE_EXPENSE_TEMPLATE } from '../queries/mutations/Expenses/UpdateExp
 import { DELETE_EXPENSE_TEMPLATE } from '../queries/mutations/Expenses/DeleteExpenseTemplate';
 
 type UseExpensesOptions = {
+  includeList?: boolean;
   expenseId?: string;
   includeArchived?: boolean;
   includeCategories?: boolean;
@@ -29,6 +30,7 @@ type UseExpensesOptions = {
 
 export const useExpenses = (options?: UseExpensesOptions) => {
   const expensesQuery = useQuery(GETEXPENSES, {
+    skip: options?.includeList === false,
     notifyOnNetworkStatusChange: true,
   });
 
@@ -57,6 +59,12 @@ export const useExpenses = (options?: UseExpensesOptions) => {
     skip: !options?.includeTemplates,
     notifyOnNetworkStatusChange: true,
   });
+  const { refetch: refetchExpenses } = expensesQuery;
+  const { refetch: refetchArchivedExpenses } = archivedExpensesQuery;
+  const { refetch: refetchExpense } = expenseQuery;
+  const { refetch: refetchCategories } = categoriesQuery;
+  const { refetch: refetchCategoryMetadata } = categoryMetadataQuery;
+  const { refetch: refetchExpenseTemplates } = expenseTemplatesQuery;
 
   const [createExpenseMutation] = useMutation(CREATEEXPENSE);
   const [updateExpenseMutation] = useMutation(UPDATEEXPENSE);
@@ -88,9 +96,28 @@ export const useExpenses = (options?: UseExpensesOptions) => {
     skipTemplateIds?: string[],
   ) => {
     await createExpenseMutation({
-      variables: { title, currency, monthlyRecurring, spendingLimit, skipTemplateIds },
-      refetchQueries: [{ query: GETEXPENSES }, { query: GETARCHIVEDEXPENSES }],
-      awaitRefetchQueries: true,
+      variables: {
+        title,
+        currency,
+        monthlyRecurring,
+        spendingLimit,
+        skipTemplateIds,
+      },
+      update: (cache, { data }) => {
+        const expense = data?.createExpense;
+        if (!expense) return;
+
+        cache.updateQuery({ query: GETEXPENSES }, existing => {
+          if (!existing) return existing;
+          return {
+            ...existing,
+            getExpenses: [
+              expense,
+              ...existing.getExpenses.filter(item => item.id !== expense.id),
+            ],
+          };
+        });
+      },
     });
   };
 
@@ -102,25 +129,74 @@ export const useExpenses = (options?: UseExpensesOptions) => {
     monthlyRecurring?: boolean,
     spendingLimit?: number | null,
   ) => {
-    const expenseRefetch = options?.expenseId
-      ? [{ query: GETEXPENSE, variables: { id: options.expenseId } }]
-      : [];
     await updateExpenseMutation({
-      variables: { id, title, currency, archived, monthlyRecurring, spendingLimit },
-      refetchQueries: [
-        { query: GETEXPENSES },
-        { query: GETARCHIVEDEXPENSES },
-        ...expenseRefetch,
-      ],
-      awaitRefetchQueries: true,
+      variables: {
+        id,
+        title,
+        currency,
+        archived,
+        monthlyRecurring,
+        spendingLimit,
+      },
+      update: (cache, { data }) => {
+        const expense = data?.updateExpense;
+        if (!expense) return;
+
+        cache.updateQuery({ query: GETEXPENSES }, existing => {
+          if (!existing) return existing;
+          const remaining = existing.getExpenses.filter(
+            item => item.id !== expense.id,
+          );
+          const hasExpense = remaining.length !== existing.getExpenses.length;
+          return {
+            ...existing,
+            getExpenses: expense.archived
+              ? remaining
+              : hasExpense
+              ? existing.getExpenses.map(item =>
+                  item.id === expense.id ? expense : item,
+                )
+              : [expense, ...remaining],
+          };
+        });
+        cache.updateQuery({ query: GETARCHIVEDEXPENSES }, existing => {
+          if (!existing) return existing;
+          const remaining = existing.getExpenses.filter(
+            item => item.id !== expense.id,
+          );
+          const hasExpense = remaining.length !== existing.getExpenses.length;
+          return {
+            ...existing,
+            getExpenses: expense.archived
+              ? hasExpense
+                ? existing.getExpenses.map(item =>
+                    item.id === expense.id ? expense : item,
+                  )
+                : [expense, ...remaining]
+              : remaining,
+          };
+        });
+      },
     });
   };
 
   const deleteExpense = async (id: string) => {
     await deleteExpenseMutation({
       variables: { id },
-      refetchQueries: [{ query: GETEXPENSES }, { query: GETARCHIVEDEXPENSES }],
-      awaitRefetchQueries: true,
+      update: cache => {
+        [GETEXPENSES, GETARCHIVEDEXPENSES].forEach(query => {
+          cache.updateQuery({ query }, existing => {
+            if (!existing) return existing;
+            return {
+              ...existing,
+              getExpenses: existing.getExpenses.filter(item => item.id !== id),
+            };
+          });
+        });
+        const cacheId = cache.identify({ __typename: 'Expense', id });
+        if (cacheId) cache.evict({ id: cacheId });
+        cache.gc();
+      },
     });
   };
 
@@ -141,10 +217,39 @@ export const useExpenses = (options?: UseExpensesOptions) => {
         date,
         autocategorize,
       },
-      refetchQueries: [
-        { query: GETEXPENSES },
-        { query: GETEXPENSE, variables: { id: expenseId } },
-      ],
+      update: (cache, { data }) => {
+        const transaction = data?.createExpenseTransaction;
+        if (!transaction) return;
+
+        cache.updateQuery(
+          { query: GETEXPENSE, variables: { id: expenseId } },
+          existing => {
+            if (!existing?.getExpense) return existing;
+            return {
+              ...existing,
+              getExpense: {
+                ...existing.getExpense,
+                transactions: [
+                  transaction,
+                  ...existing.getExpense.transactions,
+                ],
+              },
+            };
+          },
+        );
+        const cacheId = cache.identify({
+          __typename: 'Expense',
+          id: expenseId,
+        });
+        if (!cacheId) return;
+        cache.modify({
+          id: cacheId,
+          fields: {
+            sum: existing => Number(existing ?? 0) + Number(transaction.amount),
+            transactionCount: existing => Number(existing ?? 0) + 1,
+          },
+        });
+      },
     });
   };
 
@@ -164,11 +269,42 @@ export const useExpenses = (options?: UseExpensesOptions) => {
         categoryId,
         date,
       },
-      refetchQueries: [
-        { query: GETEXPENSES },
-        { query: GETEXPENSE, variables: { id: expenseId } },
-      ],
-      awaitRefetchQueries: true,
+      update: (cache, { data }) => {
+        const transaction = data?.updateExpenseTransaction;
+        if (!transaction) return;
+
+        let previousAmount: number | undefined;
+        cache.updateQuery(
+          { query: GETEXPENSE, variables: { id: expenseId } },
+          existing => {
+            if (!existing?.getExpense) return existing;
+            const transactions = existing.getExpense.transactions.map(item => {
+              if (item.id !== transaction.id) return item;
+              previousAmount = Number(item.amount);
+              return { ...item, ...transaction };
+            });
+            return {
+              ...existing,
+              getExpense: { ...existing.getExpense, transactions },
+            };
+          },
+        );
+        if (previousAmount === undefined) return;
+        const cacheId = cache.identify({
+          __typename: 'Expense',
+          id: expenseId,
+        });
+        if (!cacheId) return;
+        cache.modify({
+          id: cacheId,
+          fields: {
+            sum: existing =>
+              Number(existing ?? 0) +
+              Number(transaction.amount) -
+              previousAmount!,
+          },
+        });
+      },
     });
   };
 
@@ -176,22 +312,58 @@ export const useExpenses = (options?: UseExpensesOptions) => {
     transactionId: string,
     expenseId: string,
   ) => {
-    console.log("delete ", transactionId);
-
     await deleteExpenseTransactionMutation({
       variables: { id: transactionId },
-      refetchQueries: [
-        { query: GETEXPENSES },
-        { query: GETEXPENSE, variables: { id: expenseId } },
-      ],
-      awaitRefetchQueries: true,
-      onError: (error) => {
+      update: cache => {
+        let deletedAmount: number | undefined;
+        cache.updateQuery(
+          { query: GETEXPENSE, variables: { id: expenseId } },
+          existing => {
+            if (!existing?.getExpense) return existing;
+            const transactions = existing.getExpense.transactions.filter(
+              item => {
+                if (item.id === transactionId)
+                  deletedAmount = Number(item.amount);
+                return item.id !== transactionId;
+              },
+            );
+            return {
+              ...existing,
+              getExpense: { ...existing.getExpense, transactions },
+            };
+          },
+        );
+        const cacheId = cache.identify({
+          __typename: 'Expense',
+          id: expenseId,
+        });
+        if (cacheId && deletedAmount !== undefined) {
+          cache.modify({
+            id: cacheId,
+            fields: {
+              sum: existing => Number(existing ?? 0) - deletedAmount!,
+              transactionCount: existing =>
+                Math.max(0, Number(existing ?? 0) - 1),
+            },
+          });
+        }
+        const transactionCacheId = cache.identify({
+          __typename: 'ExpenseTransaction',
+          id: transactionId,
+        });
+        if (transactionCacheId) cache.evict({ id: transactionCacheId });
+      },
+      onError: error => {
         console.error('Error deleting expense transaction:', error);
-      }
+      },
     });
   };
 
-  const createCategory = async (name: string, color?: string, icon?: string) => {
+  const createCategory = async (
+    name: string,
+    color?: string,
+    icon?: string,
+  ) => {
     await createCategoryMutation({
       variables: { name, color, icon },
       refetchQueries: [{ query: GETEXPENSECATEGORIES }],
@@ -254,30 +426,34 @@ export const useExpenses = (options?: UseExpensesOptions) => {
   };
 
   const refetchAll = useCallback(async () => {
-    const tasks = [expensesQuery.refetch()];
+    const tasks = [];
+    if (options?.includeList !== false) {
+      tasks.push(refetchExpenses());
+    }
     if (options?.includeArchived) {
-      tasks.push(archivedExpensesQuery.refetch());
+      tasks.push(refetchArchivedExpenses());
     }
     if (options?.expenseId) {
-      tasks.push(expenseQuery.refetch());
+      tasks.push(refetchExpense());
     }
     if (options?.includeCategories) {
-      tasks.push(categoriesQuery.refetch());
+      tasks.push(refetchCategories());
     }
     if (options?.includeTemplates) {
-      tasks.push(expenseTemplatesQuery.refetch());
+      tasks.push(refetchExpenseTemplates());
     }
     if (options?.includeCategoryMetadata) {
-      tasks.push(categoryMetadataQuery.refetch());
+      tasks.push(refetchCategoryMetadata());
     }
     await Promise.all(tasks);
   }, [
-    expensesQuery.refetch,
-    archivedExpensesQuery.refetch,
-    expenseQuery.refetch,
-    categoriesQuery.refetch,
-    expenseTemplatesQuery.refetch,
-    categoryMetadataQuery.refetch,
+    refetchExpenses,
+    refetchArchivedExpenses,
+    refetchExpense,
+    refetchCategories,
+    refetchExpenseTemplates,
+    refetchCategoryMetadata,
+    options?.includeList,
     options?.includeArchived,
     options?.expenseId,
     options?.includeCategories,
@@ -286,19 +462,20 @@ export const useExpenses = (options?: UseExpensesOptions) => {
   ]);
 
   const categoryMeta = useMemo(() => {
-    const colorsList = categoryMetadataQuery.data?.categoryMetadata?.colors ?? [];
+    const colorsList =
+      categoryMetadataQuery.data?.categoryMetadata?.colors ?? [];
     const iconsList = categoryMetadataQuery.data?.categoryMetadata?.icons ?? [];
     const colors = Array.isArray(colorsList)
       ? colorsList.map((c: any) => c?.hex).filter(Boolean)
       : [];
     const icons = Array.isArray(iconsList)
       ? iconsList
-        .map((i: any) => ({
-          icon: i?.icon ?? i?.keyword ?? i?.label,
-          label: i?.label ?? undefined,
-          keyword: i?.keyword ?? undefined,
-        }))
-        .filter(x => !!x.icon)
+          .map((i: any) => ({
+            icon: i?.icon ?? i?.keyword ?? i?.label,
+            label: i?.label ?? undefined,
+            keyword: i?.keyword ?? undefined,
+          }))
+          .filter(x => !!x.icon)
       : [];
     return { colors, icons };
   }, [categoryMetadataQuery.data]);

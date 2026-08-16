@@ -48,9 +48,15 @@ function formatDateLabel(dateStr: string): string {
 }
 
 export default function Report() {
-  const { expensesQuery } = useExpenses();
-  const rawExpenses: any[] = (expensesQuery.data as any)?.getExpenses || [];
-  const loading = expensesQuery.loading;
+  const [selectedExpenseId, setSelectedExpenseId] = useState<string | null>(null);
+  const { expensesQuery, expenseQuery } = useExpenses({
+    expenseId: selectedExpenseId ?? undefined,
+  });
+  const rawExpenses = useMemo(
+    () => (expensesQuery.data as any)?.getExpenses ?? [],
+    [expensesQuery.data],
+  );
+  const loading = expensesQuery.loading || expenseQuery.loading;
 
   // Sort expenses newest first
   const expenses = useMemo(() => {
@@ -61,20 +67,22 @@ export default function Report() {
     });
   }, [rawExpenses]);
 
-  // Selected expense ID (defaults to newest expense)
-  const [selectedExpenseId, setSelectedExpenseId] = useState<string | null>(null);
-
   useEffect(() => {
     if (expenses.length > 0 && !selectedExpenseId) {
       setSelectedExpenseId(expenses[0].id);
     }
   }, [expenses, selectedExpenseId]);
 
-  // Selected expense object
-  const selectedExpense = useMemo(() => {
+  // The list is used for selection; transaction data is fetched only for it.
+  const selectedExpenseSummary = useMemo(() => {
     if (!expenses.length) return null;
     return expenses.find(e => e.id === selectedExpenseId) || expenses[0];
   }, [expenses, selectedExpenseId]);
+  const selectedExpenseDetail = (expenseQuery.data as any)?.getExpense;
+  const selectedExpense =
+    selectedExpenseDetail?.id === selectedExpenseId
+      ? selectedExpenseDetail
+      : selectedExpenseSummary;
 
   // View state: 'donut' (round diagram) | 'histogram' (daily bar chart)
   const [chartType, setChartType] = useState<'donut' | 'histogram'>('donut');
@@ -407,9 +415,9 @@ export default function Report() {
                           {item.title}
                         </Text>
                         <Text style={styles.expenseOptionSub}>
-                          {`${item.transactions?.length || 0} transactions · ${formatAmount(
-                            item.sum || 0,
-                          )} ${item.currency || 'EUR'}`}
+                          {`Total: ${formatAmount(item.sum || 0)} ${
+                            item.currency || 'EUR'
+                          }`}
                         </Text>
                       </View>
                       {isSelected && <Check color="#38bdf8" size={20} />}

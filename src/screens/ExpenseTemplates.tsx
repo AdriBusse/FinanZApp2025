@@ -56,7 +56,11 @@ export default function ExpenseTemplates() {
     createTemplate,
     updateTemplate,
     deleteTemplate,
-  } = useExpenses({ includeTemplates: true, includeCategories: true });
+  } = useExpenses({
+    includeList: false,
+    includeTemplates: true,
+    includeCategories: true,
+  });
   const { data: templatesData, refetch: refetchTemplates } =
     expenseTemplatesQuery as typeof expenseTemplatesQuery & {
       data?: ExpenseTemplatesData;

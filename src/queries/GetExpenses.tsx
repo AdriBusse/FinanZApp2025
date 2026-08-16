@@ -7,26 +7,11 @@ export const GETEXPENSES = gql`
       title
       sum
       currency
+      transactionCount
       archived
       createdAt
       monthlyRecurring
       spendingLimit
-      transactions {
-        id
-        amount
-        createdAt
-        describtion
-        category {
-          id
-          name
-        }
-      }
-      expenseByCategory {
-        name
-        amount
-        color
-        icon
-      }
     }
   }
 `;
