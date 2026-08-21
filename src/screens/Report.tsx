@@ -48,7 +48,9 @@ function formatDateLabel(dateStr: string): string {
 }
 
 export default function Report() {
-  const [selectedExpenseId, setSelectedExpenseId] = useState<string | null>(null);
+  const [selectedExpenseId, setSelectedExpenseId] = useState<string | null>(
+    null,
+  );
   const { expensesQuery, expenseQuery } = useExpenses({
     expenseId: selectedExpenseId ?? undefined,
   });
@@ -56,7 +58,7 @@ export default function Report() {
     () => (expensesQuery.data as any)?.getExpenses ?? [],
     [expensesQuery.data],
   );
-  const loading = expensesQuery.loading || expenseQuery.loading;
+  const loading = Boolean(expensesQuery?.loading || expenseQuery?.loading);
 
   // Sort expenses newest first
   const expenses = useMemo(() => {
@@ -78,7 +80,7 @@ export default function Report() {
     if (!expenses.length) return null;
     return expenses.find(e => e.id === selectedExpenseId) || expenses[0];
   }, [expenses, selectedExpenseId]);
-  const selectedExpenseDetail = (expenseQuery.data as any)?.getExpense;
+  const selectedExpenseDetail = (expenseQuery?.data as any)?.getExpense;
   const selectedExpense =
     selectedExpenseDetail?.id === selectedExpenseId
       ? selectedExpenseDetail
@@ -97,7 +99,10 @@ export default function Report() {
 
   // Total spent sum
   const totalSpent = useMemo(() => {
-    return transactions.reduce((acc: number, t: any) => acc + Number(t.amount || 0), 0);
+    return transactions.reduce(
+      (acc: number, t: any) => acc + Number(t.amount || 0),
+      0,
+    );
   }, [transactions]);
 
   // Category breakdown slices
@@ -131,7 +136,10 @@ export default function Report() {
   const dailyData = useMemo(() => {
     if (!transactions.length) return [];
 
-    const map = new Map<string, { dateStr: string; dateObj: Date; sum: number }>();
+    const map = new Map<
+      string,
+      { dateStr: string; dateObj: Date; sum: number }
+    >();
     for (const t of transactions) {
       const dateObj = t.createdAt ? new Date(t.createdAt) : new Date();
       const dateStr = !isNaN(dateObj.getTime())
@@ -251,12 +259,13 @@ export default function Report() {
           {dailyData.map((item, idx) => {
             const heightPercent = maxDailySum > 0 ? item.sum / maxDailySum : 0;
             const barHeight = Math.max(12, heightPercent * barMaxHeight);
-            const sliceColor =
-              CATEGORY_PALETTE[idx % CATEGORY_PALETTE.length];
+            const sliceColor = CATEGORY_PALETTE[idx % CATEGORY_PALETTE.length];
 
             return (
               <View key={`${item.label}-${idx}`} style={styles.barColumn}>
-                <Text style={styles.barValueText}>{formatAmount(item.sum)}</Text>
+                <Text style={styles.barValueText}>
+                  {formatAmount(item.sum)}
+                </Text>
                 <View style={styles.barTrack}>
                   <View
                     style={[
@@ -387,7 +396,10 @@ export default function Report() {
             activeOpacity={1}
             onPress={() => setDropdownOpen(false)}
           >
-            <View style={styles.modalContent} onStartShouldSetResponder={() => true}>
+            <View
+              style={styles.modalContent}
+              onStartShouldSetResponder={() => true}
+            >
               <Text style={styles.modalTitle}>Select Expense</Text>
               <FlatList
                 data={expenses}

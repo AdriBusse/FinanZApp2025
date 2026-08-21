@@ -12,13 +12,22 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  Keyboard,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useMutation } from '@apollo/client/react';
 import { useNavigation } from '@react-navigation/native';
 import Sound from 'react-native-nitro-sound';
 import RNFS from 'react-native-fs';
-import { Mic, Square, Loader2, Play, Pause, CheckCircle } from 'lucide-react-native';
+import {
+  Mic,
+  Square,
+  Loader2,
+  Play,
+  Pause,
+  CheckCircle,
+} from 'lucide-react-native';
 import ScreenWrapper from '../components/layout/ScreenWrapper';
 import Dropdown from '../components/atoms/Dropdown';
 import RoundedButton from '../components/atoms/RoundedButton';
@@ -105,18 +114,41 @@ function formatDuration(ms: number) {
 
 export default function Record() {
   const navigation = useNavigation<any>();
+  const insets = useSafeAreaInsets();
   const listRef = useRef<FlatList<VoiceMessage>>(null);
   const [isRecording, setIsRecording] = useState(false);
   const [recordDuration, setRecordDuration] = useState(0);
   const [playingId, setPlayingId] = useState<string | null>(null);
   const [messages, setMessages] = useState<VoiceMessage[]>([]);
   const [isProcessingUpload, setIsProcessingUpload] = useState(false);
-  const [selectedLanguage, setSelectedLanguage] = useState<'auto' | 'en' | 'de'>('auto');
+  const [selectedLanguage, setSelectedLanguage] = useState<
+    'auto' | 'en' | 'de'
+  >('auto');
 
-  const { expensesQuery, categoriesQuery } = useExpenses({ includeCategories: true });
+  const { expensesQuery, categoriesQuery } = useExpenses({
+    includeCategories: true,
+  });
   const expenses = expensesQuery.data?.getExpenses ?? [];
   const categories = categoriesQuery?.data?.getExpenseCategories ?? [];
-  const [selectedExpenseId, setSelectedExpenseId] = useState<string | null>(null);
+  const [selectedExpenseId, setSelectedExpenseId] = useState<string | null>(
+    null,
+  );
+
+  const keyboardOffset = Platform.OS === 'ios' ? 64 + (insets.bottom || 0) : 0;
+
+  useEffect(() => {
+    const showSub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      () => {
+        setTimeout(() => {
+          listRef.current?.scrollToEnd({ animated: true });
+        }, 100);
+      },
+    );
+    return () => {
+      showSub.remove();
+    };
+  }, []);
 
   useEffect(() => {
     if (!selectedExpenseId && expenses.length) {
@@ -137,9 +169,9 @@ export default function Record() {
   // Cleanup on unmount
   useEffect(() => {
     return () => {
-      Sound.stopRecorder().catch(() => { });
+      Sound.stopRecorder().catch(() => {});
       Sound.removeRecordBackListener();
-      Sound.stopPlayer().catch(() => { });
+      Sound.stopPlayer().catch(() => {});
       Sound.removePlayBackListener();
       Sound.removePlaybackEndListener();
     };
@@ -159,17 +191,21 @@ export default function Record() {
 
     const granted = await PermissionsAndroid.requestMultiple(permissions);
 
-    const isAudioAllowed = granted[PermissionsAndroid.PERMISSIONS.RECORD_AUDIO] === PermissionsAndroid.RESULTS.GRANTED;
+    const isAudioAllowed =
+      granted[PermissionsAndroid.PERMISSIONS.RECORD_AUDIO] ===
+      PermissionsAndroid.RESULTS.GRANTED;
 
     // Storage is allowed if ANY relevant storage permission is granted
     const isStorageAllowed =
-      granted[PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE] === PermissionsAndroid.RESULTS.GRANTED ||
-      granted[(PermissionsAndroid.PERMISSIONS as any).READ_MEDIA_AUDIO] === PermissionsAndroid.RESULTS.GRANTED;
+      granted[PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE] ===
+        PermissionsAndroid.RESULTS.GRANTED ||
+      granted[(PermissionsAndroid.PERMISSIONS as any).READ_MEDIA_AUDIO] ===
+        PermissionsAndroid.RESULTS.GRANTED;
 
     console.log('Permission Results:', {
       isAudioAllowed,
       isStorageAllowed,
-      details: granted
+      details: granted,
     });
 
     return isAudioAllowed && isStorageAllowed;
@@ -177,12 +213,18 @@ export default function Record() {
 
   const startRecording = async () => {
     if (!selectedExpenseId) {
-      Alert.alert('Select an expense', 'Please choose an expense before recording.');
+      Alert.alert(
+        'Select an expense',
+        'Please choose an expense before recording.',
+      );
       return;
     }
     const allowed = await requestPermissions();
     if (!allowed) {
-      Alert.alert('Permission required', 'Microphone access is needed to record audio.');
+      Alert.alert(
+        'Permission required',
+        'Microphone access is needed to record audio.',
+      );
       return;
     }
     try {
@@ -199,21 +241,23 @@ export default function Record() {
     } catch (error) {
       console.error('Failed to start recording', error);
       setIsRecording(false);
-      Alert.alert('Recording failed', 'Could not start recording. Please try again.');
+      Alert.alert(
+        'Recording failed',
+        'Could not start recording. Please try again.',
+      );
     }
   };
 
   const stopRecording = async () => {
     try {
       const uri = await Sound.stopRecorder();
-      console.log("result recorder: ", uri);
+      console.log('result recorder: ', uri);
 
       Sound.removeRecordBackListener();
       setIsRecording(false);
 
       console.log('Recording stopped:', uri);
       handleProcessUpload(uri, recordDuration, selectedExpenseId as string);
-
     } catch (error) {
       console.error('Failed to stop recording', error);
       setIsRecording(false);
@@ -241,7 +285,6 @@ export default function Record() {
     ]);
     setIsProcessingUpload(true);
     try {
-
       const base64File = await RNFS.readFile(uri, 'base64');
       const fileExtension = uri.split('.').pop() || 'm4a';
 
@@ -257,9 +300,12 @@ export default function Record() {
 
       if (data?.processVoiceExpense) {
         const result = data.processVoiceExpense;
+        const matchedCat = categories.find(
+          (c: any) => c.id === result.suggestedCategoryId,
+        );
         setMessages(prev => {
           const updated = prev.map(m =>
-            m.id === audioId ? { ...m, status: 'done' as const } : m
+            m.id === audioId ? { ...m, status: 'done' as const } : m,
           );
           return [
             ...updated,
@@ -271,20 +317,31 @@ export default function Record() {
               amount: result.amount || 0,
               suggestedCategoryId: result.suggestedCategoryId,
               suggestedCategoryName: result.suggestedCategoryName,
+              categoryId: result.suggestedCategoryId ?? null,
+              categoryName:
+                result.suggestedCategoryName || matchedCat?.name || null,
               titleInput: result.title || '',
-              amountInput: String(result.amount || ''),
+              amountInput:
+                result.amount !== undefined && result.amount !== null
+                  ? String(result.amount)
+                  : '',
               recordedAt: Date.now(),
             },
           ];
         });
       }
-
     } catch (e: any) {
-      console.log("Something went wrong while uploading the file.", e);
+      console.log('Something went wrong while uploading the file.', e);
       setMessages(prev =>
         prev.map(m =>
-          m.id === audioId ? { ...m, status: 'error' as const, error: e.message || 'Upload failed' } : m
-        )
+          m.id === audioId
+            ? {
+                ...m,
+                status: 'error' as const,
+                error: e.message || 'Upload failed',
+              }
+            : m,
+        ),
       );
     } finally {
       setIsProcessingUpload(false);
@@ -293,21 +350,41 @@ export default function Record() {
 
   const confirmTransaction = async (message: SystemMessage) => {
     if (message.transactionId) return;
+
+    const titleToSave = message.titleInput.trim();
+    if (!titleToSave) {
+      Alert.alert('Missing title', 'Please enter a title for the transaction.');
+      return;
+    }
+
+    const parsedAmount = parseFloat(message.amountInput.replace(',', '.'));
+    if (isNaN(parsedAmount) || parsedAmount <= 0) {
+      Alert.alert('Invalid amount', 'Please enter a valid amount.');
+      return;
+    }
+
+    const categoryIdToSave =
+      message.categoryId !== undefined
+        ? message.categoryId
+        : message.suggestedCategoryId ?? null;
+
     setMessages(prev =>
       prev.map(m =>
-        m.id === message.id && m.type === 'system' ? { ...m, confirming: true } : m,
+        m.id === message.id && m.type === 'system'
+          ? { ...m, confirming: true }
+          : m,
       ),
     );
     try {
       const { data } = await confirmVoiceMutation({
         variables: {
           expenseId: message.expenseId,
-          title: message.title,
-          amount: message.amount,
-          categoryId: message.suggestedCategoryId ?? null,
+          title: titleToSave,
+          amount: parsedAmount,
+          categoryId: categoryIdToSave || null,
         },
-          update: (cache, { data: mutationData }) => {
-            const transaction = mutationData?.confirmVoiceTransaction;
+        update: (cache, { data: mutationData }) => {
+          const transaction = mutationData?.confirmVoiceTransaction;
           if (!transaction) return;
 
           cache.updateQuery(
@@ -334,7 +411,8 @@ export default function Record() {
           cache.modify({
             id: cacheId,
             fields: {
-              sum: existing => Number(existing ?? 0) + Number(transaction.amount),
+              sum: existing =>
+                Number(existing ?? 0) + Number(transaction.amount),
               transactionCount: existing => Number(existing ?? 0) + 1,
             },
           });
@@ -345,7 +423,17 @@ export default function Record() {
         setMessages(prev =>
           prev.map(m =>
             m.id === message.id && m.type === 'system'
-              ? { ...m, transactionId: tx.id, confirming: false }
+              ? {
+                  ...m,
+                  title: titleToSave,
+                  amount: parsedAmount,
+                  titleInput: titleToSave,
+                  amountInput: String(parsedAmount),
+                  categoryId: tx.category?.id ?? categoryIdToSave ?? null,
+                  categoryName: tx.category?.name ?? m.categoryName ?? null,
+                  transactionId: tx.id,
+                  confirming: false,
+                }
               : m,
           ),
         );
@@ -357,8 +445,8 @@ export default function Record() {
         error instanceof Error
           ? error.message
           : typeof error?.message === 'string'
-            ? error.message
-            : 'Saving the transaction failed. Please try again.';
+          ? error.message
+          : 'Saving the transaction failed. Please try again.';
       console.error('confirmVoiceTransaction failed', error);
       Alert.alert('Could not confirm', errMsg);
       setMessages(prev =>
@@ -374,19 +462,19 @@ export default function Record() {
   const togglePlayback = async (message: AudioMessage) => {
     try {
       if (playingId === message.id) {
-        await recorder.stopPlayer();
-        recorder.removePlayBackListener();
+        await Sound.stopPlayer();
+        Sound.removePlayBackListener();
         setPlayingId(null);
         return;
       }
-      await recorder.stopPlayer();
-      recorder.removePlayBackListener();
+      await Sound.stopPlayer();
+      Sound.removePlayBackListener();
       setPlayingId(message.id);
-      await recorder.startPlayer(message.uri);
-      recorder.addPlayBackListener(e => {
+      await Sound.startPlayer(message.uri);
+      Sound.addPlayBackListener(e => {
         if (e.currentPosition >= e.duration) {
-          recorder.stopPlayer().catch(() => { });
-          recorder.removePlayBackListener();
+          Sound.stopPlayer().catch(() => {});
+          Sound.removePlayBackListener();
           setPlayingId(null);
         }
         return;
@@ -405,7 +493,7 @@ export default function Record() {
   const scrollToBottom = () => {
     try {
       listRef.current?.scrollToEnd({ animated: true });
-    } catch { }
+    } catch {}
   };
 
   useEffect(() => {
@@ -443,7 +531,10 @@ export default function Record() {
     if (!message.transactionId) return;
     navigation.navigate('ExpensesTab', {
       screen: 'ExpenseTransactions',
-      params: { expenseId: message.expenseId, openTransactionId: message.transactionId },
+      params: {
+        expenseId: message.expenseId,
+        openTransactionId: message.transactionId,
+      },
     });
   };
 
@@ -464,8 +555,12 @@ export default function Record() {
             </View>
             <View style={styles.voiceRow}>
               <View style={{ flex: 1 }}>
-                <Text style={styles.bubbleBody}>{formatDuration(item.durationMs || 0)}</Text>
-                <Text style={styles.metaText}>{formatTimestamp(item.recordedAt)}</Text>
+                <Text style={styles.bubbleBody}>
+                  {formatDuration(item.durationMs || 0)}
+                </Text>
+                <Text style={styles.metaText}>
+                  {formatTimestamp(item.recordedAt)}
+                </Text>
               </View>
               {item.status === 'processing' ? (
                 <View style={[styles.bubbleFooterRow, { marginTop: 0 }]}>
@@ -473,7 +568,10 @@ export default function Record() {
                   <Text style={styles.bubbleHint}>Processing...</Text>
                 </View>
               ) : item.status === 'error' ? (
-                <Text style={[styles.bubbleHint, { color: '#fca5a5' }]}> {item.error ?? 'Upload failed'} </Text>
+                <Text style={[styles.bubbleHint, { color: '#fca5a5' }]}>
+                  {' '}
+                  {item.error ?? 'Upload failed'}{' '}
+                </Text>
               ) : (
                 <TouchableOpacity
                   onPress={() => togglePlayback(item)}
@@ -493,13 +591,15 @@ export default function Record() {
       );
     }
 
-    const currency = selectedExpense?.currency ? ` ${selectedExpense.currency}` : '';
+    const currency = selectedExpense?.currency
+      ? ` ${selectedExpense.currency}`
+      : '';
     const finalized = item.transactionId || item.rejected;
     const statusStyle = item.transactionId
       ? styles.successBubble
       : item.rejected
-        ? styles.rejectedBubble
-        : null;
+      ? styles.rejectedBubble
+      : null;
 
     // Condensed pill when finalized
     if (finalized) {
@@ -533,9 +633,13 @@ export default function Record() {
     }
 
     return (
-      <View style={[styles.messageRow, { justifyContent: 'flex-start' }]}>
+      <View style={styles.systemMessageRow}>
         <View style={[styles.systemBubble, statusStyle]}>
-          <Text style={styles.label}>Detected</Text>
+          <View style={styles.bubbleHeader}>
+            <Text style={styles.label}>Detected Transaction</Text>
+          </View>
+
+          <Text style={styles.fieldLabel}>Title</Text>
           <TextInput
             style={styles.editInput}
             value={item.titleInput}
@@ -548,13 +652,22 @@ export default function Record() {
                 ),
               )
             }
+            onFocus={() => {
+              setTimeout(
+                () => listRef.current?.scrollToEnd({ animated: true }),
+                150,
+              );
+            }}
             selectTextOnFocus
             placeholder="Title"
             placeholderTextColor="#64748b"
+            returnKeyType="next"
           />
+
+          <Text style={styles.fieldLabel}>Amount</Text>
           <View style={styles.amountRow}>
             <TextInput
-              style={[styles.editInput, { flex: 1 }]}
+              style={[styles.editInput, styles.amountInput]}
               value={item.amountInput}
               onChangeText={text =>
                 setMessages(prev =>
@@ -565,35 +678,52 @@ export default function Record() {
                   ),
                 )
               }
+              onFocus={() => {
+                setTimeout(
+                  () => listRef.current?.scrollToEnd({ animated: true }),
+                  150,
+                );
+              }}
               keyboardType="decimal-pad"
               selectTextOnFocus
               placeholder="Amount"
               placeholderTextColor="#64748b"
+              returnKeyType="done"
             />
             {currency ? <Text style={styles.currency}>{currency}</Text> : null}
           </View>
+
           {categories.length ? (
-            <Dropdown
-              label="Category"
-              value={item.categoryId || ''}
-              options={categories.map((c: any) => ({
-                id: c.id,
-                label: c.name,
-                color: c.color,
-              }))}
-              onSelect={opt =>
-                setMessages(prev =>
-                  prev.map(m =>
-                    m.id === item.id && m.type === 'system'
-                      ? { ...m, categoryId: opt.id || null, categoryName: opt.label || null }
-                      : m,
-                  ),
-                )
-              }
-              placeholder="Select category"
-            />
+            <View style={styles.categoryDropdownContainer}>
+              <Dropdown
+                label="Category"
+                value={item.categoryId || ''}
+                options={categories.map((c: any) => ({
+                  id: c.id,
+                  label: c.name,
+                  color: c.color,
+                }))}
+                onSelect={opt =>
+                  setMessages(prev =>
+                    prev.map(m =>
+                      m.id === item.id && m.type === 'system'
+                        ? {
+                            ...m,
+                            categoryId: opt.id || null,
+                            categoryName: opt.label || null,
+                          }
+                        : m,
+                    ),
+                  )
+                }
+                placeholder="Select category"
+              />
+            </View>
           ) : null}
-          <Text style={styles.metaText}>{formatTimestamp(item.recordedAt)}</Text>
+
+          <Text style={styles.metaText}>
+            {formatTimestamp(item.recordedAt)}
+          </Text>
 
           <View style={styles.actionRow}>
             <RoundedButton
@@ -619,7 +749,11 @@ export default function Record() {
   };
 
   return (
-    <ScreenWrapper scrollable={false} backgroundColor="#0e0f14">
+    <ScreenWrapper
+      scrollable={false}
+      backgroundColor="#0e0f14"
+      keyboardOffset={keyboardOffset}
+    >
       <View style={styles.container}>
         <Text style={styles.title}>Record expense</Text>
         <View style={styles.rowSelects}>
@@ -673,6 +807,8 @@ export default function Record() {
               ref={listRef}
               style={styles.list}
               contentContainerStyle={styles.listContent}
+              keyboardShouldPersistTaps="handled"
+              keyboardDismissMode="on-drag"
               ListEmptyComponent={
                 <View style={styles.emptyList}>
                   <Text style={styles.emptySub}>
@@ -689,8 +825,8 @@ export default function Record() {
                   {isRecording
                     ? `Recording... ${formatDuration(recordDuration)}`
                     : isProcessingVoice || isProcessingUpload
-                      ? 'Processing recording...'
-                      : 'Ready'}
+                    ? 'Processing recording...'
+                    : 'Ready'}
                 </Text>
               </View>
               <TouchableOpacity
@@ -698,11 +834,15 @@ export default function Record() {
                 style={[
                   styles.recordButton,
                   isRecording && styles.recording,
-                  (!selectedExpenseId || isProcessingVoice || isProcessingUpload) &&
-                  styles.recordDisabled,
+                  (!selectedExpenseId ||
+                    isProcessingVoice ||
+                    isProcessingUpload) &&
+                    styles.recordDisabled,
                 ]}
                 onPress={isRecording ? stopRecording : startRecording}
-                disabled={!selectedExpenseId || isProcessingVoice || isProcessingUpload}
+                disabled={
+                  !selectedExpenseId || isProcessingVoice || isProcessingUpload
+                }
               >
                 {isRecording ? (
                   <Square color="#fff" size={28} />
@@ -750,15 +890,18 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderTopRightRadius: 2,
   },
+  systemMessageRow: {
+    width: '100%',
+    marginVertical: 6,
+  },
   systemBubble: {
-    maxWidth: '85%',
-    minWidth: '60%',
+    width: '100%',
     backgroundColor: '#0f172a',
-    padding: 10,
-    borderRadius: 10,
-    borderTopLeftRadius: 4,
+    padding: 14,
+    borderRadius: 14,
     borderWidth: 1,
     borderColor: '#1e293b',
+    overflow: 'hidden',
   },
   errorBubble: {
     borderColor: '#f87171',
@@ -792,7 +935,7 @@ const styles = StyleSheet.create({
     color: '#cbd5e1',
     fontSize: 14,
   },
-  metaText: { color: '#94a3b8', fontSize: 11, marginTop: 2 },
+  metaText: { color: '#94a3b8', fontSize: 11, marginTop: 4 },
   bubbleHint: {
     color: '#eab308',
     fontSize: 12,
@@ -826,6 +969,13 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
+  fieldLabel: {
+    color: '#94a3b8',
+    fontSize: 12,
+    fontWeight: '600',
+    marginTop: 8,
+    marginBottom: 4,
+  },
   value: {
     color: '#e2e8f0',
     fontSize: 14,
@@ -838,19 +988,28 @@ const styles = StyleSheet.create({
   },
   editInput: {
     borderWidth: 1,
-    borderColor: '#1f2937',
+    borderColor: '#374151',
     borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    color: '#e2e8f0',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    color: '#f8fafc',
     backgroundColor: '#0b1220',
-    marginTop: 6,
+    fontSize: 15,
+    width: '100%',
   },
   amountRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    marginTop: 6,
+    width: '100%',
+  },
+  amountInput: {
+    flex: 1,
+    marginTop: 0,
+  },
+  categoryDropdownContainer: {
+    marginTop: 4,
+    width: '100%',
   },
   currency: { color: '#cbd5e1', fontWeight: '700' },
   pill: {

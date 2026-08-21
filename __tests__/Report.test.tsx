@@ -41,6 +41,10 @@ jest.mock('../src/hooks/useExpenses', () => ({
       },
       loading: false,
     },
+    expenseQuery: {
+      data: undefined,
+      loading: false,
+    },
   }),
 }));
 

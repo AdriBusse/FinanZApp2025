@@ -14,6 +14,22 @@ jest.mock('@react-native-async-storage/async-storage', () =>
   require('@react-native-async-storage/async-storage/jest/async-storage-mock'),
 );
 
+jest.mock('react-native-safe-area-context', () => {
+  const React = require('react');
+  const inset = { top: 0, right: 0, bottom: 0, left: 0 };
+  const frame = { x: 0, y: 0, width: 390, height: 844 };
+  const SafeAreaInsetsContext = React.createContext(inset);
+  const SafeAreaFrameContext = React.createContext(frame);
+  return {
+    SafeAreaProvider: ({ children }: any) => children,
+    SafeAreaConsumer: ({ children }: any) => children(inset),
+    SafeAreaInsetsContext,
+    SafeAreaFrameContext,
+    useSafeAreaInsets: () => inset,
+    useSafeAreaFrame: () => frame,
+  };
+});
+
 jest.mock('react-native-keychain', () => ({
   ACCESSIBLE: { WHEN_UNLOCKED: 'WHEN_UNLOCKED' },
   ACCESS_CONTROL: { BIOMETRY_CURRENT_SET: 'BIOMETRY_CURRENT_SET' },
