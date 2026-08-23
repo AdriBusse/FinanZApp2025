@@ -2,14 +2,14 @@ import { gql } from '@apollo/client';
 
 export const UPDATEEXPENSETRANSACTION = gql`
   mutation UPDATEEXPENSETRANSACTION(
-    $transactionId: String!
+    $id: String!
     $amount: Float
     $describtion: String
     $categoryId: String
-    $date: String
+    $date: DateTime
   ) {
     updateExpenseTransaction(
-      transactionId: $transactionId
+      id: $id
       describtion: $describtion
       amount: $amount
       categoryId: $categoryId

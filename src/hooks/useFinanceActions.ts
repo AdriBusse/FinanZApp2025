@@ -24,17 +24,22 @@ export const useFinanceActions = () => {
     amount: number,
     describtion: string,
     categoryId?: string,
-    dateMs?: number,
-    autocategorize?: boolean,
+    dateMs?: number | string,
   ) => {
+    const formattedDate =
+      typeof dateMs === 'number'
+        ? new Date(dateMs).toISOString()
+        : dateMs
+        ? new Date(dateMs).toISOString()
+        : undefined;
+
     await createExpenseTxMutate({
       variables: {
         expenseId,
         amount,
         describtion,
-        categoryId,
-        date: dateMs,
-        autocategorize,
+        categoryId: categoryId || undefined,
+        date: formattedDate,
       },
       refetchQueries: [{ query: GETEXPENSE, variables: { id: expenseId } }],
     });

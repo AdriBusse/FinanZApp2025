@@ -1,5 +1,5 @@
 export interface IUpdateExpenseTransaction {
-  transactionId: string;
+  id: string;
   amount?: number;
   describtion?: string;
   categoryId?: string;
@@ -8,9 +8,9 @@ export interface IUpdateExpenseTransaction {
 export interface IReturn {
   id: string;
   amount: number;
-  decribtion: string;
+  describtion: string;
   createdAt: string;
-  category: {
+  category?: {
     id: string;
     name: string;
   };

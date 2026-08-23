@@ -33,6 +33,7 @@ export default function SavingsList() {
   );
   const navigation = useNavigation<any>();
   const [infoOpen, setInfoOpen] = React.useState(false);
+  const [refreshing, setRefreshing] = React.useState(false);
   const [pendingCreates, setPendingCreates] = React.useState<any[]>([]);
   const [pendingDeletes, setPendingDeletes] = React.useState<
     Record<string, true>
@@ -41,6 +42,15 @@ export default function SavingsList() {
   useEffect(() => {
     if (!depots || depots.length === 0) void refetch();
   }, [depots, refetch]);
+
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await refetch();
+    } finally {
+      setRefreshing(false);
+    }
+  }, [refetch]);
 
   const pendingCreateIds = React.useMemo(
     () => new Set(pendingCreates.map(d => d.id)),
@@ -172,6 +182,8 @@ export default function SavingsList() {
             keyExtractor={d => d.id}
             ItemSeparatorComponent={() => <View style={styles.sep} />}
             contentContainerStyle={styles.listContent}
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
             ListEmptyComponent={() => (
               <View style={styles.emptyWrap}>
                 <Text style={styles.emptyTitle}>No saving depots yet</Text>

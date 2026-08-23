@@ -1,7 +1,7 @@
 import { gql } from '@apollo/client';
 export const UPDATESAVINGTRANSACTION = gql`
   mutation UPDATESAVINGTransaction(
-    $id: Float!
+    $id: Int!
     $describtion: String
     $amount: Float
     $date: String

@@ -75,6 +75,16 @@ export default function ExpenseTransactions() {
   } = useExpenses({ expenseId, includeList: false });
   const { data, refetch, loading } = expenseQuery;
   const expense = data?.getExpense;
+  const [refreshing, setRefreshing] = useState(false);
+
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await refetch();
+    } finally {
+      setRefreshing(false);
+    }
+  }, [refetch]);
 
   // Open create sheet when navigated with { openCreate: true }
   useEffect(() => {
@@ -170,7 +180,6 @@ export default function ExpenseTransactions() {
           describtion,
           categoryId || undefined,
           dateMs,
-          autoCategorize,
         );
       } catch (err) {
         console.error('Error creating transaction:', err);
@@ -311,6 +320,8 @@ export default function ExpenseTransactions() {
           contentContainerStyle={styles.listContent}
           data={grouped}
           keyExtractor={([day]) => day}
+          refreshing={refreshing}
+          onRefresh={handleRefresh}
           ListHeaderComponent={
             loading && grouped.length > 0 ? (
               <View style={styles.loadingWrap}>

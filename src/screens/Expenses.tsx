@@ -45,6 +45,7 @@ export default function Expenses() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
   const [infoOpen, setInfoOpen] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [pendingCreates, setPendingCreates] = useState<any[]>([]);
   const [pendingDeletes, setPendingDeletes] = useState<Record<string, true>>({});
   const isLoading = showArchived ? archivedLoading : expensesLoading;
@@ -77,6 +78,15 @@ export default function Expenses() {
       void refetchArchivedExpenses();
     }
   }, [archivedExpenses.length, refetchArchivedExpenses, showArchived]);
+
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await (showArchived ? refetchArchivedExpenses() : refetchExpenses());
+    } finally {
+      setRefreshing(false);
+    }
+  }, [refetchArchivedExpenses, refetchExpenses, showArchived]);
 
   const handleCreateExpense = useCallback(
     async (payload: {
@@ -224,6 +234,8 @@ export default function Expenses() {
             keyExtractor={e => e.id}
             ItemSeparatorComponent={() => <View style={styles.sep} />}
             contentContainerStyle={styles.listContent}
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
             ListEmptyComponent={() => (
               <View style={styles.emptyWrap}>
                 <Text style={styles.emptyTitle}>

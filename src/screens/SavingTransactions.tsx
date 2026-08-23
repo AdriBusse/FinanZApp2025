@@ -76,6 +76,16 @@ export default function SavingTransactions() {
   } = useSavings({ depotId, includeList: false });
   const { data, refetch, loading } = depotQuery;
   const depot = data?.getSavingDepot;
+  const [refreshing, setRefreshing] = useState(false);
+
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await refetch();
+    } finally {
+      setRefreshing(false);
+    }
+  }, [refetch]);
 
   const displayTransactions = useMemo(() => {
     const base = depot?.transactions ?? [];
@@ -267,6 +277,8 @@ export default function SavingTransactions() {
           contentContainerStyle={{ paddingBottom: 160 }}
           data={grouped}
           keyExtractor={([day]) => day}
+          refreshing={refreshing}
+          onRefresh={handleRefresh}
           ListHeaderComponent={
             loading ? (
               <View style={styles.loadingWrap}>

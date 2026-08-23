@@ -3,11 +3,15 @@ export interface ICreateExpenseTransaction {
   describtion: string;
   amount: number;
   categoryId?: string;
-  date?: number;
+  date?: string;
 }
 export interface IReturn {
   id: string;
-  expense: {
-    title: string;
+  amount: number;
+  createdAt: string;
+  describtion: string;
+  category?: {
+    id: string;
+    name: string;
   };
 }

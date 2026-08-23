@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -31,9 +31,19 @@ export default function Categories() {
   } = categoriesQuery;
   const categories = categoriesData?.getExpenseCategories || [];
   const [infoOpen, setInfoOpen] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     void refetch();
+  }, [refetch]);
+
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await refetch();
+    } finally {
+      setRefreshing(false);
+    }
   }, [refetch]);
 
   // Auto-close FAB when navigating away
@@ -185,6 +195,8 @@ export default function Categories() {
             renderItem={renderCategory}
             contentContainerStyle={styles.listContent}
             showsVerticalScrollIndicator={false}
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
           />
         )}
 

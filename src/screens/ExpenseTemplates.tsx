@@ -50,6 +50,7 @@ export default function ExpenseTemplates() {
   const [createOpen, setCreateOpen] = useState(false);
   const [editOpen, setEditOpen] = useState<TemplateItem | null>(null);
   const [infoOpen, setInfoOpen] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const {
     expenseTemplatesQuery,
     categoriesQuery,
@@ -65,7 +66,10 @@ export default function ExpenseTemplates() {
     expenseTemplatesQuery as typeof expenseTemplatesQuery & {
       data?: ExpenseTemplatesData;
     };
-  const { data: categoriesData } = categoriesQuery as typeof categoriesQuery & {
+  const {
+    data: categoriesData,
+    refetch: refetchCategories,
+  } = categoriesQuery as typeof categoriesQuery & {
     data?: ExpenseCategoriesData;
   };
   const categories = categoriesData?.getExpenseCategories ?? [];
@@ -76,6 +80,15 @@ export default function ExpenseTemplates() {
     };
     setTemplates(data?.getExpenseTransactionTemplates ?? []);
   }, [refetchTemplates]);
+
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await Promise.all([load(), refetchCategories()]);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [load, refetchCategories]);
 
   useEffect(() => {
     if (templatesData?.getExpenseTransactionTemplates) {
@@ -114,6 +127,8 @@ export default function ExpenseTemplates() {
           keyExtractor={t => t.id}
           ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
           contentContainerStyle={{ paddingBottom: 120 }}
+          refreshing={refreshing}
+          onRefresh={handleRefresh}
           ListEmptyComponent={() => (
             <View style={styles.emptyWrap}>
               <Text style={styles.emptyTitle}>No templates yet</Text>
@@ -209,7 +224,7 @@ export default function ExpenseTemplates() {
             await load();
           }}
           categories={categories}
-          onRefreshCategories={categoriesQuery.refetch}
+          onRefreshCategories={refetchCategories}
         />
 
         <TemplateFormSheet
@@ -229,7 +244,7 @@ export default function ExpenseTemplates() {
             await load();
           }}
           categories={categories}
-          onRefreshCategories={categoriesQuery.refetch}
+          onRefreshCategories={refetchCategories}
         />
         <InfoModal
           visible={infoOpen}

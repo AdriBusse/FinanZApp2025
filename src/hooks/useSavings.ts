@@ -115,13 +115,17 @@ export const useSavings = (options?: UseSavingsOptions) => {
           { query: GETDEPOT, variables: { id: depotId } },
           existing => {
             if (!existing?.getSavingDepot) return existing;
+            const existingTransactions =
+              existing.getSavingDepot.transactions || [];
             return {
               ...existing,
               getSavingDepot: {
                 ...existing.getSavingDepot,
                 transactions: [
                   transaction,
-                  ...existing.getSavingDepot.transactions,
+                  ...existingTransactions.filter(
+                    (item: any) => `${item.id}` !== `${transaction.id}`,
+                  ),
                 ],
               },
             };
@@ -147,14 +151,21 @@ export const useSavings = (options?: UseSavingsOptions) => {
     depotId: string,
     amount?: number,
     describtion?: string,
-    date?: string,
+    date?: string | number,
   ) => {
+    const formattedDate =
+      typeof date === 'number'
+        ? new Date(date).toISOString()
+        : date
+        ? new Date(date).toISOString()
+        : undefined;
+
     await updateSavingTransactionMutation({
       variables: {
         id: Number(transactionId),
         amount,
         describtion,
-        date,
+        date: formattedDate,
       },
       update: (cache, { data }) => {
         const transaction = data?.updateSavingTransaction;
@@ -165,13 +176,13 @@ export const useSavings = (options?: UseSavingsOptions) => {
           { query: GETDEPOT, variables: { id: depotId } },
           existing => {
             if (!existing?.getSavingDepot) return existing;
-            const transactions = existing.getSavingDepot.transactions.map(
-              item => {
-                if (item.id !== transaction.id) return item;
-                previousAmount = Number(item.amount);
-                return { ...item, ...transaction };
-              },
-            );
+            const existingTransactions =
+              existing.getSavingDepot.transactions || [];
+            const transactions = existingTransactions.map((item: any) => {
+              if (`${item.id}` !== `${transaction.id}`) return item;
+              previousAmount = Number(item.amount);
+              return { ...item, ...transaction };
+            });
             return {
               ...existing,
               getSavingDepot: { ...existing.getSavingDepot, transactions },
@@ -209,13 +220,13 @@ export const useSavings = (options?: UseSavingsOptions) => {
           { query: GETDEPOT, variables: { id: depotId } },
           existing => {
             if (!existing?.getSavingDepot) return existing;
-            const transactions = existing.getSavingDepot.transactions.filter(
-              item => {
-                if (item.id === transactionId)
-                  deletedAmount = Number(item.amount);
-                return item.id !== transactionId;
-              },
-            );
+            const existingTransactions =
+              existing.getSavingDepot.transactions || [];
+            const transactions = existingTransactions.filter((item: any) => {
+              if (`${item.id}` === `${transactionId}`)
+                deletedAmount = Number(item.amount);
+              return `${item.id}` !== `${transactionId}`;
+            });
             return {
               ...existing,
               getSavingDepot: { ...existing.getSavingDepot, transactions },

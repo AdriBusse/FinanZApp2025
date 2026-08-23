@@ -205,17 +205,22 @@ export const useExpenses = (options?: UseExpensesOptions) => {
     amount: number,
     describtion: string,
     categoryId?: string,
-    date?: number,
-    autocategorize?: boolean,
+    date?: number | string,
   ) => {
+    const formattedDate =
+      typeof date === 'number'
+        ? new Date(date).toISOString()
+        : date
+        ? new Date(date).toISOString()
+        : undefined;
+
     await createExpenseTransactionMutation({
       variables: {
         expenseId,
         amount,
         describtion,
-        categoryId,
-        date,
-        autocategorize,
+        categoryId: categoryId || undefined,
+        date: formattedDate,
       },
       update: (cache, { data }) => {
         const transaction = data?.createExpenseTransaction;
@@ -225,13 +230,17 @@ export const useExpenses = (options?: UseExpensesOptions) => {
           { query: GETEXPENSE, variables: { id: expenseId } },
           existing => {
             if (!existing?.getExpense) return existing;
+            const existingTransactions =
+              existing.getExpense.transactions || [];
             return {
               ...existing,
               getExpense: {
                 ...existing.getExpense,
                 transactions: [
                   transaction,
-                  ...existing.getExpense.transactions,
+                  ...existingTransactions.filter(
+                    (t: any) => `${t?.id}` !== `${transaction.id}`,
+                  ),
                 ],
               },
             };
@@ -259,15 +268,22 @@ export const useExpenses = (options?: UseExpensesOptions) => {
     amount?: number,
     describtion?: string,
     categoryId?: string | null,
-    date?: string,
+    date?: string | number,
   ) => {
+    const formattedDate =
+      typeof date === 'number'
+        ? new Date(date).toISOString()
+        : date
+        ? new Date(date).toISOString()
+        : undefined;
+
     await updateExpenseTransactionMutation({
       variables: {
-        transactionId,
+        id: transactionId,
         amount,
         describtion,
-        categoryId,
-        date,
+        categoryId: categoryId || undefined,
+        date: formattedDate,
       },
       update: (cache, { data }) => {
         const transaction = data?.updateExpenseTransaction;
@@ -278,8 +294,10 @@ export const useExpenses = (options?: UseExpensesOptions) => {
           { query: GETEXPENSE, variables: { id: expenseId } },
           existing => {
             if (!existing?.getExpense) return existing;
-            const transactions = existing.getExpense.transactions.map(item => {
-              if (item.id !== transaction.id) return item;
+            const existingTransactions =
+              existing.getExpense.transactions || [];
+            const transactions = existingTransactions.map((item: any) => {
+              if (`${item.id}` !== `${transaction.id}`) return item;
               previousAmount = Number(item.amount);
               return { ...item, ...transaction };
             });
