@@ -13,6 +13,7 @@ export interface TransactionListItemProps {
   title: string;
   subtitle?: string;
   amount?: number;
+  chainTotal?: number;
   currency?: string;
   loading?: boolean;
   onPress?: () => void;
@@ -24,6 +25,7 @@ export default function TransactionListItem({
   title,
   subtitle,
   amount,
+  chainTotal,
   currency,
   loading,
   onPress,
@@ -41,9 +43,12 @@ export default function TransactionListItem({
       </View>
       {typeof amount === 'number' && (
         <Text style={styles.rowAmount}>
-          {`${amount.toLocaleString()}${
-            currency ? ` ${currency}` : ''
-          }`}
+          {`${amount.toLocaleString()}${currency ? ` ${currency}` : ''}`}
+          {chainTotal !== undefined
+            ? ` (${chainTotal.toLocaleString()}${
+                currency ? ` ${currency}` : ''
+              })`
+            : ''}
         </Text>
       )}
       {loading ? (

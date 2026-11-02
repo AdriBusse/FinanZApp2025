@@ -13,6 +13,7 @@ export const GETDEPOT = gql`
         id
         describtion
         amount
+        parentTransactionId
         createdAt
       }
     }

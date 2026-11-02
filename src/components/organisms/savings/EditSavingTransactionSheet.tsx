@@ -1,5 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, TextInput } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TextInput,
+  TouchableOpacity,
+} from 'react-native';
+import TransactionListItem from '../../molecules/TransactionListItem';
+import { ChainTransaction, getSavingChain } from '../../../utils/savingChain';
 import FormBottomSheet from '../../FormBottomSheet';
 // Legacy finance store removed; rely on Apollo cache only
 
@@ -21,6 +29,10 @@ type EditSavingTransactionSheetProps = {
   transaction: Transaction | null;
   currency?: string;
   depotId: string;
+  chain?: ReturnType<typeof getSavingChain>;
+  onAddConnected?: () => void;
+  onSelectConnected?: (transaction: ChainTransaction) => void;
+  connectedEditor?: React.ReactNode;
 };
 
 export default function EditSavingTransactionSheet(
@@ -37,7 +49,6 @@ export default function EditSavingTransactionSheet(
     if (open && transaction) {
       setAmount(transaction.amount?.toString() || '');
       setDescribtion(transaction.describtion || '');
-      setTimeout(() => amountInputRef.current?.focus(), 50);
     }
   }, [open, transaction]);
 
@@ -85,8 +96,60 @@ export default function EditSavingTransactionSheet(
       submitDisabled={!isValid || updating}
       heightPercent={0.7}
       onSubmit={handleSubmit}
+      afterSubmit={
+        <View style={styles.chainList}>
+          {props.onAddConnected ? (
+            <TouchableOpacity
+              accessibilityRole="button"
+              accessibilityLabel="Add connected transaction"
+              onPress={props.onAddConnected}
+            >
+              <Text style={styles.sectionLabel}>
+                ＋ Add connected transaction
+              </Text>
+            </TouchableOpacity>
+          ) : null}
+          {props.chain?.connected && props.onSelectConnected ? (
+            <View>
+              <Text style={styles.sectionLabel}>
+                Connected to:{' '}
+                {props.chain.root?.describtion ?? 'Original transaction'}
+              </Text>
+              {props.chain.members
+                .filter(member => member.id !== transaction?.id)
+                .map(member => (
+                  <TransactionListItem
+                    key={member.id}
+                    id={member.id}
+                    title={member.describtion || 'Transaction'}
+                    subtitle={
+                      member.id === props.chain?.root?.id
+                        ? 'Original transaction'
+                        : member.createdAt
+                        ? new Date(member.createdAt).toLocaleDateString()
+                        : undefined
+                    }
+                    amount={member.amount}
+                    currency={currency}
+                    onPress={() => props.onSelectConnected?.(member)}
+                  />
+                ))}
+            </View>
+          ) : null}
+          {props.connectedEditor}
+        </View>
+      }
     >
       <View style={styles.container}>
+        {props.chain?.connected ? (
+          <View>
+            <Text style={styles.sectionLabel}>Chain balance</Text>
+            <Text style={styles.chainBalance}>
+              {props.chain.total.toLocaleString()} {currency || '€'}
+              {props.chain.total === 0 ? ' · Equalized' : ''}
+            </Text>
+          </View>
+        ) : null}
         <View>
           <Text style={styles.amountLabel}>Amount</Text>
           <View style={styles.amountRow}>
@@ -127,6 +190,15 @@ export default function EditSavingTransactionSheet(
 }
 
 const styles = StyleSheet.create({
+  chainBalance: {
+    color: '#f8fafc',
+    fontSize: 24,
+    fontWeight: '700',
+  },
+  chainList: {
+    marginTop: 20,
+    gap: 8,
+  },
   container: {
     flex: 1,
     gap: 16,

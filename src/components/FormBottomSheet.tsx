@@ -11,6 +11,7 @@ interface FormBottomSheetProps {
   onSubmit: () => void | Promise<void>;
   submitDisabled?: boolean;
   heightPercent?: number;
+  afterSubmit?: ReactNode;
 }
 
 export default function FormBottomSheet({
@@ -22,6 +23,7 @@ export default function FormBottomSheet({
   onSubmit,
   submitDisabled,
   heightPercent = 0.6,
+  afterSubmit,
 }: FormBottomSheetProps) {
   return (
     <BottomSheetModal
@@ -58,6 +60,7 @@ export default function FormBottomSheet({
           </Text>
         </TouchableOpacity>
       </View>
+      {afterSubmit}
     </BottomSheetModal>
   );
 }

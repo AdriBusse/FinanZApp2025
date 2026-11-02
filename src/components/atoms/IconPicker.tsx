@@ -45,7 +45,7 @@ export default function IconPicker({
       <Modal
         visible={isOpen}
         transparent
-        animationType="fade"
+        animationType="slide"
         onRequestClose={() => setIsOpen(false)}
       >
         <TouchableOpacity

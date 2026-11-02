@@ -104,9 +104,10 @@ export const useSavings = (options?: UseSavingsOptions) => {
     depotId: string,
     amount: number,
     describtion: string,
+    parentTransactionId?: string,
   ) => {
     await createSavingTransactionMutation({
-      variables: { depotId, amount, describtion },
+      variables: { depotId, amount, describtion, parentTransactionId },
       update: (cache, { data }) => {
         const transaction = data?.createSavingTransaction;
         if (!transaction) return;
@@ -213,6 +214,8 @@ export const useSavings = (options?: UseSavingsOptions) => {
     depotId: string,
   ) => {
     await deleteSavingTransactionMutation({
+      refetchQueries: [{ query: GETDEPOT, variables: { id: depotId } }],
+      awaitRefetchQueries: true,
       variables: { id: transactionId },
       update: cache => {
         let deletedAmount: number | undefined;

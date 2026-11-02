@@ -242,7 +242,7 @@ export default function CreateExpenseTransactionSheet({
         <Modal
           visible={calendarOpen}
           transparent
-          animationType="fade"
+          animationType="slide"
           onRequestClose={() => setCalendarOpen(false)}
         >
           <TouchableOpacity
@@ -267,7 +267,7 @@ export default function CreateExpenseTransactionSheet({
         <Modal
           visible={categoryOpen}
           transparent
-          animationType="fade"
+          animationType="slide"
           onRequestClose={() => setCategoryOpen(false)}
         >
           <TouchableOpacity

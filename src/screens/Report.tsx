@@ -388,7 +388,7 @@ export default function Report() {
         <Modal
           visible={dropdownOpen}
           transparent
-          animationType="fade"
+          animationType="slide"
           onRequestClose={() => setDropdownOpen(false)}
         >
           <TouchableOpacity

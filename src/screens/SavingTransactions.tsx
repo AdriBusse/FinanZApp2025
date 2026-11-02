@@ -1,3 +1,4 @@
+import { getSavingChain, ChainTransaction } from '../utils/savingChain';
 import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import {
   View,
@@ -37,6 +38,7 @@ function groupByDate(
     amount: number;
     createdAt?: string;
     describtion?: string;
+    parentTransactionId?: string | null;
   }[],
 ) {
   const map = new Map<string, typeof transactions>();
@@ -57,14 +59,21 @@ function groupByDate(
 
 export default function SavingTransactions() {
   const [createOpen, setCreateOpen] = useState(false);
+  const [connectionRoot, setConnectionRoot] = useState<ChainTransaction | null>(
+    null,
+  );
   const [editOpen, setEditOpen] = useState(false);
   const [editDepotOpen, setEditDepotOpen] = useState(false);
   const [selectedTransaction, setSelectedTransaction] = useState<any>(null);
+  const [selectedChildTransaction, setSelectedChildTransaction] =
+    useState<any>(null);
   const [isSpeedDialOpen, setIsSpeedDialOpen] = useState(false);
   const [infoOpen, setInfoOpen] = useState(false);
   const [pendingCreates, setPendingCreates] = useState<any[]>([]);
   const [pendingUpdates, setPendingUpdates] = useState<Record<string, any>>({});
-  const [pendingDeletes, setPendingDeletes] = useState<Record<string, true>>({});
+  const [pendingDeletes, setPendingDeletes] = useState<Record<string, true>>(
+    {},
+  );
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const depotId: string = route.params?.depotId ?? '';
@@ -96,7 +105,10 @@ export default function SavingTransactions() {
   }, [depot?.transactions, pendingCreates, pendingUpdates]);
 
   const grouped = useMemo(
-    () => groupByDate(displayTransactions),
+    () =>
+      groupByDate(
+        displayTransactions.filter(t => t.parentTransactionId == null),
+      ),
     [displayTransactions],
   );
   const total = (depot?.transactions ?? []).reduce(
@@ -135,16 +147,23 @@ export default function SavingTransactions() {
         amount,
         describtion,
         createdAt: new Date().toISOString(),
+        parentTransactionId: connectionRoot?.id ?? null,
       };
       setPendingCreates(prev => [tempTx, ...prev]);
       try {
-        await createSavingTransaction(depotId, amount, describtion);
+        await createSavingTransaction(
+          depotId,
+          amount,
+          describtion,
+          connectionRoot?.id,
+        );
       } catch (err) {
         console.error('Error creating transaction:', err);
         setPendingCreates(prev => prev.filter(t => t.id !== tempId));
+        throw err;
       }
     },
-    [createSavingTransaction, depotId],
+    [createSavingTransaction, depotId, connectionRoot],
   );
 
   useEffect(() => {
@@ -156,6 +175,7 @@ export default function SavingTransactions() {
         const pendingKey = dateKey(pending.createdAt);
         const match = depot.transactions.some(tx => {
           return (
+            (tx.parentTransactionId ?? null) === pending.parentTransactionId &&
             tx.amount === pending.amount &&
             tx.describtion === pending.describtion &&
             dateKey(tx.createdAt) === pendingKey
@@ -168,9 +188,7 @@ export default function SavingTransactions() {
 
   useEffect(() => {
     if (Object.keys(pendingDeletes).length === 0) return;
-    const existing = new Set(
-      (depot?.transactions ?? []).map(t => `${t.id}`),
-    );
+    const existing = new Set((depot?.transactions ?? []).map(t => `${t.id}`));
     setPendingDeletes(prev => {
       let changed = false;
       const next: Record<string, true> = { ...prev };
@@ -303,7 +321,10 @@ export default function SavingTransactions() {
               </TouchableOpacity>
               <RoundedButton
                 title="Add Transaction"
-                onPress={() => setCreateOpen(true)}
+                onPress={() => {
+                  setConnectionRoot(null);
+                  setCreateOpen(true);
+                }}
                 fullWidth
                 style={{ marginTop: 12 }}
               />
@@ -319,6 +340,11 @@ export default function SavingTransactions() {
                   title={t.describtion || 'Transaction'}
                   subtitle={formatDate(t.createdAt)}
                   amount={t.amount}
+                  chainTotal={
+                    getSavingChain(t, displayTransactions).connected
+                      ? getSavingChain(t, displayTransactions).total
+                      : undefined
+                  }
                   currency={depot?.currency || undefined}
                   loading={
                     pendingCreateIds.has(t.id) ||
@@ -394,6 +420,7 @@ export default function SavingTransactions() {
               label: 'New Transaction',
               onPress: () => {
                 setIsSpeedDialOpen(false);
+                setConnectionRoot(null);
                 setCreateOpen(true);
               },
             },
@@ -406,6 +433,7 @@ export default function SavingTransactions() {
           onClose={() => setCreateOpen(false)}
           currency={depot?.currency}
           onCreate={handleCreate}
+          connectedTo={connectionRoot?.describtion}
         />
 
         {/* Edit Transaction Bottom Sheet */}
@@ -415,7 +443,54 @@ export default function SavingTransactions() {
             setEditOpen(false);
             setSelectedTransaction(null);
           }}
+          connectedEditor={
+            <EditSavingTransactionSheet
+              open={selectedChildTransaction !== null}
+              onClose={() => setSelectedChildTransaction(null)}
+              transaction={selectedChildTransaction}
+              chain={
+                selectedChildTransaction
+                  ? getSavingChain(
+                      selectedChildTransaction,
+                      displayTransactions,
+                    )
+                  : undefined
+              }
+              currency={depot?.currency}
+              depotId={depotId}
+              onSave={handleUpdate}
+            />
+          }
           transaction={selectedTransaction}
+          chain={
+            selectedTransaction
+              ? getSavingChain(selectedTransaction, displayTransactions)
+              : undefined
+          }
+          onSelectConnected={member => {
+            if (
+              pendingCreateIds.has(member.id) ||
+              pendingUpdateIds.has(member.id) ||
+              pendingDeleteIds.has(member.id)
+            ) {
+              Alert.alert(
+                'Please wait',
+                'This transaction is still syncing. Try again in a moment.',
+              );
+              return;
+            }
+            setSelectedChildTransaction(member);
+          }}
+          onAddConnected={() => {
+            if (!selectedTransaction) return;
+            const chain = getSavingChain(
+              selectedTransaction,
+              displayTransactions,
+            );
+            setConnectionRoot(chain.root ?? selectedTransaction);
+            setEditOpen(false);
+            setCreateOpen(true);
+          }}
           currency={depot?.currency}
           depotId={depotId}
           onSave={handleUpdate}

@@ -61,7 +61,7 @@ export default function ColorPicker({
       <Modal
         visible={isOpen}
         transparent
-        animationType="fade"
+        animationType="slide"
         onRequestClose={() => setIsOpen(false)}
       >
         <TouchableOpacity

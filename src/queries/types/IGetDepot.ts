@@ -15,4 +15,5 @@ interface Transactions {
   describtion: string;
   amount: number;
   createdAt: string;
+  parentTransactionId?: string | null;
 }

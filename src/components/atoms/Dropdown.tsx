@@ -90,7 +90,7 @@ export default function Dropdown({
       <Modal
         visible={isOpen}
         transparent
-        animationType="fade"
+        animationType="slide"
         onRequestClose={() => setIsOpen(false)}
       >
         <TouchableOpacity

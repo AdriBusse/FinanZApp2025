@@ -7,11 +7,13 @@ export default function CreateTransactionSheet({
   onClose,
   onCreate,
   currency,
+  connectedTo,
 }: {
   open: boolean;
   onClose: () => void;
   onCreate: (amount: number, describtion: string) => void | Promise<void>;
   currency?: string;
+  connectedTo?: string;
 }) {
   const [amount, setAmount] = useState('');
   const [describtion, setDescribtion] = useState('');
@@ -38,7 +40,7 @@ export default function CreateTransactionSheet({
     <FormBottomSheet
       visible={open}
       onClose={onClose}
-      title="New Transaction"
+      title={connectedTo ? 'New Connected Transaction' : 'New Transaction'}
       submitLabel="Save"
       submitDisabled={!isValid || submitting}
       onSubmit={async () => {
@@ -50,7 +52,7 @@ export default function CreateTransactionSheet({
           void (async () => {
             try {
               await onCreate(Number(amount), describtion);
-            } catch (e) {
+            } catch {
               Alert.alert('Error', 'Failed to create transaction.');
             } finally {
               setAmount('');
@@ -59,12 +61,15 @@ export default function CreateTransactionSheet({
               setSubmitting(false);
             }
           })();
-        } catch (e) {
+        } catch {
           Alert.alert('Error', 'Failed to create transaction.');
         }
       }}
     >
       <View style={styles.sheetContent}>
+        {connectedTo ? (
+          <Text style={styles.sectionLabel}>Connected to: {connectedTo}</Text>
+        ) : null}
         <View>
           <Text style={styles.amountLabel}>Amount</Text>
           <View style={styles.amountRow}>

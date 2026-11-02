@@ -1,13 +1,11 @@
-import React, { ReactNode, useEffect, useRef, useState } from 'react';
+import React, { ReactNode, useEffect, useState } from 'react';
 import {
   Modal,
   View,
   StyleSheet,
-  Animated,
   Dimensions,
   TouchableWithoutFeedback,
   Keyboard,
-  KeyboardAvoidingView,
   Platform,
   ScrollView,
 } from 'react-native';
@@ -31,8 +29,6 @@ export default function BottomSheetModal({
   const screenHeight = Dimensions.get('window').height;
   const targetHeight =
     Math.max(0.3, Math.min(0.95, heightPercent)) * screenHeight;
-  const translateY = useRef(new Animated.Value(targetHeight)).current;
-  const backdrop = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     const keyboardWillShow = Keyboard.addListener(
@@ -55,36 +51,6 @@ export default function BottomSheetModal({
     };
   }, []);
 
-  useEffect(() => {
-    if (visible) {
-      Animated.parallel([
-        Animated.timing(translateY, {
-          toValue: 0,
-          duration: 220,
-          useNativeDriver: true,
-        }),
-        Animated.timing(backdrop, {
-          toValue: 1,
-          duration: 200,
-          useNativeDriver: true,
-        }),
-      ]).start();
-    } else {
-      Animated.parallel([
-        Animated.timing(translateY, {
-          toValue: targetHeight,
-          duration: 200,
-          useNativeDriver: true,
-        }),
-        Animated.timing(backdrop, {
-          toValue: 0,
-          duration: 200,
-          useNativeDriver: true,
-        }),
-      ]).start();
-    }
-  }, [visible, translateY, targetHeight, backdrop]);
-
   const modalHeight =
     keyboardHeight > 0
       ? Math.min(targetHeight, screenHeight - keyboardHeight - 50) // Leave 50px margin
@@ -94,7 +60,7 @@ export default function BottomSheetModal({
     <Modal
       transparent
       visible={visible}
-      animationType="none"
+      animationType="slide"
       onRequestClose={onClose}
     >
       <View style={styles.overlay}>
@@ -104,24 +70,13 @@ export default function BottomSheetModal({
             onClose();
           }}
         >
-          <Animated.View
-            style={[
-              styles.backdrop,
-              {
-                opacity: backdrop.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [0, 0.5],
-                }),
-              },
-            ]}
-          />
+          <View style={styles.backdrop} />
         </TouchableWithoutFeedback>
-        <Animated.View
+        <View
           style={[
             styles.sheet,
             {
               height: modalHeight,
-              transform: [{ translateY }],
               paddingBottom: Math.max(0, insets.bottom || 0),
             },
           ]}
@@ -141,7 +96,7 @@ export default function BottomSheetModal({
           >
             {children}
           </ScrollView>
-        </Animated.View>
+        </View>
       </View>
     </Modal>
   );
@@ -156,6 +111,7 @@ const styles = StyleSheet.create({
   backdrop: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: '#000',
+    opacity: 0.5,
   },
   sheet: {
     backgroundColor: '#111827',

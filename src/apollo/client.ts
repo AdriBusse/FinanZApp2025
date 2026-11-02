@@ -26,7 +26,7 @@ const isReactNativeFile = (value: unknown): value is any => {
 
   return isFile;
 };
-
+console.log("API_URL: ", API_URL);
 const uploadLink = new UploadHttpLink({
   uri: API_URL,
   isExtractableFile: isReactNativeFile,

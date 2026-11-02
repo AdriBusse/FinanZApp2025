@@ -421,7 +421,7 @@ export default function Dashboard() {
         <Modal
           visible={addOpen}
           transparent
-          animationType="fade"
+          animationType="slide"
           onRequestClose={() => setAddOpen(false)}
         >
           <View style={styles.modalOverlay}>
