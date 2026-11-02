@@ -43,11 +43,11 @@ export default function TransactionListItem({
       </View>
       {typeof amount === 'number' && (
         <Text style={styles.rowAmount}>
-          {`${amount.toLocaleString()}${currency ? ` ${currency}` : ''}`}
+          {`${(chainTotal ?? amount).toLocaleString()}${
+            currency ? ` ${currency}` : ''
+          }`}
           {chainTotal !== undefined
-            ? ` (${chainTotal.toLocaleString()}${
-                currency ? ` ${currency}` : ''
-              })`
+            ? ` (${amount.toLocaleString()}${currency ? ` ${currency}` : ''})`
             : ''}
         </Text>
       )}

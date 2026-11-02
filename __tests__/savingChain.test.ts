@@ -42,26 +42,31 @@ test('rounds decimal balances and treats detached repayments independently', () 
   ).toBe(1000);
 });
 
-test('displays an equalized chain balance in parentheses on the transaction row', () => {
-  const React = require('react');
-  const renderer = require('react-test-renderer');
-  const TransactionListItem =
-    require('../src/components/molecules/TransactionListItem').default;
-  let component: import('react-test-renderer').ReactTestRenderer;
-  renderer.act(() => {
-    component = renderer.create(
-      React.createElement(TransactionListItem, {
-        id: '3',
-        title: 'Repayment',
-        amount: 5000,
-        currency: 'EUR',
-        chainTotal: 0,
-      }),
+test.each([-5000, 0])(
+  'displays chain balance %s first and the original amount in parentheses',
+  chainTotal => {
+    const React = require('react');
+    const renderer = require('react-test-renderer');
+    const TransactionListItem =
+      require('../src/components/molecules/TransactionListItem').default;
+    let component: import('react-test-renderer').ReactTestRenderer;
+    renderer.act(() => {
+      component = renderer.create(
+        React.createElement(TransactionListItem, {
+          id: '1',
+          title: 'Withdrawal',
+          amount: -6000,
+          currency: 'EUR',
+          chainTotal,
+        }),
+      );
+    });
+    const text = component!.root
+      .findAll(node => node.type === ('Text' as any))
+      .map(node => [node.props.children].flat().join(''))
+      .join(' ');
+    expect(text).toContain(
+      `${chainTotal.toLocaleString()} EUR (${(-6000).toLocaleString()} EUR)`,
     );
-  });
-  const text = component!.root
-    .findAll(node => node.type === ('Text' as any))
-    .map(node => [node.props.children].flat().join(''))
-    .join(' ');
-  expect(text).toContain(`${(5000).toLocaleString()} EUR (0 EUR)`);
-});
+  },
+);
